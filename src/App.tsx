@@ -137,16 +137,6 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
           <Field label="Correo institucional"><input className={input} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
           <Field label="Contraseña"><input type="password" className={input} value={pass} onChange={(e) => setPass(e.target.value)} /></Field>
           {err && <Msg kind="err" text={err} />}
-          <button className={`${btn} w-full justify-center`}>Ingresar</button>
-          <div className="space-y-2 border-t border-line pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Cuentas de prueba · clave 1234</p>
-            {demos.map((u) => (
-              <button type="button" key={u.id} onClick={() => { setEmail(u.email); setPass('1234'); setErr('') }}
-                className="flex w-full justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-white">
-                <span>{ROLE_LABEL[u.role]}</span><span className="font-mono text-xs text-ink/50">{u.email}</span>
-              </button>
-            ))}
-          </div>
         </form>
       </section>
     </div>
