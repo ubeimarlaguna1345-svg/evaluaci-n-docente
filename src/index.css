@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Public Sans', system-ui, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --color-ink: #14231b;
+  --color-paper: #f4f1ea;
+  --color-pine: #0b4a2e;
+  --color-moss: #2f7a4f;
+  --color-ochre: #c8902e;
+  --color-line: #d9d3c4;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
