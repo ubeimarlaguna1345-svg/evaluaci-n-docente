@@ -116,7 +116,6 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
     if (!u.active) return setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
     onLogin(u)
   }
-  const demos = db.users.filter((u, i, a) => a.findIndex((x) => x.role === u.role) === i)
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       <section className="relative hidden flex-col justify-between overflow-hidden bg-pine p-12 text-paper lg:flex">
@@ -137,6 +136,12 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
           <Field label="Correo institucional"><input className={input} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
           <Field label="Contraseña"><input type="password" className={input} value={pass} onChange={(e) => setPass(e.target.value)} /></Field>
           {err && <Msg kind="err" text={err} />}
+          <button
+          type="submit"
+         className={`${btn} w-full justify-center`}
+        >
+         Ingresar
+         </button>
         </form>
       </section>
     </div>
