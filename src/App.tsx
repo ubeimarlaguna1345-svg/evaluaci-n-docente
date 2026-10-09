@@ -593,7 +593,12 @@ function TeacherFeedback({ me }: { me: User }) {
   const db = useDB()
   const [course, setCourse] = useState('')
   const [q, setQ] = useState<Question | null>(null)
-  const [start, setStart] = useState(new Date().toISOString().slice(0, 16))
+  const [start, setStart] = useState(
+  () =>
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16)
+     ) 
   const [end, setEnd] = useState('')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [sel, setSel] = useState<string | null>(null)
