@@ -8,6 +8,10 @@ import {
   type User, type Role, type Question, type AnswerType, type Form, type FormKind,
 } from './store'
 
+
+const API_URL = 'http://localhost:3001'
+
+
 /* ---------- primitivas ---------- */
 const input = 'w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-moss focus:ring-2 focus:ring-moss/20'
 const btn = 'inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-moss disabled:opacity-40'
@@ -358,7 +362,7 @@ function FormsAdmin() {
     actions.createForm({ ...f, kind: f.kind as FormKind })
     setMsg({ kind: 'ok', text: 'Formulario guardado y programado.' }); setF(blank)
   }
-  return (
+  return ( 
     <>
       <Header req="REQ-06 · REQ-10 · REQ-11 · REQ-12 · REQ-13" title="Evaluaciones y autoevaluaciones" sub="Crear formularios institucionales, definir preguntas, tipo y fechas de disponibilidad." />
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
