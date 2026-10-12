@@ -6,8 +6,17 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre      TEXT NOT NULL,
   correo      TEXT NOT NULL UNIQUE,
   contrasena  TEXT NOT NULL,
-  rol         TEXT NOT NULL CHECK (rol IN ('admin','coordinador','docente','estudiante')),
+  rol         TEXT NOT NULL CHECK (rol IN ('admin','coordinador','docente','estudiante','directivo')),
   activo      INTEGER NOT NULL DEFAULT 1                         -- REQ-05: baja lógica
+);
+
+CREATE TABLE IF NOT EXISTS cadis (
+  id             TEXT PRIMARY KEY,
+  codigo         TEXT NOT NULL UNIQUE,
+  nombre         TEXT NOT NULL,
+  semestre       INTEGER NOT NULL,
+  es_articulador INTEGER NOT NULL DEFAULT 0,
+  docente_id     TEXT REFERENCES usuarios(id)
 );
 
 CREATE TABLE IF NOT EXISTS formularios (                         -- REQ-10 / REQ-11
@@ -16,6 +25,7 @@ CREATE TABLE IF NOT EXISTS formularios (                         -- REQ-10 / REQ
   titulo        TEXT NOT NULL,
   descripcion   TEXT NOT NULL DEFAULT '',
   periodo       TEXT NOT NULL,
+  cadi_id       TEXT REFERENCES cadis(id),
   fecha_inicio  TEXT NOT NULL,                                    -- REQ-06
   fecha_cierre  TEXT NOT NULL,
   CHECK (fecha_cierre > fecha_inicio)
@@ -26,6 +36,7 @@ CREATE TABLE IF NOT EXISTS preguntas (                           -- REQ-12 / REQ
   formulario_id   TEXT REFERENCES formularios(id) ON DELETE CASCADE,  -- NULL si pertenece a una retroalimentación
   enunciado       TEXT NOT NULL,
   tipo_respuesta  TEXT NOT NULL CHECK (tipo_respuesta IN ('escala','seleccion','texto')),  -- REQ-04
+  dimension       TEXT DEFAULT 'General',
   obligatoria     INTEGER NOT NULL DEFAULT 1,
   orden           INTEGER NOT NULL DEFAULT 0
 );

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     correo TEXT NOT NULL UNIQUE,
     contrasena_hash TEXT NOT NULL,
     rol TEXT NOT NULL
-        CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante')),
+        CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante', 'directivo')),
     activo BOOLEAN NOT NULL DEFAULT TRUE
 );
 
