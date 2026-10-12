@@ -1,14 +1,13 @@
 /// <reference types="react" />
 import { useEffect, useState, type ReactNode } from 'react'
 import {
-  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, Trash2, UserPlus, Users, X, Check, AlertCircle, Send, Database, Play, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star,
+  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, Trash2, UserPlus, Users, X, Check, AlertCircle, Send, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star,
 } from 'lucide-react'
 import {
-  useDB, actions, execRaw, initDB, uid, isOpen, fmt, stats, ROLE_LABEL, OBS_LIMIT, MEDIT_DIMENSIONES, getTeacherReputation, getFacultyGlobalMetrics,
+  useDB, actions, initDB, uid, isOpen, fmt, stats, ROLE_LABEL, OBS_LIMIT, MEDIT_DIMENSIONES, getTeacherReputation, getFacultyGlobalMetrics,
   type User, type Role, type Question, type AnswerType, type Form, type FormKind, type CADI,
 } from './store'
 
-const API_URL = 'http://localhost:3001'
 
 /* ---------- primitivas ---------- */
 const input = 'w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-moss focus:ring-2 focus:ring-moss/20'
@@ -928,55 +927,6 @@ function StudentFeedback({ me }: { me: User }) {
   )
 }
 
-/* ---------- Consola SQL PostgreSQL (solo Administrador) ---------- */
-const EXAMPLES = [
-  'SELECT id, nombre, correo, rol, activo FROM usuarios;',
-  'SELECT u.nombre AS docente, f.titulo, ROUND(AVG(v.promedio)::numeric, 2) AS promedio\nFROM v_promedios v JOIN usuarios u ON u.id = v.docente_id JOIN formularios f ON f.id = v.formulario_id\nGROUP BY u.nombre, f.titulo, v.docente_id, v.formulario_id;',
-  "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public';",
-]
-function SqlConsole() {
-  const [text, setText] = useState(EXAMPLES[0])
-  const [res, setRes] = useState<{ columns: string[]; values: unknown[][] } | null>(null)
-  const [err, setErr] = useState('')
-  const [loading, setLoading] = useState(false)
-  const exec = async () => {
-    setLoading(true)
-    setErr('')
-    try {
-      const out = await execRaw(text)
-      setRes(out)
-    } catch (e) {
-      setErr((e as Error).message)
-      setRes(null)
-    } finally {
-      setLoading(false)
-    }
-  }
-  return (
-    <>
-      <Header title="Consola SQL" sub="Motor relacional PostgreSQL con llaves foráneas, restricciones CHECK y vistas. Esquema administrado en database/schema.sql." />
-      <div className="mb-3 flex flex-wrap gap-2">
-        {EXAMPLES.map((x, i) => <button key={i} className={btnGhost} onClick={() => setText(x)}>Ejemplo {i + 1}</button>)}
-      </div>
-      <textarea className={`${input} font-mono`} rows={6} value={text} onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) exec() }} />
-      <div className="my-4 flex items-center gap-3">
-        <button className={btn} onClick={exec} disabled={loading}><Play size={16} />{loading ? 'Ejecutando en PostgreSQL…' : 'Ejecutar'}</button>
-        <span className="text-xs text-ink/50">Ctrl + Enter</span>
-      </div>
-      {err && <Msg kind="err" text={err} />}
-      {res && (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full font-mono text-xs">
-            <thead className="bg-paper text-left"><tr>{res.columns.map((c) => <th key={c} className="p-3">{c}</th>)}</tr></thead>
-            <tbody>{res.values.map((r, i) => <tr key={i} className="border-t border-line">{r.map((v, j) => <td key={j} className="p-3">{String(v ?? 'NULL')}</td>)}</tr>)}</tbody>
-          </table>
-        </Card>
-      )}
-      {!res && !err && <p className="text-sm text-ink/50">Sentencia ejecutada sin resultados para mostrar.</p>}
-    </>
-  )
-}
 
 /* ---------- OBJETIVO 1 · Normativa, Lineamientos PGC y MEDIT ---------- */
 function NormativaView() {
@@ -1606,7 +1556,7 @@ const VIEWS: Record<Role, View[]> = (() => {
     normativaView,
   ]
   return {
-    admin: [...mgmt, { id: 'sql', label: 'Consola SQL', icon: Database, render: () => <SqlConsole /> }],
+    admin: mgmt,
     directivo: [
       directivoDashboardView,
       { id: 'resultados', label: 'Resultados Facultad', icon: BarChart3, render: () => <Results /> },
