@@ -17,5 +17,5 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
-  "references": []
+  "exclude": ["node_modules", "src/*-respaldo.*"]
 }

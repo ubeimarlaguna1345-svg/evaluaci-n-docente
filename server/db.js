@@ -16,8 +16,41 @@ const { Pool } = pg
 const connectionString = process.env.DATABASE_URL ||
   `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'postgres'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'siard_udec'}`
 
+/**
+ * Determina si la conexión a PostgreSQL requiere SSL (Neon.tech, Supabase, RDS u otros hosts remotos).
+ */
+function shouldEnableSSL() {
+  const host = (process.env.DB_HOST || '').toLowerCase()
+  const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === ''
+
+  if (process.env.DATABASE_URL) {
+    const urlStr = process.env.DATABASE_URL.toLowerCase()
+    if (urlStr.includes('neon.tech') || urlStr.includes('sslmode=require') || urlStr.includes('ssl=true')) {
+      return true
+    }
+    try {
+      const parsed = new URL(process.env.DATABASE_URL)
+      const parsedHost = (parsed.hostname || '').toLowerCase()
+      if (parsedHost && parsedHost !== 'localhost' && parsedHost !== '127.0.0.1') {
+        return true
+      }
+    } catch {
+      // Si la URL no es parseable directamente por URL(), continuar
+    }
+  }
+
+  if (!isLocalHost) {
+    return true
+  }
+
+  return process.env.NODE_ENV === 'production'
+}
+
+const useSSL = shouldEnableSSL()
+
 export const pool = new Pool({
   connectionString,
+  ssl: useSSL ? { rejectUnauthorized: false } : undefined,
 })
 
 pool.on('error', (err) => {
@@ -29,8 +62,14 @@ pool.on('error', (err) => {
  */
 export async function initSchema() {
   try {
-    const schemaPath = path.resolve(__dirname, '..', 'database', 'schema.sql')
-    if (fs.existsSync(schemaPath)) {
+    const candidatePaths = [
+      path.resolve(__dirname, '..', 'database', 'schema.sql'),
+      path.resolve(process.cwd(), 'database', 'schema.sql'),
+      path.resolve(__dirname, '..', 'database', 'schema.postgres.sql'),
+      path.resolve(process.cwd(), 'database', 'schema.postgres.sql'),
+    ]
+    const schemaPath = candidatePaths.find((p) => fs.existsSync(p))
+    if (schemaPath) {
       const sql = fs.readFileSync(schemaPath, 'utf-8')
       await pool.query(sql)
       console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente.')
@@ -41,3 +80,4 @@ export async function initSchema() {
     return false
   }
 }
+
