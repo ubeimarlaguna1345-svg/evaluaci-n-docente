@@ -1,16 +1,14 @@
 /// <reference types="react" />
 import { useEffect, useState, type ReactNode } from 'react'
 import {
-  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, RotateCcw, Trash2, UserPlus, Users, X, Check, AlertCircle, Send, Database, Download, Play, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star,
+  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, Trash2, UserPlus, Users, X, Check, AlertCircle, Send, Database, Play, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star,
 } from 'lucide-react'
 import {
-  useDB, actions, resetDB, downloadDB, execRaw, initDB, uid, isOpen, fmt, stats, ROLE_LABEL, OBS_LIMIT, MEDIT_DIMENSIONES, getTeacherReputation, getFacultyGlobalMetrics,
+  useDB, actions, execRaw, initDB, uid, isOpen, fmt, stats, ROLE_LABEL, OBS_LIMIT, MEDIT_DIMENSIONES, getTeacherReputation, getFacultyGlobalMetrics,
   type User, type Role, type Question, type AnswerType, type Form, type FormKind, type CADI,
 } from './store'
 
-
 const API_URL = 'http://localhost:3001'
-
 
 /* ---------- primitivas ---------- */
 const input = 'w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-moss focus:ring-2 focus:ring-moss/20'
@@ -30,10 +28,9 @@ function Msg({ kind, text }: { kind: 'ok' | 'err'; text: string }) {
     </p>
   )
 }
-function Header({ req, title, sub }: { req: string; title: string; sub?: string }) {
+function Header({ req: _req, title, sub }: { req?: string; title: string; sub?: string }) {
   return (
     <header className="mb-6 border-b border-line pb-4">
-      <p className="font-mono text-xs text-ochre">{req}</p>
       <h1 className="font-serif text-4xl text-pine">{title}</h1>
       {sub && <p className="mt-1 text-sm text-ink/60">{sub}</p>}
     </header>
@@ -127,7 +124,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
 
   const firstUser = db.users.length === 0
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr('')
     setInfo('')
@@ -147,18 +144,18 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
       }
 
       try {
-        actions.createUser({
+        await actions.createUser({
           name: name.trim(),
           email: email.trim().toLowerCase(),
           password: pass,
           role: 'admin',
         })
-        setInfo('Administrador creado. Ya puedes iniciar sesión.')
+        setInfo('Administrador creado en PostgreSQL. Ya puedes iniciar sesión.')
         setName('')
         setPass('')
         setConfirm('')
-      } catch {
-        setErr('No se pudo crear la cuenta. Revisa los datos e inténtalo de nuevo.')
+      } catch (e) {
+        setErr((e as Error).message || 'No se pudo crear la cuenta en PostgreSQL.')
       }
       return
     }
@@ -196,7 +193,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
             Sistema Integral de Autoevaluación y Retroalimentación Docente
           </h1>
           <p className="mt-6 max-w-md text-paper/70">
-            Evaluación institucional, autoevaluación y retroalimentación de clase en un solo lugar, para cuatro roles.
+            Evaluación institucional, autoevaluación y retroalimentación de clase en un solo lugar, conectado a PostgreSQL.
           </p>
         </div>
 
@@ -212,9 +209,6 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
       <section className="flex items-center justify-center p-8">
         <form onSubmit={submit} className="w-full max-w-sm space-y-5">
           <div>
-            <p className="font-mono text-xs text-ochre">
-              {firstUser ? 'CONFIGURACIÓN INICIAL' : 'REQ-02'}
-            </p>
             <h2 className="font-serif text-4xl text-pine">
               {firstUser ? 'Crear administrador' : 'Iniciar sesión'}
             </h2>
@@ -272,55 +266,13 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
           >
             {firstUser ? 'Crear administrador' : 'Ingresar'}
           </button>
-
-          {!firstUser && (
-            <div className="space-y-3 border-t border-line pt-4">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold uppercase tracking-wider text-ink/60">Cuentas demo (Clic para ingresar)</span>
-                <button
-                  type="button"
-                  onClick={resetDB}
-                  className="font-medium text-pine hover:underline"
-                  title="Restaura la base de datos con las cuentas oficiales de la UdeC"
-                >
-                  Restaurar demo
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {[
-                  { role: 'admin', label: 'Administrador', email: 'admin@ucundinamarca.edu.co', pass: 'admin' },
-                  { role: 'directivo', label: 'Directivo (Decano)', email: 'jgracia@ucundinamarca.edu.co', pass: 'dir' },
-                  { role: 'coordinador', label: 'Coordinador', email: 'jparra@ucundinamarca.edu.co', pass: 'coord' },
-                  { role: 'docente', label: 'Docente (Prog. II)', email: 'omorera@ucundinamarca.edu.co', pass: 'doc' },
-                  { role: 'estudiante', label: 'Estudiante', email: 'ulaguna@ucundinamarca.edu.co', pass: 'est' },
-                ].map((d) => (
-                  <button
-                    key={d.role}
-                    type="button"
-                    onClick={() => {
-                      setEmail(d.email)
-                      setPass(d.pass)
-                      setErr('')
-                      const target = db.users.find((x) => x.email.toLowerCase() === d.email.toLowerCase())
-                      if (target) onLogin(target)
-                    }}
-                    className="rounded border border-line bg-paper/60 p-2 text-left hover:border-pine hover:bg-white transition"
-                  >
-                    <span className="font-semibold block text-pine">{d.label}</span>
-                    <span className="font-mono text-[10px] text-ink/50 truncate block">{d.email}</span>
-                    <span className="text-[10px] text-ochre font-mono font-medium block">clave: {d.pass}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </form>
       </section>
     </div>
   )
 }
 
-/* ---------- REQ-01 / REQ-05 Cuentas ---------- */
+/* ---------- Cuentas ---------- */
 function Accounts({ me }: { me: User }) {
   const db = useDB()
   const [f, setF] = useState({ name: '', email: '', password: '', role: 'estudiante' as Role })
@@ -328,18 +280,22 @@ function Accounts({ me }: { me: User }) {
   const [search, setSearch] = useState('')
   const [confirm, setConfirm] = useState<User | null>(null)
   const roles: Role[] = me.role === 'admin' ? ['admin', 'directivo', 'coordinador', 'docente', 'estudiante'] : ['docente', 'estudiante']
-  const create = (e: React.FormEvent) => {
+  const create = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!f.name.trim() || !f.email.trim() || !f.password) return setMsg({ kind: 'err', text: 'Todos los campos son obligatorios.' })
     if (db.users.some((u) => u.email.toLowerCase() === f.email.trim().toLowerCase())) return setMsg({ kind: 'err', text: 'Ya existe un usuario con ese correo.' })
-    actions.createUser({ ...f, email: f.email.trim() })
-    setMsg({ kind: 'ok', text: `Cuenta de ${f.name} creada.` })
-    setF({ name: '', email: '', password: '', role: f.role })
+    try {
+      await actions.createUser({ ...f, email: f.email.trim() })
+      setMsg({ kind: 'ok', text: `Cuenta de ${f.name} creada exitosamente en PostgreSQL.` })
+      setF({ name: '', email: '', password: '', role: f.role })
+    } catch (e) {
+      setMsg({ kind: 'err', text: (e as Error).message || 'Error al crear cuenta.' })
+    }
   }
   const list = db.users.filter((u) => (u.name + u.email).toLowerCase().includes(search.toLowerCase()))
   return (
     <>
-      <Header req="REQ-01 · REQ-05" title="Cuentas de usuario" sub="Crear nuevas cuentas y dar de baja las existentes." />
+      <Header title="Cuentas de usuario" sub="Crear nuevas cuentas y dar de baja las existentes." />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card>
           <form onSubmit={create} className="space-y-4">
@@ -361,18 +317,27 @@ function Accounts({ me }: { me: User }) {
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wider text-ink/50"><tr><th className="p-4">Nombre</th><th>Rol</th><th>Estado</th><th /></tr></thead>
             <tbody>
-              {list.map((u) => (
-                <tr key={u.id} className="border-t border-line">
-                  <td className="p-4"><div className="font-medium">{u.name}</div><div className="font-mono text-xs text-ink/50">{u.email}</div></td>
-                  <td>{ROLE_LABEL[u.role]}</td>
-                  <td><span className={`rounded-full px-2 py-0.5 text-xs ${u.active ? 'bg-moss/10 text-pine' : 'bg-red-50 text-red-700'}`}>{u.active ? 'Activa' : 'Bloqueada'}</span></td>
-                  <td className="pr-4 text-right">
-                    {u.active && u.id !== me.id && (me.role === 'admin' || roles.includes(u.role)) && (
-                      <button onClick={() => setConfirm(u)} className="rounded p-2 text-red-700 hover:bg-red-50" title="Eliminar cuenta"><Trash2 size={16} /></button>
-                    )}
+              {list.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-sm text-ink/50">
+                    <Users size={32} className="mx-auto mb-2 text-ink/30" />
+                    No hay cuentas registradas. Crea una nueva desde el formulario.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                list.map((u) => (
+                  <tr key={u.id} className="border-t border-line">
+                    <td className="p-4"><div className="font-medium">{u.name}</div><div className="font-mono text-xs text-ink/50">{u.email}</div></td>
+                    <td>{ROLE_LABEL[u.role]}</td>
+                    <td><span className={`rounded-full px-2 py-0.5 text-xs ${u.active ? 'bg-moss/10 text-pine' : 'bg-red-50 text-red-700'}`}>{u.active ? 'Activa' : 'Bloqueada'}</span></td>
+                    <td className="pr-4 text-right">
+                      {u.active && u.id !== me.id && (me.role === 'admin' || roles.includes(u.role)) && (
+                        <button onClick={() => setConfirm(u)} className="rounded p-2 text-red-700 hover:bg-red-50" title="Eliminar cuenta"><Trash2 size={16} /></button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </Card>
@@ -381,11 +346,16 @@ function Accounts({ me }: { me: User }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
           <Card className="max-w-sm space-y-4">
             <h3 className="font-serif text-2xl">¿Eliminar la cuenta de {confirm.name}?</h3>
-            <p className="text-sm text-ink/60">La cuenta quedará desactivada y no podrá iniciar sesión.</p>
+            <p className="text-sm text-ink/60">La cuenta quedará desactivada en PostgreSQL y no podrá iniciar sesión.</p>
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setConfirm(null)}>Cancelar</button>
-              <button className={`${btn} bg-red-700 hover:bg-red-800`} onClick={() => {
-                actions.deactivateUser(confirm.id); setConfirm(null)
+              <button className={`${btn} bg-red-700 hover:bg-red-800`} onClick={async () => {
+                try {
+                  await actions.deactivateUser(confirm.id)
+                  setConfirm(null)
+                } catch (e) {
+                  alert((e as Error).message || 'Error al eliminar usuario.')
+                }
               }}>Eliminar</button>
             </div>
           </Card>
@@ -395,25 +365,29 @@ function Accounts({ me }: { me: User }) {
   )
 }
 
-/* ---------- REQ-10 / 11 / 12 / 13 / 06 Formularios ---------- */
+/* ---------- Evaluaciones ---------- */
 function FormsAdmin() {
   const db = useDB()
   const blank = { kind: '' as FormKind | '', title: '', description: '', period: '2026-I', cadiId: '', start: '', end: '', questions: [] as Question[] }
   const [f, setF] = useState(blank)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [editingDates, setEditingDates] = useState<string | null>(null)
-  const save = () => {
+  const save = async () => {
     if (!f.kind) return setMsg({ kind: 'err', text: 'Seleccione el tipo de evaluación antes de continuar.' })
     if (!f.title.trim() || !f.period.trim()) return setMsg({ kind: 'err', text: 'El título y el período son obligatorios.' })
     if (!f.start || !f.end) return setMsg({ kind: 'err', text: 'Defina la fecha y hora de inicio y cierre.' })
     if (f.end <= f.start) return setMsg({ kind: 'err', text: 'La fecha de cierre debe ser posterior a la de inicio.' })
     if (!f.questions.length) return setMsg({ kind: 'err', text: 'Agregue al menos una pregunta.' })
-    actions.createForm({ ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
-    setMsg({ kind: 'ok', text: 'Formulario guardado y programado.' }); setF(blank)
+    try {
+      await actions.createForm({ ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
+      setMsg({ kind: 'ok', text: 'Formulario guardado y registrado en PostgreSQL.' }); setF(blank)
+    } catch (e) {
+      setMsg({ kind: 'err', text: (e as Error).message || 'Error al guardar formulario.' })
+    }
   }
   return ( 
     <>
-      <Header req="REQ-06 · REQ-10 · REQ-11 · REQ-12 · REQ-13" title="Evaluaciones y autoevaluaciones" sub="Crear formularios institucionales, asociar a CADIs, definir preguntas con dimensiones MEDIT y fechas de disponibilidad." />
+      <Header title="Evaluaciones y autoevaluaciones" sub="Crear formularios institucionales, asociar a CADIs, definir preguntas con dimensiones MEDIT y fechas de disponibilidad." />
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card className="space-y-4">
           <h3 className="flex items-center gap-2 font-semibold"><Plus size={18} />Nuevo formulario</h3>
@@ -463,7 +437,11 @@ function FormsAdmin() {
           <button className={btn} onClick={save}>Guardar formulario</button>
         </Card>
         <div className="space-y-3">
-          {db.forms.map((fm) => <FormRow key={fm.id} fm={fm} editing={editingDates === fm.id} setEditing={(b) => setEditingDates(b ? fm.id : null)} />)}
+          {db.forms.length === 0 ? (
+            <Empty text="No hay evaluaciones registradas. Crea una nueva desde el formulario superior." />
+          ) : (
+            db.forms.map((fm) => <FormRow key={fm.id} fm={fm} editing={editingDates === fm.id} setEditing={(b) => setEditingDates(b ? fm.id : null)} />)
+          )}
         </div>
       </div>
     </>
@@ -536,7 +514,7 @@ function Results() {
   const s = stats(db, formId, teacherId)
   return (
     <>
-      <Header req="REQ-08" title="Resultados de evaluación" sub="Resultados consolidados por evaluación, docente o período." />
+      <Header title="Resultados de evaluación" sub="Resultados consolidados por evaluación, docente o período." />
       <Filters {...{ formId, setFormId, teacherId, setTeacherId }} />
       {!s || !s.responses.length ? <Empty text="No hay resultados disponibles para los filtros seleccionados." /> : (
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
@@ -586,7 +564,7 @@ function Statistics() {
 
   return (
     <>
-      <Header req="REQ-09 · ESTADÍSTICAS Y DIMENSIONES" title="Estadísticas y reportes" sub="Promedios, comparativos, dimensiones del MEDIT y participación." />
+      <Header title="Estadísticas y reportes" sub="Promedios, comparativos, dimensiones del MEDIT y participación." />
       <div className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line lg:grid-cols-4">
         {kpis.map((k) => <div key={k.label} className="bg-white p-5"><p className="font-serif text-5xl text-pine">{k.v}</p><p className="text-xs uppercase tracking-wider text-ink/50">{k.label}</p></div>)}
       </div>
@@ -638,7 +616,7 @@ function Report() {
 
   return (
     <>
-      <Header req="REQ-18 · PGC 20% · MEDIT" title="Reporte de mejora docente" sub="Fortalezas, oportunidades de mejora, ponderación del 20% y dimensiones del MEDIT." />
+      <Header title="Reporte de mejora docente" sub="Fortalezas, oportunidades de mejora, ponderación del 20% y dimensiones del MEDIT." />
       <div className="mb-6 flex flex-wrap items-end gap-3">
         <div className="min-w-60 flex-1"><Filters kind="evaluacion" formId={formId} setFormId={(v) => { setFormId(v); setGenerated(false) }} teacherId={teacherId} setTeacherId={(v) => { setTeacherId(v); setGenerated(false) }} /></div>
       </div>
@@ -738,7 +716,7 @@ function TeacherFeedback({ me }: { me: User }) {
   const resp = db.feedbackResponses.filter((r) => r.feedbackId === sel)
   return (
     <>
-      <Header req="REQ-03 · REQ-04 · REQ-07" title="Retroalimentación de clase" sub="Pregunte a sus estudiantes cómo les fue en la clase y consulte sus respuestas." />
+      <Header title="Retroalimentación de clase" sub="Pregunte a sus estudiantes cómo les fue en la clase y consulte sus respuestas." />
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card className="space-y-4">
           <h3 className="flex items-center gap-2 font-semibold"><Plus size={18} />Crear enunciado</h3>
@@ -808,7 +786,7 @@ function Respond({ form, onSubmit, withObservation }: { form: Form; onSubmit: (a
       ))}
       {withObservation && (
         <Card>
-          <p className="mb-1 font-semibold">Observaciones <span className="font-mono text-xs text-ochre">REQ-14</span></p>
+          <p className="mb-1 font-semibold">Observaciones</p>
           <p className="mb-3 text-xs text-ink/50">Opcional y confidencial: el docente no verá su nombre.</p>
           <textarea className={input} rows={4} value={obs} onChange={(e) => setObs(e.target.value)} />
           <p className={`mt-1 text-right font-mono text-xs ${obs.length > OBS_LIMIT ? 'text-red-600' : 'text-ink/40'}`}>{obs.length}/{OBS_LIMIT}</p>
@@ -828,7 +806,7 @@ function SelfEvaluation({ me }: { me: User }) {
   const form = forms.find((f) => f.id === active)
   return (
     <>
-      <Header req="REQ-16" title="Autoevaluación" sub="Reflexione sobre su propio desempeño docente." />
+      <Header title="Autoevaluación" sub="Reflexione sobre su propio desempeño docente." />
       {form ? (
         <Respond form={form} onSubmit={(answers, observation) => {
           actions.respondForm({ formId: form.id, userId: me.id, teacherId: me.id, answers, observation })
@@ -872,7 +850,7 @@ function StudentEvaluation({ me }: { me: User }) {
   const form = evals.find((f) => f.id === sel?.formId)
   return (
     <>
-      <Header req="REQ-14 · REQ-15" title="Evaluación docente" sub="Valore el desempeño de sus docentes. Sus respuestas son confidenciales." />
+      <Header title="Evaluación docente" sub="Valore el desempeño de sus docentes. Sus respuestas son confidenciales." />
       {ok && <div className="mb-4"><Msg kind="ok" text="Evaluación enviada correctamente." /></div>}
       {form && sel ? (
         <>
@@ -923,7 +901,7 @@ function StudentFeedback({ me }: { me: User }) {
   const [vals, setVals] = useState<Record<string, string>>({})
   return (
     <>
-      <Header req="REQ-17" title="Retroalimentación de clase" sub="Cuéntele a su docente cómo le pareció la clase." />
+      <Header title="Retroalimentación de clase" sub="Cuéntele a su docente cómo le pareció la clase." />
       {!db.feedbacks.length && <Empty text="No hay retroalimentaciones disponibles." />}
       <div className="grid gap-4 md:grid-cols-2">
         {db.feedbacks.map((f) => {
@@ -950,33 +928,48 @@ function StudentFeedback({ me }: { me: User }) {
   )
 }
 
-/* ---------- Consola SQL (solo Administrador) ---------- */
+/* ---------- Consola SQL PostgreSQL (solo Administrador) ---------- */
 const EXAMPLES = [
-  'SELECT nombre, correo, rol, activo FROM usuarios;',
-  'SELECT u.nombre AS docente, f.titulo, ROUND(AVG(v.promedio), 2) AS promedio\nFROM v_promedios v JOIN usuarios u ON u.id = v.docente_id JOIN formularios f ON f.id = v.formulario_id\nGROUP BY v.docente_id, v.formulario_id;',
-  "SELECT name, type FROM sqlite_master WHERE type IN ('table','view');",
+  'SELECT id, nombre, correo, rol, activo FROM usuarios;',
+  'SELECT u.nombre AS docente, f.titulo, ROUND(AVG(v.promedio)::numeric, 2) AS promedio\nFROM v_promedios v JOIN usuarios u ON u.id = v.docente_id JOIN formularios f ON f.id = v.formulario_id\nGROUP BY u.nombre, f.titulo, v.docente_id, v.formulario_id;',
+  "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public';",
 ]
 function SqlConsole() {
-  const [text, setText] = useState(EXAMPLES[1])
+  const [text, setText] = useState(EXAMPLES[0])
   const [res, setRes] = useState<{ columns: string[]; values: unknown[][] } | null>(null)
   const [err, setErr] = useState('')
-  const exec = () => { try { setRes(execRaw(text)); setErr('') } catch (e) { setErr((e as Error).message); setRes(null) } }
+  const [loading, setLoading] = useState(false)
+  const exec = async () => {
+    setLoading(true)
+    setErr('')
+    try {
+      const out = await execRaw(text)
+      setRes(out)
+    } catch (e) {
+      setErr((e as Error).message)
+      setRes(null)
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
     <>
-      <Header req="Base de datos" title="Consola SQL" sub="Motor SQLite con llaves foráneas, restricciones CHECK y vistas. Esquema en database/schema.sql." />
+      <Header title="Consola SQL" sub="Motor relacional PostgreSQL con llaves foráneas, restricciones CHECK y vistas. Esquema administrado en database/schema.sql." />
       <div className="mb-3 flex flex-wrap gap-2">
         {EXAMPLES.map((x, i) => <button key={i} className={btnGhost} onClick={() => setText(x)}>Ejemplo {i + 1}</button>)}
-        <button className={`${btnGhost} ml-auto`} onClick={downloadDB}><Download size={16} />Descargar .sqlite</button>
       </div>
       <textarea className={`${input} font-mono`} rows={6} value={text} onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) exec() }} />
-      <div className="my-4 flex items-center gap-3"><button className={btn} onClick={exec}><Play size={16} />Ejecutar</button><span className="text-xs text-ink/50">Ctrl + Enter</span></div>
+      <div className="my-4 flex items-center gap-3">
+        <button className={btn} onClick={exec} disabled={loading}><Play size={16} />{loading ? 'Ejecutando en PostgreSQL…' : 'Ejecutar'}</button>
+        <span className="text-xs text-ink/50">Ctrl + Enter</span>
+      </div>
       {err && <Msg kind="err" text={err} />}
       {res && (
         <Card className="overflow-x-auto p-0">
           <table className="w-full font-mono text-xs">
             <thead className="bg-paper text-left"><tr>{res.columns.map((c) => <th key={c} className="p-3">{c}</th>)}</tr></thead>
-            <tbody>{res.values.map((r, i) => <tr key={i} className="border-t border-line">{r.map((v, j) => <td key={j} className="p-3">{String(v)}</td>)}</tr>)}</tbody>
+            <tbody>{res.values.map((r, i) => <tr key={i} className="border-t border-line">{r.map((v, j) => <td key={j} className="p-3">{String(v ?? 'NULL')}</td>)}</tr>)}</tbody>
           </table>
         </Card>
       )}
@@ -992,7 +985,6 @@ function NormativaView() {
   return (
     <div className="space-y-6">
       <Header
-        req="OBJETIVO 1 · CONOCER LA NORMATIVA Y LINEAMIENTOS"
         title="Normativa, Lineamientos PGC y MEDIT"
         sub="Marco institucional de la Universidad de Cundinamarca, dimensiones formativas del MEDIT, ponderación del 20% y superación de limitaciones del método tradicional."
       />
@@ -1299,27 +1291,30 @@ function CadisView() {
 
   const docentes = db.users.filter((u) => u.role === 'docente' && u.active)
 
-  const crear = (e: React.FormEvent) => {
+  const crear = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!cod.trim() || !nom.trim()) return setMsg({ kind: 'err', text: 'Código y nombre son obligatorios.' })
     if (db.cadis.some((c) => c.codigo.toLowerCase() === cod.trim().toLowerCase())) {
       return setMsg({ kind: 'err', text: 'Ya existe un CADI con ese código.' })
     }
-    actions.createCADI({
-      codigo: cod.trim().toUpperCase(),
-      nombre: nom.trim(),
-      semestre: Number(sem),
-      esArticulador: art,
-      docenteId: docId || undefined,
-    })
-    setMsg({ kind: 'ok', text: `CADI ${nom} registrado correctamente.` })
-    setCod(''); setNom(''); setArt(false); setDocId('')
+    try {
+      await actions.createCADI({
+        codigo: cod.trim().toUpperCase(),
+        nombre: nom.trim(),
+        semestre: Number(sem),
+        esArticulador: art,
+        docenteId: docId || undefined,
+      })
+      setMsg({ kind: 'ok', text: `CADI ${nom} registrado correctamente en PostgreSQL.` })
+      setCod(''); setNom(''); setArt(false); setDocId('')
+    } catch (e) {
+      setMsg({ kind: 'err', text: (e as Error).message || 'Error al registrar CADI.' })
+    }
   }
 
   return (
     <>
       <Header
-        req="LINEAMIENTOS PGC · NUMERALES 5, 7 Y 13"
         title="CADIs y Núcleos Temáticos"
         sub="Campos de Aprendizaje Disciplinares articulados a los PGC de la Facultad de Ingeniería (Sede Facatativá)."
       />
@@ -1367,37 +1362,46 @@ function CadisView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line text-xs">
-              {db.cadis.map((c) => {
-                const doc = db.users.find((u) => u.id === c.docenteId)
-                return (
-                  <tr key={c.id}>
-                    <td className="p-4">
-                      <div className="font-semibold text-pine">{c.nombre}</div>
-                      <div className="font-mono text-xs text-ink/50">{c.codigo}</div>
-                    </td>
-                    <td>{c.semestre}° Semestre</td>
-                    <td>
-                      {c.esArticulador ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-ochre/15 px-2.5 py-0.5 font-semibold text-ochre">
-                          <Award size={12} />Articulador (20%)
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-paper px-2 py-0.5 text-ink/60">Complementario</span>
-                      )}
-                    </td>
-                    <td>
-                      <select
-                        className={`${input} py-1 text-xs`}
-                        value={c.docenteId || ''}
-                        onChange={(e) => actions.assignCadiTeacher(c.id, e.target.value || null)}
-                      >
-                        <option value="">Sin asignar</option>
-                        {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                )
-              })}
+              {db.cadis.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-sm text-ink/50">
+                    <Award size={32} className="mx-auto mb-2 text-ink/30" />
+                    No hay materias o CADIs registrados. Registra uno nuevo desde el formulario.
+                  </td>
+                </tr>
+              ) : (
+                db.cadis.map((c) => {
+                  const doc = db.users.find((u) => u.id === c.docenteId)
+                  return (
+                    <tr key={c.id}>
+                      <td className="p-4">
+                        <div className="font-semibold text-pine">{c.nombre}</div>
+                        <div className="font-mono text-xs text-ink/50">{c.codigo}</div>
+                      </td>
+                      <td>{c.semestre}° Semestre</td>
+                      <td>
+                        {c.esArticulador ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-ochre/15 px-2.5 py-0.5 font-semibold text-ochre">
+                            <Award size={12} />Articulador (20%)
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-paper px-2 py-0.5 text-ink/60">Complementario</span>
+                        )}
+                      </td>
+                      <td>
+                        <select
+                          className={`${input} py-1 text-xs`}
+                          value={c.docenteId || ''}
+                          onChange={(e) => actions.assignCadiTeacher(c.id, e.target.value || null)}
+                        >
+                          <option value="">Sin asignar</option>
+                          {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </Card>
@@ -1419,7 +1423,6 @@ function DirectivoDashboard() {
   return (
     <div className="space-y-6">
       <Header
-        req="MÓDULO DIRECTIVO · DECANATURA & CONSEJO DE FACULTAD"
         title="Panel Directivo y Calidad Académica"
         sub="Monitoreo consolidado de la Facultad de Ingeniería (Sede Facatativá), participación estudiantil y ranking de reputación docente."
       />
@@ -1626,30 +1629,40 @@ const VIEWS: Record<Role, View[]> = (() => {
 })()
 
 export default function App() {
-  const [ready, setReady] = useState(false)
-  const [error, setError] = useState('')
-  useEffect(() => { initDB().then(() => setReady(true), (e) => setError(String(e))) }, [])
-  if (error) {
+  const db = useDB()
+  useEffect(() => {
+    initDB()
+  }, [])
+
+  if (db.loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center font-serif text-2xl text-pine">
+        Conectando a PostgreSQL…
+      </div>
+    )
+  }
+
+  if (db.error && !db.connected) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6 bg-paper">
         <div className="max-w-md w-full space-y-4 rounded-lg border border-line bg-white p-6 shadow-sm">
-          <h2 className="font-serif text-2xl text-pine">Error en la base de datos</h2>
-          <Msg kind="err" text={error} />
+          <h2 className="font-serif text-2xl text-pine">Conexión con PostgreSQL</h2>
+          <Msg kind="err" text={db.error} />
           <p className="text-sm text-ink/70">
-            Puedes restablecer la base de datos para cargar las últimas actualizaciones y roles institucionales del sistema.
+            Asegúrate de que el servicio de PostgreSQL esté en ejecución y que la variable <code className="bg-paper px-1 rounded font-mono text-xs">DATABASE_URL</code> en <code className="bg-paper px-1 rounded font-mono text-xs">.env.local</code> esté configurada con las credenciales de tu base de datos en pgAdmin.
           </p>
           <button
             type="button"
-            onClick={() => resetDB()}
+            onClick={() => initDB()}
             className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-sm font-semibold text-white hover:bg-moss"
           >
-            Restablecer Base de Datos y Continuar
+            Reintentar Conexión
           </button>
         </div>
       </div>
     )
   }
-  if (!ready) return <div className="flex min-h-screen items-center justify-center font-serif text-2xl text-pine">Abriendo base de datos…</div>
+
   return <Shell />
 }
 
@@ -1680,7 +1693,6 @@ function Shell() {
           <div><p className="text-sm font-semibold">{me.name}</p><p className="text-xs text-paper/60">{ROLE_LABEL[me.role]}</p></div>
           <div className="flex gap-2">
             <button className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper" onClick={() => { sessionStorage.removeItem('siard-me'); setMeId(null) }}><LogOut size={14} />Salir</button>
-            {me.role === 'admin' && <button className="ml-auto flex items-center gap-1 text-xs text-paper/50 hover:text-paper" onClick={resetDB} title="Restaurar datos de ejemplo"><RotateCcw size={13} />Datos demo</button>}
           </div>
         </div>
         <button className="m-3 flex items-center gap-2 text-xs md:hidden" onClick={() => { sessionStorage.removeItem('siard-me'); setMeId(null) }}><LogOut size={14} />Salir ({me.name})</button>
