@@ -170,6 +170,26 @@ export const actions = {
     await initDB()
   },
 
+  updateCADI: async (id: string, c: Partial<Omit<CADI, 'id'>>) => {
+    const res = await fetch(`/api/cadis/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(c),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Error al actualizar CADI en PostgreSQL.')
+    await initDB()
+  },
+
+  deleteCADI: async (id: string) => {
+    const res = await fetch(`/api/cadis/${id}`, {
+      method: 'DELETE',
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Error al eliminar CADI en PostgreSQL.')
+    await initDB()
+  },
+
   assignCadiTeacher: async (cadiId: string, docenteId: string | null) => {
     const res = await fetch(`/api/cadis/${cadiId}`, {
       method: 'PATCH',

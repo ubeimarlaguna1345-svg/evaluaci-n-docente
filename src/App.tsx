@@ -1,7 +1,7 @@
 /// <reference types="react" />
 import { useEffect, useState, type ReactNode } from 'react'
 import {
-  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, Trash2, UserPlus, Users, X, Check, AlertCircle, Send, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star,
+  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, Trash2, UserPlus, Users, X, Check, AlertCircle, Send, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star, Pencil,
 } from 'lucide-react'
 import {
   useDB, actions, initDB, uid, isOpen, fmt, stats, ROLE_LABEL, OBS_LIMIT, MEDIT_DIMENSIONES, getTeacherReputation, getFacultyGlobalMetrics,
@@ -1232,31 +1232,89 @@ function NormativaView() {
 /* ---------- GESTIÓN DE CADIS Y NÚCLEOS TEMÁTICOS ---------- */
 function CadisView() {
   const db = useDB()
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [cod, setCod] = useState('')
   const [nom, setNom] = useState('')
   const [sem, setSem] = useState('3')
   const [docId, setDocId] = useState('')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const docentes = db.users.filter((u) => u.role === 'docente' && u.active)
 
-  const crear = async (e: React.FormEvent) => {
+  const cancelar = () => {
+    setEditingId(null)
+    setCod('')
+    setNom('')
+    setSem('3')
+    setDocId('')
+    setMsg(null)
+  }
+
+  const startEdit = (c: CADI) => {
+    setEditingId(c.id)
+    setCod(c.codigo)
+    setNom(c.nombre)
+    setSem(String(c.semestre))
+    setDocId(c.docenteId || '')
+    setMsg(null)
+  }
+
+  const guardar = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!cod.trim() || !nom.trim()) return setMsg({ kind: 'err', text: 'Código y nombre son obligatorios.' })
-    if (db.cadis.some((c) => c.codigo.toLowerCase() === cod.trim().toLowerCase())) {
-      return setMsg({ kind: 'err', text: 'Ya existe un CADI con ese código.' })
+
+    const codigoTrim = cod.trim().toUpperCase()
+    const existe = db.cadis.some(
+      (c) => c.codigo.toLowerCase() === codigoTrim.toLowerCase() && c.id !== editingId
+    )
+    if (existe) {
+      return setMsg({ kind: 'err', text: 'Ya existe otro CADI con ese código.' })
     }
+
+    setLoading(true)
     try {
-      await actions.createCADI({
-        codigo: cod.trim().toUpperCase(),
-        nombre: nom.trim(),
-        semestre: Number(sem),
-        docenteId: docId || undefined,
-      })
-      setMsg({ kind: 'ok', text: `CADI ${nom} registrado correctamente en PostgreSQL.` })
-      setCod(''); setNom(''); setDocId('')
+      if (editingId) {
+        await actions.updateCADI(editingId, {
+          codigo: codigoTrim,
+          nombre: nom.trim(),
+          semestre: Number(sem),
+          docenteId: docId || null,
+        })
+        setMsg({ kind: 'ok', text: `CADI "${nom.trim()}" actualizado correctamente en PostgreSQL.` })
+        cancelar()
+      } else {
+        await actions.createCADI({
+          codigo: codigoTrim,
+          nombre: nom.trim(),
+          semestre: Number(sem),
+          docenteId: docId || undefined,
+        })
+        setMsg({ kind: 'ok', text: `CADI "${nom.trim()}" registrado correctamente en PostgreSQL.` })
+        setCod(''); setNom(''); setDocId('')
+      }
     } catch (e) {
-      setMsg({ kind: 'err', text: (e as Error).message || 'Error al registrar CADI.' })
+      setMsg({ kind: 'err', text: (e as Error).message || 'Error al procesar CADI.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const eliminar = async (c: CADI) => {
+    const confirmar = window.confirm(`¿Estás seguro de eliminar el CADI "${c.nombre}" (${c.codigo})? Esta acción removerá la materia de PostgreSQL.`)
+    if (!confirmar) return
+
+    setLoading(true)
+    try {
+      await actions.deleteCADI(c.id)
+      if (editingId === c.id) {
+        cancelar()
+      }
+      setMsg({ kind: 'ok', text: `CADI "${c.nombre}" eliminado correctamente de PostgreSQL.` })
+    } catch (e) {
+      setMsg({ kind: 'err', text: (e as Error).message || 'Error al eliminar CADI.' })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1268,9 +1326,29 @@ function CadisView() {
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
-        <Card>
-          <form onSubmit={crear} className="space-y-4">
-            <h3 className="flex items-center gap-2 font-semibold"><Plus size={18} />Registrar CADI / Materia</h3>
+        <Card className={editingId ? 'ring-2 ring-pine/30 transition-all' : ''}>
+          <form onSubmit={guardar} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="flex items-center gap-2 font-semibold">
+                {editingId ? (
+                  <>
+                    <Pencil size={18} className="text-pine" />
+                    <span>Modificar CADI</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={18} />
+                    <span>Registrar CADI / Materia</span>
+                  </>
+                )}
+              </h3>
+              {editingId && (
+                <span className="rounded-full bg-pine/10 px-2 py-0.5 text-xs font-semibold text-pine">
+                  Modo Edición
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-[1fr_90px] gap-3">
               <Field label="Código"><input className={input} value={cod} onChange={(e) => setCod(e.target.value)} placeholder="SIS301" /></Field>
               <Field label="Semestre">
@@ -1287,7 +1365,16 @@ function CadisView() {
               </select>
             </Field>
             {msg && <Msg {...msg} />}
-            <button className={btn}>Guardar CADI</button>
+            <div className="flex items-center gap-2 pt-1">
+              <button className={btn} disabled={loading}>
+                {editingId ? 'Actualizar CADI' : 'Guardar CADI'}
+              </button>
+              {editingId && (
+                <button type="button" onClick={cancelar} className={btnGhost} disabled={loading}>
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         </Card>
 
@@ -1302,36 +1389,66 @@ function CadisView() {
                 <th className="p-4">Código / CADI</th>
                 <th>Semestre</th>
                 <th>Docente Asignado</th>
+                <th className="text-right pr-4">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line text-xs">
               {db.cadis.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="p-8 text-center text-sm text-ink/50">
+                  <td colSpan={4} className="p-8 text-center text-sm text-ink/50">
                     <Award size={32} className="mx-auto mb-2 text-ink/30" />
                     No hay materias o CADIs registrados. Registra uno nuevo desde el formulario.
                   </td>
                 </tr>
               ) : (
-                db.cadis.map((c) => (
-                  <tr key={c.id}>
-                    <td className="p-4">
-                      <div className="font-semibold text-pine">{c.nombre}</div>
-                      <div className="font-mono text-xs text-ink/50">{c.codigo}</div>
-                    </td>
-                    <td>{c.semestre}° Semestre</td>
-                    <td>
-                      <select
-                        className={`${input} py-1 text-xs`}
-                        value={c.docenteId || ''}
-                        onChange={(e) => actions.assignCadiTeacher(c.id, e.target.value || null)}
-                      >
-                        <option value="">Sin asignar</option>
-                        {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                ))
+                db.cadis.map((c) => {
+                  const isCurrent = editingId === c.id
+                  return (
+                    <tr key={c.id} className={isCurrent ? 'bg-pine/5 font-medium' : undefined}>
+                      <td className="p-4">
+                        <div className="font-semibold text-pine">{c.nombre}</div>
+                        <div className="font-mono text-xs text-ink/50">{c.codigo}</div>
+                      </td>
+                      <td>{c.semestre}° Semestre</td>
+                      <td>
+                        <select
+                          className={`${input} py-1 text-xs`}
+                          value={c.docenteId || ''}
+                          onChange={(e) => actions.assignCadiTeacher(c.id, e.target.value || null)}
+                        >
+                          <option value="">Sin asignar</option>
+                          {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </td>
+                      <td className="text-right pr-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(c)}
+                            className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-semibold transition-colors ${
+                              isCurrent
+                                ? 'bg-pine text-white'
+                                : 'text-pine hover:bg-pine/10'
+                            }`}
+                            title="Editar CADI"
+                          >
+                            <Pencil size={13} />
+                            <span>Editar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => eliminar(c)}
+                            className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                            title="Eliminar CADI"
+                          >
+                            <Trash2 size={13} />
+                            <span>Eliminar</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

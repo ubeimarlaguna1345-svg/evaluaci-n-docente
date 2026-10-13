@@ -245,15 +245,58 @@ apiRouter.post('/cadis', async (req, res) => {
   }
 })
 
-// 6. Asignar docente a CADI
-apiRouter.patch('/cadis/:id', async (req, res) => {
+// 6. Actualizar CADI (Edición completa o asignación rápida de docente)
+const handleUpdateCadi = async (req, res) => {
   const { id } = req.params
-  const { docenteId } = req.body || {}
+  const { codigo, nombre, semestre, docenteId } = req.body || {}
+
   try {
-    await pool.query('UPDATE cadis SET docente_id = $1 WHERE id = $2', [docenteId || null, id])
+    if (codigo !== undefined || nombre !== undefined || semestre !== undefined) {
+      if (!codigo?.trim() || !nombre?.trim() || !semestre) {
+        return sendJson(res, 400, { ok: false, message: 'Código, nombre y semestre son requeridos.' })
+      }
+      const result = await pool.query(
+        `UPDATE cadis
+         SET codigo = $1, nombre = $2, semestre = $3, docente_id = $4
+         WHERE id = $5`,
+        [codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), docenteId || null, id]
+      )
+      if (result.rowCount === 0) {
+        return sendJson(res, 404, { ok: false, message: 'CADI no encontrado.' })
+      }
+      return sendJson(res, 200, { ok: true, message: 'CADI actualizado correctamente.' })
+    }
+
+    // Solo asignación rápida de docente (compatibilidad con assignCadiTeacher)
+    const result = await pool.query('UPDATE cadis SET docente_id = $1 WHERE id = $2', [docenteId || null, id])
+    if (result.rowCount === 0) {
+      return sendJson(res, 404, { ok: false, message: 'CADI no encontrado.' })
+    }
     sendJson(res, 200, { ok: true })
   } catch (error) {
-    sendJson(res, 500, { ok: false, message: 'Error al asignar docente.', detail: error.message })
+    if (error.code === '23505') {
+      return sendJson(res, 409, { ok: false, message: 'Ya existe otro CADI con ese código.' })
+    }
+    console.error('Error al actualizar CADI:', error.message)
+    sendJson(res, 500, { ok: false, message: 'Error al actualizar CADI.', detail: error.message })
+  }
+}
+
+apiRouter.put('/cadis/:id', handleUpdateCadi)
+apiRouter.patch('/cadis/:id', handleUpdateCadi)
+
+// 6.1 Eliminar CADI
+apiRouter.delete('/cadis/:id', async (req, res) => {
+  const { id } = req.params
+  try {
+    const result = await pool.query('DELETE FROM cadis WHERE id = $1', [id])
+    if (result.rowCount === 0) {
+      return sendJson(res, 404, { ok: false, message: 'CADI no encontrado.' })
+    }
+    sendJson(res, 200, { ok: true, message: 'CADI eliminado correctamente.' })
+  } catch (error) {
+    console.error('Error al eliminar CADI:', error.message)
+    sendJson(res, 500, { ok: false, message: 'Error al eliminar CADI.', detail: error.message })
   }
 })
 
