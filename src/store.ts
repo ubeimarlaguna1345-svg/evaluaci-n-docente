@@ -5,7 +5,7 @@ export type AnswerType = 'escala' | 'seleccion' | 'texto'
 export type FormKind = 'evaluacion' | 'autoevaluacion'
 
 export interface User { id: string; name: string; email: string; password: string; role: Role; active: boolean }
-export interface CADI { id: string; codigo: string; nombre: string; semestre: number; esArticulador: boolean; docenteId?: string }
+export interface CADI { id: string; codigo: string; nombre: string; semestre: number; esArticulador?: boolean; docenteId?: string }
 export interface Question { id: string; text: string; type: AnswerType; options: string[]; required: boolean; dimension?: string }
 export interface Feedback { id: string; teacherId: string; course: string; question: Question; start: string; end: string; createdAt: string }
 export interface FeedbackResponse { id: string; feedbackId: string; studentId: string; value: string; date: string }

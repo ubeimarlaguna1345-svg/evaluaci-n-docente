@@ -1235,7 +1235,6 @@ function CadisView() {
   const [cod, setCod] = useState('')
   const [nom, setNom] = useState('')
   const [sem, setSem] = useState('3')
-  const [art, setArt] = useState(false)
   const [docId, setDocId] = useState('')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
@@ -1252,11 +1251,10 @@ function CadisView() {
         codigo: cod.trim().toUpperCase(),
         nombre: nom.trim(),
         semestre: Number(sem),
-        esArticulador: art,
         docenteId: docId || undefined,
       })
       setMsg({ kind: 'ok', text: `CADI ${nom} registrado correctamente en PostgreSQL.` })
-      setCod(''); setNom(''); setArt(false); setDocId('')
+      setCod(''); setNom(''); setDocId('')
     } catch (e) {
       setMsg({ kind: 'err', text: (e as Error).message || 'Error al registrar CADI.' })
     }
@@ -1288,10 +1286,6 @@ function CadisView() {
                 {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </Field>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={art} onChange={(e) => setArt(e.target.checked)} className="rounded text-pine focus:ring-moss" />
-              <span><b>CADI Articulador oficial</b> (Aplica ponderación del 20%)</span>
-            </label>
             {msg && <Msg {...msg} />}
             <button className={btn}>Guardar CADI</button>
           </form>
@@ -1307,50 +1301,37 @@ function CadisView() {
               <tr>
                 <th className="p-4">Código / CADI</th>
                 <th>Semestre</th>
-                <th>Tipo</th>
                 <th>Docente Asignado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line text-xs">
               {db.cadis.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-sm text-ink/50">
+                  <td colSpan={3} className="p-8 text-center text-sm text-ink/50">
                     <Award size={32} className="mx-auto mb-2 text-ink/30" />
                     No hay materias o CADIs registrados. Registra uno nuevo desde el formulario.
                   </td>
                 </tr>
               ) : (
-                db.cadis.map((c) => {
-                  const doc = db.users.find((u) => u.id === c.docenteId)
-                  return (
-                    <tr key={c.id}>
-                      <td className="p-4">
-                        <div className="font-semibold text-pine">{c.nombre}</div>
-                        <div className="font-mono text-xs text-ink/50">{c.codigo}</div>
-                      </td>
-                      <td>{c.semestre}° Semestre</td>
-                      <td>
-                        {c.esArticulador ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-ochre/15 px-2.5 py-0.5 font-semibold text-ochre">
-                            <Award size={12} />Articulador (20%)
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-paper px-2 py-0.5 text-ink/60">Complementario</span>
-                        )}
-                      </td>
-                      <td>
-                        <select
-                          className={`${input} py-1 text-xs`}
-                          value={c.docenteId || ''}
-                          onChange={(e) => actions.assignCadiTeacher(c.id, e.target.value || null)}
-                        >
-                          <option value="">Sin asignar</option>
-                          {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                  )
-                })
+                db.cadis.map((c) => (
+                  <tr key={c.id}>
+                    <td className="p-4">
+                      <div className="font-semibold text-pine">{c.nombre}</div>
+                      <div className="font-mono text-xs text-ink/50">{c.codigo}</div>
+                    </td>
+                    <td>{c.semestre}° Semestre</td>
+                    <td>
+                      <select
+                        className={`${input} py-1 text-xs`}
+                        value={c.docenteId || ''}
+                        onChange={(e) => actions.assignCadiTeacher(c.id, e.target.value || null)}
+                      >
+                        <option value="">Sin asignar</option>
+                        {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

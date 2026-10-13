@@ -51,7 +51,7 @@ apiRouter.get('/bootstrap', async (_req, res) => {
 
     // 2.2 CADIs
     const cadisRes = await pool.query(
-      'SELECT id, codigo, nombre, semestre, es_articulador AS "esArticulador", docente_id AS "docenteId" FROM cadis ORDER BY semestre, nombre'
+      'SELECT id, codigo, nombre, semestre, COALESCE(es_articulador, false) AS "esArticulador", docente_id AS "docenteId" FROM cadis ORDER BY semestre, nombre'
     )
 
     // 2.3 Formularios con sus preguntas y opciones
@@ -234,7 +234,7 @@ apiRouter.post('/cadis', async (req, res) => {
     await pool.query(
       `INSERT INTO cadis (id, codigo, nombre, semestre, es_articulador, docente_id)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [id, codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), Boolean(esArticulador), docenteId || null]
+      [id, codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), Boolean(esArticulador ?? false), docenteId || null]
     )
     sendJson(res, 201, { ok: true, id })
   } catch (error) {
