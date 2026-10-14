@@ -350,7 +350,140 @@ apiRouter.post('/forms', async (req, res) => {
   }
 })
 
-// 8. Actualizar fechas de formulario
+// 8. Actualizar formulario completo (datos y sincronización de preguntas)
+const handleUpdateForm = async (req, res) => {
+  const { id } = req.params
+  const { kind, title, description, period, cadiId, start, end, questions } = req.body || {}
+
+  if (!kind || !title?.trim() || !period?.trim() || !start || !end) {
+    return sendJson(res, 400, { ok: false, message: 'Datos incompletos para actualizar el formulario.' })
+  }
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+
+    const updateRes = await client.query(
+      `UPDATE formularios
+       SET tipo = $1, titulo = $2, descripcion = $3, periodo = $4, cadi_id = $5, fecha_inicio = $6, fecha_cierre = $7
+       WHERE id = $8`,
+      [kind, title.trim(), description || '', period.trim(), cadiId || null, start, end, id]
+    )
+
+    if (updateRes.rowCount === 0) {
+      await client.query('ROLLBACK')
+      return sendJson(res, 404, { ok: false, message: 'Formulario no encontrado.' })
+    }
+
+    if (Array.isArray(questions)) {
+      // 1. Obtener IDs de preguntas actuales de este formulario
+      const currentQRes = await client.query('SELECT id FROM preguntas WHERE formulario_id = $1', [id])
+      const currentQIds = new Set(currentQRes.rows.map((r) => r.id))
+
+      // 2. Procesar las preguntas
+      const incomingQIds = new Set()
+
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i]
+        const qId = q.id && currentQIds.has(q.id) ? q.id : (q.id || crypto.randomUUID())
+        incomingQIds.add(qId)
+
+        if (currentQIds.has(qId)) {
+          await client.query(
+            `UPDATE preguntas
+             SET enunciado = $1, tipo_respuesta = $2, dimension = $3, obligatoria = $4, orden = $5
+             WHERE id = $6`,
+            [q.text, q.type, q.dimension || 'General', q.required !== false, i, qId]
+          )
+          await client.query('DELETE FROM opciones WHERE pregunta_id = $1', [qId])
+        } else {
+          await client.query(
+            `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [qId, id, q.text, q.type, q.dimension || 'General', q.required !== false, i]
+          )
+        }
+
+        if (Array.isArray(q.options)) {
+          for (let j = 0; j < q.options.length; j++) {
+            await client.query(
+              'INSERT INTO opciones (pregunta_id, orden, texto) VALUES ($1, $2, $3)',
+              [qId, j, q.options[j]]
+            )
+          }
+        }
+      }
+
+      // 3. Eliminar preguntas que ya no están
+      for (const oldId of currentQIds) {
+        if (!incomingQIds.has(oldId)) {
+          await client.query('DELETE FROM opciones WHERE pregunta_id = $1', [oldId])
+          await client.query('DELETE FROM detalle_respuesta WHERE pregunta_id = $1', [oldId])
+          await client.query('DELETE FROM preguntas WHERE id = $1', [oldId])
+        }
+      }
+    }
+
+    await client.query('COMMIT')
+    sendJson(res, 200, { ok: true, message: 'Formulario actualizado correctamente.' })
+  } catch (error) {
+    await client.query('ROLLBACK')
+    console.error('Error al actualizar formulario en PostgreSQL:', error.message)
+    sendJson(res, 500, { ok: false, message: 'Error al actualizar formulario.', detail: error.message })
+  } finally {
+    client.release()
+  }
+}
+
+apiRouter.put('/forms/:id', handleUpdateForm)
+apiRouter.patch('/forms/:id', handleUpdateForm)
+apiRouter.put('/evaluaciones/:id', handleUpdateForm)
+apiRouter.patch('/evaluaciones/:id', handleUpdateForm)
+
+// 8.1 Eliminar formulario (con eliminación en cascada de preguntas y respuestas)
+const handleDeleteForm = async (req, res) => {
+  const { id } = req.params
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+
+    // Eliminar detalle de respuestas y respuestas
+    const respRes = await client.query('SELECT id FROM respuestas_formulario WHERE formulario_id = $1', [id])
+    if (respRes.rows.length > 0) {
+      const respIds = respRes.rows.map((r) => r.id)
+      await client.query('DELETE FROM detalle_respuesta WHERE respuesta_id = ANY($1::text[])', [respIds])
+      await client.query('DELETE FROM respuestas_formulario WHERE formulario_id = $1', [id])
+    }
+
+    // Eliminar opciones y preguntas
+    const qRes = await client.query('SELECT id FROM preguntas WHERE formulario_id = $1', [id])
+    if (qRes.rows.length > 0) {
+      const qIds = qRes.rows.map((r) => r.id)
+      await client.query('DELETE FROM opciones WHERE pregunta_id = ANY($1::text[])', [qIds])
+      await client.query('DELETE FROM preguntas WHERE formulario_id = $1', [id])
+    }
+
+    const deleteRes = await client.query('DELETE FROM formularios WHERE id = $1', [id])
+    if (deleteRes.rowCount === 0) {
+      await client.query('ROLLBACK')
+      return sendJson(res, 404, { ok: false, message: 'Formulario no encontrado.' })
+    }
+
+    await client.query('COMMIT')
+    sendJson(res, 200, { ok: true, message: 'Formulario eliminado correctamente.' })
+  } catch (error) {
+    await client.query('ROLLBACK')
+    console.error('Error al eliminar formulario en PostgreSQL:', error.message)
+    sendJson(res, 500, { ok: false, message: 'Error al eliminar formulario.', detail: error.message })
+  } finally {
+    client.release()
+  }
+}
+
+apiRouter.delete('/forms/:id', handleDeleteForm)
+apiRouter.delete('/evaluaciones/:id', handleDeleteForm)
+
+// 8.2 Actualizar solo fechas de formulario
 apiRouter.patch('/forms/:id/dates', async (req, res) => {
   const { id } = req.params
   const { start, end } = req.body || {}

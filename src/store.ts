@@ -137,6 +137,26 @@ export const actions = {
     await initDB()
   },
 
+  updateForm: async (id: string, f: Omit<Form, 'id'>) => {
+    const res = await fetch(`/api/forms/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(f),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Error al actualizar formulario en PostgreSQL.')
+    await initDB()
+  },
+
+  deleteForm: async (id: string) => {
+    const res = await fetch(`/api/forms/${id}`, {
+      method: 'DELETE',
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Error al eliminar formulario en PostgreSQL.')
+    await initDB()
+  },
+
   setFormDates: async (id: string, start: string, end: string) => {
     const res = await fetch(`/api/forms/${id}/dates`, {
       method: 'PATCH',
