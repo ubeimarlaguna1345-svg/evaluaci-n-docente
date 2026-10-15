@@ -72,6 +72,11 @@ export async function initSchema() {
     if (schemaPath) {
       const sql = fs.readFileSync(schemaPath, 'utf-8')
       await pool.query(sql)
+      // Asegurar columnas institucionales si la tabla ya existía previamente
+      await pool.query(`
+        ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sede TEXT NOT NULL DEFAULT 'Sede Facatativá';
+        ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS carrera TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación';
+      `)
       console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente.')
       return true
     }

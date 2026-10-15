@@ -73,34 +73,51 @@ function Bar({ label, value, max = 5 }: { label: string; value: number; max?: nu
 }
 
 /* ---------- editor de pregunta (REQ-04 / REQ-12 / MEDIT) ---------- */
-function QuestionEditor({ onAdd }: { onAdd: (q: Question) => void }) {
+function QuestionEditor({
+  onAdd,
+  hideDimension = false,
+  defaultDimension = 'Pedagógica y Didáctica',
+}: {
+  onAdd: (q: Question) => void
+  hideDimension?: boolean
+  defaultDimension?: string
+}) {
   const [text, setText] = useState('')
   const [type, setType] = useState<AnswerType>('escala')
-  const [dimension, setDimension] = useState<string>('Pedagógica y Didáctica')
+  const [dimension, setDimension] = useState<string>(hideDimension ? 'Retroalimentación de Aula' : defaultDimension)
   const [opts, setOpts] = useState('')
   const [err, setErr] = useState('')
   const add = () => {
     const options = opts.split(',').map((s) => s.trim()).filter(Boolean)
     if (!text.trim()) return setErr('Ingrese el enunciado de la pregunta.')
     if (type === 'seleccion' && options.length < 2) return setErr('Configure al menos dos opciones separadas por comas.')
-    onAdd({ id: uid(), text: text.trim(), type, options, required: true, dimension })
+    onAdd({
+      id: uid(),
+      text: text.trim(),
+      type,
+      options,
+      required: true,
+      dimension: hideDimension ? 'Retroalimentación de Aula' : (dimension || 'General'),
+    })
     setText(''); setOpts(''); setErr('')
   }
   return (
     <div className="space-y-3 rounded-md bg-paper p-4">
       <Field label="Enunciado"><input className={input} value={text} onChange={(e) => setText(e.target.value)} placeholder="Escriba la pregunta…" /></Field>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className={`grid gap-3 ${hideDimension ? (type === 'seleccion' ? 'sm:grid-cols-2' : 'sm:grid-cols-1') : 'sm:grid-cols-3'}`}>
         <Field label="Tipo de respuesta">
           <select className={input} value={type} onChange={(e) => setType(e.target.value as AnswerType)}>
             <option value="escala">Escala 1 – 5</option><option value="seleccion">Selección</option><option value="texto">Texto libre</option>
           </select>
         </Field>
-        <Field label="Dimensión MEDIT">
-          <select className={input} value={dimension} onChange={(e) => setDimension(e.target.value)}>
-            {MEDIT_DIMENSIONES.map((d) => <option key={d} value={d}>{d}</option>)}
-            <option value="General">General</option>
-          </select>
-        </Field>
+        {!hideDimension && (
+          <Field label="Dimensión MEDIT">
+            <select className={input} value={dimension} onChange={(e) => setDimension(e.target.value)}>
+              {MEDIT_DIMENSIONES.map((d) => <option key={d} value={d}>{d}</option>)}
+              <option value="General">General</option>
+            </select>
+          </Field>
+        )}
         {type === 'seleccion' && <Field label="Opciones (separadas por coma)"><input className={input} value={opts} onChange={(e) => setOpts(e.target.value)} placeholder="Sí, No, Parcialmente" /></Field>}
       </div>
       {err && <Msg kind="err" text={err} />}
@@ -114,6 +131,7 @@ const TYPE_LABEL: Record<AnswerType, string> = { escala: 'Escala', seleccion: 'S
 
 function Login({ onLogin }: { onLogin: (u: User) => void }) {
   const db = useDB()
+  const [selectedRole, setSelectedRole] = useState<Role>('estudiante')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
@@ -148,6 +166,8 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
           email: email.trim().toLowerCase(),
           password: pass,
           role: 'admin',
+          sede: 'Sede Facatativá',
+          carrera: 'Ingeniería de Sistemas y Computación',
         })
         setInfo('Administrador creado en PostgreSQL. Ya puedes iniciar sesión.')
         setName('')
@@ -163,8 +183,19 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
       (x) => x.email.toLowerCase() === email.trim().toLowerCase()
     )
 
-    if (!u || u.password !== pass) {
-      setErr('Credenciales incorrectas o el usuario no existe.')
+    if (!u) {
+      setErr('No existe una cuenta registrada con este correo electrónico.')
+      return
+    }
+
+    // Validación del rol seleccionado
+    if (u.role !== selectedRole) {
+      setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
+      return
+    }
+
+    if (u.password !== pass) {
+      setErr('Contraseña incorrecta.')
       return
     }
 
@@ -211,7 +242,41 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
             <h2 className="font-serif text-4xl text-pine">
               {firstUser ? 'Crear administrador' : 'Iniciar sesión'}
             </h2>
+            {!firstUser && (
+              <p className="mt-1 text-xs text-ink/60">
+                Seleccione su rol institucional e ingrese con sus credenciales.
+              </p>
+            )}
           </div>
+
+          {!firstUser && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-ink/70">
+                Rol institucional
+              </label>
+              <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-line bg-paper/60 p-1.5 sm:grid-cols-4">
+                {([
+                  { id: 'estudiante', label: 'Estudiante' },
+                  { id: 'docente', label: 'Docente' },
+                  { id: 'coordinador', label: 'Coordinador' },
+                  { id: 'admin', label: 'Administrador' },
+                ] as const).map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => { setSelectedRole(r.id); setErr('') }}
+                    className={`rounded-md py-2 px-1 text-center text-xs font-medium transition-all ${
+                      selectedRole === r.id
+                        ? 'bg-pine text-white shadow-sm ring-1 ring-pine'
+                        : 'text-ink/70 hover:bg-white hover:text-pine'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {firstUser && (
             <Field label="Nombre completo">
@@ -274,7 +339,14 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
 /* ---------- Cuentas ---------- */
 function Accounts({ me }: { me: User }) {
   const db = useDB()
-  const [f, setF] = useState({ name: '', email: '', password: '', role: 'estudiante' as Role })
+  const [f, setF] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'estudiante' as Role,
+    sede: 'Sede Facatativá',
+    carrera: 'Ingeniería de Sistemas y Computación',
+  })
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [search, setSearch] = useState('')
   const [confirm, setConfirm] = useState<User | null>(null)
@@ -286,12 +358,12 @@ function Accounts({ me }: { me: User }) {
     try {
       await actions.createUser({ ...f, email: f.email.trim() })
       setMsg({ kind: 'ok', text: `Cuenta de ${f.name} creada exitosamente en PostgreSQL.` })
-      setF({ name: '', email: '', password: '', role: f.role })
+      setF({ name: '', email: '', password: '', role: f.role, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' })
     } catch (e) {
       setMsg({ kind: 'err', text: (e as Error).message || 'Error al crear cuenta.' })
     }
   }
-  const list = db.users.filter((u) => (u.name + u.email).toLowerCase().includes(search.toLowerCase()))
+  const list = db.users.filter((u) => (u.name + u.email + (u.sede || '') + (u.carrera || '')).toLowerCase().includes(search.toLowerCase()))
   return (
     <>
       <Header title="Cuentas de usuario" sub="Crear nuevas cuentas y dar de baja las existentes." />
@@ -307,6 +379,28 @@ function Accounts({ me }: { me: User }) {
                 {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
             </Field>
+            <Field label="Sede institucional">
+              <select className={input} value={f.sede} onChange={(e) => setF({ ...f, sede: e.target.value })}>
+                <option value="Sede Facatativá">Sede Facatativá</option>
+                <option value="Sede Fusagasugá">Sede Fusagasugá</option>
+                <option value="Sede Chía">Sede Chía</option>
+                <option value="Sede Girardot">Sede Girardot</option>
+                <option value="Sede Soacha">Sede Soacha</option>
+                <option value="Sede Ubaté">Sede Ubaté</option>
+                <option value="Sede Zipaquirá">Sede Zipaquirá</option>
+              </select>
+            </Field>
+            <Field label="Carrera / Programa">
+              <select className={input} value={f.carrera} onChange={(e) => setF({ ...f, carrera: e.target.value })}>
+                <option value="Ingeniería de Sistemas y Computación">Ingeniería de Sistemas y Computación</option>
+                <option value="Ingeniería Industrial">Ingeniería Industrial</option>
+                <option value="Ingeniería Ambiental">Ingeniería Ambiental</option>
+                <option value="Ingeniería Electrónica">Ingeniería Electrónica</option>
+                <option value="Administración de Empresas">Administración de Empresas</option>
+                <option value="Contaduría Pública">Contaduría Pública</option>
+                <option value="Psicología">Psicología</option>
+              </select>
+            </Field>
             {msg && <Msg {...msg} />}
             <button className={btn}>Crear cuenta</button>
           </form>
@@ -314,11 +408,19 @@ function Accounts({ me }: { me: User }) {
         <Card className="p-0">
           <div className="border-b border-line p-4"><input className={input} placeholder="Buscar cuenta…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wider text-ink/50"><tr><th className="p-4">Nombre</th><th>Rol</th><th>Estado</th><th /></tr></thead>
+            <thead className="text-left text-xs uppercase tracking-wider text-ink/50">
+              <tr>
+                <th className="p-4">Usuario</th>
+                <th>Rol</th>
+                <th>Sede / Carrera</th>
+                <th>Estado</th>
+                <th />
+              </tr>
+            </thead>
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-sm text-ink/50">
+                  <td colSpan={5} className="p-8 text-center text-sm text-ink/50">
                     <Users size={32} className="mx-auto mb-2 text-ink/30" />
                     No hay cuentas registradas. Crea una nueva desde el formulario.
                   </td>
@@ -326,8 +428,15 @@ function Accounts({ me }: { me: User }) {
               ) : (
                 list.map((u) => (
                   <tr key={u.id} className="border-t border-line">
-                    <td className="p-4"><div className="font-medium">{u.name}</div><div className="font-mono text-xs text-ink/50">{u.email}</div></td>
+                    <td className="p-4">
+                      <div className="font-medium">{u.name}</div>
+                      <div className="font-mono text-xs text-ink/50">{u.email}</div>
+                    </td>
                     <td>{ROLE_LABEL[u.role]}</td>
+                    <td>
+                      <div className="text-xs font-medium text-ink/80">{u.sede || 'Sede Facatativá'}</div>
+                      <div className="text-xs text-ink/50">{u.carrera || 'Ingeniería de Sistemas y Computación'}</div>
+                    </td>
                     <td><span className={`rounded-full px-2 py-0.5 text-xs ${u.active ? 'bg-moss/10 text-pine' : 'bg-red-50 text-red-700'}`}>{u.active ? 'Activa' : 'Bloqueada'}</span></td>
                     <td className="pr-4 text-right">
                       {u.active && u.id !== me.id && (me.role === 'admin' || roles.includes(u.role)) && (
@@ -842,66 +951,221 @@ function Report() {
 function TeacherFeedback({ me }: { me: User }) {
   const db = useDB()
   const [course, setCourse] = useState('')
-  const [q, setQ] = useState<Question | null>(null)
+  const [questions, setQuestions] = useState<Question[]>([])
   const [start, setStart] = useState(
-  () =>
-    new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16)
-     ) 
+    () =>
+      new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16)
+  )
   const [end, setEnd] = useState('')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [loading, setLoading] = useState(false)
   const [sel, setSel] = useState<string | null>(null)
+
+  // CADIs / asignaturas asignadas a este docente
+  const myCadis = db.cadis.filter((c) => c.docenteId === me.id)
   const mine = db.feedbacks.filter((f) => f.teacherId === me.id)
-  const save = () => {
-    if (!q) return setMsg({ kind: 'err', text: 'Ingrese el enunciado antes de guardar.' })
-    if (!course.trim()) return setMsg({ kind: 'err', text: 'Indique el curso o clase.' })
-    if (!end || end <= start) return setMsg({ kind: 'err', text: 'La fecha de cierre debe ser posterior a la de inicio.' })
-    actions.createFeedback({ teacherId: me.id, course, question: q, start, end })
-    setQ(null); setCourse(''); setEnd(''); setMsg({ kind: 'ok', text: 'Retroalimentación registrada.' })
+
+  const save = async () => {
+    if (!course.trim()) {
+      return setMsg({ kind: 'err', text: 'Indique o seleccione el curso o materia asignada.' })
+    }
+    if (questions.length === 0) {
+      return setMsg({ kind: 'err', text: 'Debe agregar al menos una pregunta antes de guardar la retroalimentación.' })
+    }
+    if (!end || end <= start) {
+      return setMsg({ kind: 'err', text: 'La fecha de cierre debe ser posterior a la de inicio.' })
+    }
+
+    setLoading(true)
+    try {
+      await actions.createFeedback({
+        teacherId: me.id,
+        course,
+        questions,
+        start,
+        end,
+      })
+      setQuestions([])
+      setCourse('')
+      setEnd('')
+      setMsg({
+        kind: 'ok',
+        text: `Retroalimentación registrada con éxito (${questions.length} ${questions.length === 1 ? 'pregunta asociada guardada' : 'preguntas asociadas guardadas'}).`,
+      })
+    } catch (e) {
+      setMsg({ kind: 'err', text: (e as Error).message || 'Error al guardar la retroalimentación.' })
+    } finally {
+      setLoading(false)
+    }
   }
+
   const current = mine.find((f) => f.id === sel)
   const resp = db.feedbackResponses.filter((r) => r.feedbackId === sel)
+
   return (
     <>
-      <Header title="Retroalimentación de clase" sub="Pregunte a sus estudiantes cómo les fue en la clase y consulte sus respuestas." />
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+      <Header
+        title="Retroalimentación de clase"
+        sub="Pregunte a sus estudiantes cómo les fue en la clase y consulte sus respuestas."
+      />
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
         <Card className="space-y-4">
-          <h3 className="flex items-center gap-2 font-semibold"><Plus size={18} />Crear enunciado</h3>
-          <Field label="Curso / clase"><input className={input} value={course} onChange={(e) => setCourse(e.target.value)} placeholder="Ej. Bases de Datos — sesión 8" /></Field>
-          {q ? (
-            <div className="flex items-center justify-between rounded-md border border-pine bg-pine/5 px-3 py-2 text-sm">
-              <span>{q.text} <span className="text-xs text-ochre">{TYPE_LABEL[q.type]}{q.options.length ? `: ${q.options.join(' / ')}` : ''}</span></span>
-              <button onClick={() => setQ(null)}><X size={14} /></button>
-            </div>
-          ) : <QuestionEditor onAdd={setQ} />}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Disponible desde"><input type="datetime-local" className={input} value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-            <Field label="Hasta"><input type="datetime-local" className={input} value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+          <h3 className="flex items-center gap-2 font-semibold">
+            <Plus size={18} />Crear retroalimentación de aula
+          </h3>
+
+          <Field label="Curso / Clase (CADIs asignados)">
+            <select
+              className={input}
+              value={course}
+              onChange={(e) => {
+                setCourse(e.target.value)
+                setMsg(null)
+              }}
+            >
+              <option value="">Seleccione una asignatura asignada...</option>
+              {myCadis.map((c) => (
+                <option key={c.id} value={`${c.nombre} (${c.semestre}° Semestre)`}>
+                  {c.nombre} ({c.semestre}° Semestre)
+                </option>
+              ))}
+            </select>
+          </Field>
+          {myCadis.length === 0 && (
+            <p className="text-xs text-ochre">
+              Aviso: Actualmente no tiene CADIs asignados a su cuenta docente.
+            </p>
+          )}
+
+          <div className="space-y-2 rounded-lg border border-line bg-paper/30 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink/70">
+              Formular nueva pregunta
+            </p>
+            <QuestionEditor
+              hideDimension
+              defaultDimension="Retroalimentación de Aula"
+              onAdd={(newQ) => {
+                setQuestions((prev) => [...prev, newQ])
+                setMsg(null)
+              }}
+            />
           </div>
+
+          {questions.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-pine font-medium">
+                  Preguntas añadidas a este curso ({questions.length})
+                </span>
+                <span className="text-xs text-ink/50">Puede retirar preguntas pulsando la X</span>
+              </div>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {questions.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-md border border-line bg-white p-3 text-sm shadow-xs transition-colors hover:border-pine/40"
+                  >
+                    <div className="space-y-0.5 pr-2">
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono text-xs font-bold text-pine">#{idx + 1}</span>
+                        <span className="font-medium text-ink leading-tight">{item.text}</span>
+                      </div>
+                      <div className="text-xs text-ochre font-mono pl-5">
+                        Tipo: {TYPE_LABEL[item.type]}
+                        {item.options && item.options.length > 0 ? ` (${item.options.join(', ')})` : ''}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setQuestions((prev) => prev.filter((x) => x.id !== item.id))}
+                      className="rounded p-1 text-ink/40 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
+                      title="Eliminar pregunta"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Disponible desde">
+              <input
+                type="datetime-local"
+                className={input}
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+              />
+            </Field>
+            <Field label="Hasta">
+              <input
+                type="datetime-local"
+                className={input}
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+              />
+            </Field>
+          </div>
+
           {msg && <Msg {...msg} />}
-          <button className={btn} onClick={save}>Guardar retroalimentación</button>
+          <button className={btn} onClick={save} disabled={loading}>
+            {loading ? 'Guardando...' : 'Guardar retroalimentación'}
+          </button>
         </Card>
+
         <div className="space-y-3">
+          <h3 className="font-semibold text-pine">Historial de retroalimentaciones</h3>
           {!mine.length && <Empty text="Aún no ha creado retroalimentaciones." />}
           {mine.map((f) => {
             const n = db.feedbackResponses.filter((r) => r.feedbackId === f.id).length
             return (
-              <button key={f.id} onClick={() => setSel(f.id === sel ? null : f.id)}
-                className={`block w-full rounded-lg border bg-white p-4 text-left ${sel === f.id ? 'border-pine ring-1 ring-pine' : 'border-line hover:border-pine'}`}>
-                <div className="flex justify-between text-xs text-ink/50"><span>{f.course}</span><span>{isOpen(f.start, f.end) ? 'Abierta' : 'Cerrada'} · {n} resp.</span></div>
-                <p className="mt-1 font-serif text-xl">{f.question.text}</p>
+              <button
+                key={f.id}
+                onClick={() => setSel(f.id === sel ? null : f.id)}
+                className={`block w-full rounded-lg border bg-white p-4 text-left transition-all ${
+                  sel === f.id ? 'border-pine ring-1 ring-pine' : 'border-line hover:border-pine'
+                }`}
+              >
+                <div className="flex justify-between text-xs text-ink/50">
+                  <span className="font-medium text-ink/70">{f.course}</span>
+                  <span>{isOpen(f.start, f.end) ? 'Abierta' : 'Cerrada'} · {n} resp.</span>
+                </div>
+                <p className="mt-1 font-serif text-xl">{f.question?.text || 'Pregunta sin texto'}</p>
+                {f.question && (
+                  <p className="mt-1 text-xs text-ochre font-mono">
+                    {TYPE_LABEL[f.question.type]}
+                  </p>
+                )}
               </button>
             )
           })}
-          {current && (
+          {current && current.question && (
             <Card className="space-y-3">
-              <h3 className="font-semibold">Respuestas</h3>
-              {!resp.length ? <Empty text="Todavía no hay respuestas registradas." /> : current.question.type === 'texto'
-                ? resp.map((r) => <p key={r.id} className="border-l-2 border-ochre pl-3 text-sm">{r.value}</p>)
-                : (current.question.type === 'escala' ? ['1', '2', '3', '4', '5'] : current.question.options).map((o) => (
-                  <Bar key={o} label={o} value={resp.filter((r) => r.value === o).length} max={resp.length} />
-                ))}
+              <h3 className="font-semibold">Respuestas · {current.course}</h3>
+              <p className="text-sm font-medium text-ink/80">{current.question.text}</p>
+              {!resp.length ? (
+                <Empty text="Todavía no hay respuestas registradas." />
+              ) : current.question.type === 'texto' ? (
+                resp.map((r) => (
+                  <p key={r.id} className="border-l-2 border-ochre pl-3 text-sm italic">
+                    “{r.value}”
+                  </p>
+                ))
+              ) : (
+                (current.question.type === 'escala' ? ['1', '2', '3', '4', '5'] : current.question.options).map(
+                  (o) => (
+                    <Bar
+                      key={o}
+                      label={o}
+                      value={resp.filter((r) => r.value === o).length}
+                      max={resp.length}
+                    />
+                  )
+                )
+              )}
             </Card>
           )}
         </div>
@@ -1053,6 +1317,7 @@ function StudentFeedback({ me }: { me: User }) {
       {!db.feedbacks.length && <Empty text="No hay retroalimentaciones disponibles." />}
       <div className="grid gap-4 md:grid-cols-2">
         {db.feedbacks.map((f) => {
+          if (!f.question) return null
           const answered = db.feedbackResponses.some((r) => r.feedbackId === f.id && r.studentId === me.id)
           const open = isOpen(f.start, f.end)
           const teacher = db.users.find((u) => u.id === f.teacherId)

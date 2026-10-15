@@ -46,7 +46,7 @@ apiRouter.get('/bootstrap', async (_req, res) => {
 
     // 2.1 Usuarios
     const usersRes = await pool.query(
-      'SELECT id, nombre AS name, correo AS email, contrasena AS password, rol AS role, activo AS active FROM usuarios ORDER BY rol, nombre'
+      'SELECT id, nombre AS name, correo AS email, contrasena AS password, rol AS role, activo AS active, COALESCE(sede, \'Sede Facatativá\') AS sede, COALESCE(carrera, \'Ingeniería de Sistemas y Computación\') AS carrera FROM usuarios ORDER BY rol, nombre'
     )
 
     // 2.2 CADIs
@@ -177,7 +177,7 @@ apiRouter.get('/bootstrap', async (_req, res) => {
 
 // 3. Crear usuario (INSERT en PostgreSQL)
 apiRouter.post('/users', async (req, res) => {
-  const { name, email, password, role } = req.body || {}
+  const { name, email, password, role, sede, carrera } = req.body || {}
   if (!name?.trim() || !email?.trim() || !password || !role) {
     return sendJson(res, 400, { ok: false, message: 'Todos los campos son obligatorios.' })
   }
@@ -187,9 +187,9 @@ apiRouter.post('/users', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10)
 
     const query = `
-      INSERT INTO usuarios (id, nombre, correo, contrasena, contrasena_hash, rol, activo)
-      VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-      RETURNING id, nombre AS name, correo AS email, contrasena AS password, rol AS role, activo AS active
+      INSERT INTO usuarios (id, nombre, correo, contrasena, contrasena_hash, rol, activo, sede, carrera)
+      VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, $8)
+      RETURNING id, nombre AS name, correo AS email, contrasena AS password, rol AS role, activo AS active, sede, carrera
     `
     const result = await pool.query(query, [
       id,
@@ -198,6 +198,8 @@ apiRouter.post('/users', async (req, res) => {
       password,
       passwordHash,
       role,
+      sede?.trim() || 'Sede Facatativá',
+      carrera?.trim() || 'Ingeniería de Sistemas y Computación',
     ])
 
     sendJson(res, 201, { ok: true, user: result.rows[0] })
@@ -533,30 +535,50 @@ apiRouter.post('/form-responses', async (req, res) => {
   }
 })
 
-// 10. Crear retroalimentación docente
+// 10. Crear retroalimentación docente (admite una sola pregunta o una lista completa de preguntas)
 apiRouter.post('/feedbacks', async (req, res) => {
-  const { teacherId, course, question, start, end } = req.body || {}
+  const { teacherId, course, question, questions, start, end } = req.body || {}
+  const list = Array.isArray(questions) && questions.length > 0 ? questions : (question ? [question] : [])
+  if (list.length === 0) {
+    return sendJson(res, 400, { ok: false, message: 'Se requiere al menos una pregunta para registrar la retroalimentación.' })
+  }
+
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    const qId = crypto.randomUUID()
-    await client.query(
-      `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
-       VALUES ($1, NULL, $2, $3, 'General', TRUE, 0)`,
-      [qId, question.text, question.type]
-    )
+    const ids = []
 
-    const fbId = crypto.randomUUID()
-    await client.query(
-      `INSERT INTO retroalimentaciones (id, docente_id, pregunta_id, curso, fecha_inicio, fecha_cierre, creada_en)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [fbId, teacherId, qId, course, start, end]
-    )
+    for (const q of list) {
+      const qId = crypto.randomUUID()
+      await client.query(
+        `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
+         VALUES ($1, NULL, $2, $3, $4, TRUE, 0)`,
+        [qId, q.text, q.type, q.dimension || 'Retroalimentación de Aula']
+      )
+
+      if (Array.isArray(q.options) && q.options.length > 0) {
+        for (let j = 0; j < q.options.length; j++) {
+          await client.query(
+            'INSERT INTO opciones (pregunta_id, orden, texto) VALUES ($1, $2, $3)',
+            [qId, j, q.options[j]]
+          )
+        }
+      }
+
+      const fbId = crypto.randomUUID()
+      await client.query(
+        `INSERT INTO retroalimentaciones (id, docente_id, pregunta_id, curso, fecha_inicio, fecha_cierre, creada_en)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [fbId, teacherId, qId, course, start, end]
+      )
+      ids.push(fbId)
+    }
 
     await client.query('COMMIT')
-    sendJson(res, 201, { ok: true, id: fbId })
+    sendJson(res, 201, { ok: true, ids, id: ids[0] })
   } catch (error) {
     await client.query('ROLLBACK')
+    console.error('Error al crear retroalimentación docente:', error.message)
     sendJson(res, 500, { ok: false, message: 'Error al crear retroalimentación.', detail: error.message })
   } finally {
     client.release()

@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
   contrasena      TEXT NOT NULL,
   contrasena_hash TEXT,
   rol             TEXT NOT NULL CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante', 'directivo')),
-  activo          BOOLEAN NOT NULL DEFAULT TRUE
+  activo          BOOLEAN NOT NULL DEFAULT TRUE,
+  sede            TEXT NOT NULL DEFAULT 'Sede Facatativá',
+  carrera         TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación'
 );
 
 -- 2. CADIs (Campos de Aprendizaje Disciplinares - Lineamientos PGC UdeC)
