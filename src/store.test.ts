@@ -1,21 +1,25 @@
 /**
- * Pruebas unitarias – Objetivo Específico 4
+ * Pruebas unitarias – Objetivo Específico 4 & Requisitos Académicos UdeC
  *
- * Validan la lógica pura del sistema SIARD-UdeC sin depender de la UI (React)
- * ni de motores SQLite obsoletos. Evalúan cálculos de promedio, control de anonimato,
- * bloqueo de doble voto, reputación docente y ponderación PGC.
+ * Validan la lógica pura del sistema SIARD-UdeC:
+ * 1. Ponderación consolidada 70% Estudiantes - 30% Autoevaluación
+ * 2. Filtrado estricto de Reporte de Mejora (Umbral <= 3.9)
+ * 3. Precisión a dos decimales (toFixed(2))
+ * 4. Control de anonimato y prevención de doble voto
+ * 5. Sistema de reputación institucional y ponderación PGC 20%
  */
 import { describe, it, expect } from 'vitest'
+import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, type DB, type Form, type User } from './store'
 
 /* ---------- Helpers de lógica pura del sistema ---------- */
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
-/** Función pura de cálculo de promedios */
+/** Función pura de cálculo de promedios con precisión a dos decimales */
 export function calcularPromedio(notas: number[]): number {
   if (!notas.length) return 0
   const suma = notas.reduce((acc, curr) => acc + curr, 0)
-  return Number((suma / notas.length).toFixed(1))
+  return Number((suma / notas.length).toFixed(2))
 }
 
 /** Sistema de control de anonimato y prevención de doble voto */
@@ -59,34 +63,154 @@ export function clasificarReputacion(avg: number, totalResponses: number) {
 }
 
 /* ================================================================================
-   1. Cálculo de promedios de calificación
+   1. Cálculo de promedios de calificación con precisión a dos decimales
    ================================================================================ */
 
-describe('Cálculo de promedios de calificación', () => {
-  it('debe calcular correctamente el promedio de notas [5, 4, 3] = 4.0', () => {
+describe('Cálculo de promedios de calificación con precisión a dos decimales', () => {
+  it('debe calcular correctamente el promedio de notas [5, 4, 3] = 4.00', () => {
     const notas = [5, 4, 3]
     const resultado = calcularPromedio(notas)
-    expect(resultado).toBe(4.0)
+    expect(resultado).toBe(4.00)
   })
 
-  it('debe calcular el promedio general de varias preguntas ponderadas', () => {
+  it('debe calcular el promedio general conservando dos decimales', () => {
     const promediosPreguntas = [5.0, 3.0]
     const promedioGeneral = calcularPromedio(promediosPreguntas)
-    expect(promedioGeneral).toBe(4.0)
+    expect(promedioGeneral).toBe(4.00)
   })
 
   it('debe devolver 0 si la lista de notas está vacía', () => {
     expect(calcularPromedio([])).toBe(0)
   })
 
-  it('debe redondear adecuadamente notas con decimales', () => {
+  it('debe redondear adecuadamente notas con decimales a toFixed(2)', () => {
     const notas = [4.5, 4.2, 4.8]
-    expect(calcularPromedio(notas)).toBe(4.5)
+    expect(calcularPromedio(notas)).toBe(4.50)
+  })
+
+  it('debe calcular promedio con precisión de dos decimales para [4.33, 4.67] = 4.50', () => {
+    const notas = [4.33, 4.67]
+    expect(calcularPromedio(notas)).toBe(4.50)
   })
 })
 
 /* ================================================================================
-   2. Control de anonimato y bloqueo de doble voto
+   2. Ponderación de Calificación Consolidada (70% - 30%)
+   ================================================================================ */
+
+describe('Ponderación de Calificación Consolidada (70% Estudiantes - 30% Autoevaluación)', () => {
+  it('debe calcular exactamente la fórmula (Estudiantes * 0.70) + (Autoevaluación * 0.30)', () => {
+    const studentAvg = 4.0
+    const autoAvg = 5.0
+    // (4.0 * 0.70) + (5.0 * 0.30) = 2.80 + 1.50 = 4.30
+    const res = calculateConsolidatedGrade(studentAvg, autoAvg)
+    expect(res.studentWeighted).toBe(2.80)
+    expect(res.autoWeighted).toBe(1.50)
+    expect(res.finalScore).toBe(4.30)
+    expect(res.status).toBe('completo')
+    expect(res.isProvisional).toBe(false)
+  })
+
+  it('debe calcular correctamente cuando ambas notas son idénticas', () => {
+    const res = calculateConsolidatedGrade(3.50, 3.50)
+    expect(res.studentWeighted).toBe(2.45)
+    expect(res.autoWeighted).toBe(1.05)
+    expect(res.finalScore).toBe(3.50)
+    expect(res.requierePlanMejora).toBe(true)
+  })
+
+  it('debe otorgar la máxima calificación cuando ambas son 5.00', () => {
+    const res = calculateConsolidatedGrade(5.00, 5.00)
+    expect(res.studentWeighted).toBe(3.50)
+    expect(res.autoWeighted).toBe(1.50)
+    expect(res.finalScore).toBe(5.00)
+    expect(res.requierePlanMejora).toBe(false)
+  })
+
+  it('debe manejar caso incompleto: sin autoevaluación (provisional sobre escala 5.0)', () => {
+    const studentAvg = 3.80
+    const autoAvg = null
+    const res = calculateConsolidatedGrade(studentAvg, autoAvg)
+    expect(res.studentAvg).toBe(3.80)
+    expect(res.studentWeighted).toBe(2.66) // 3.80 * 0.70
+    expect(res.autoAvg).toBeNull()
+    expect(res.autoWeighted).toBeNull()
+    expect(res.finalScore).toBe(3.80) // Nota provisional sobre 5.0 sin alterar escala
+    expect(res.isProvisional).toBe(true)
+    expect(res.status).toBe('pendiente_autoevaluacion')
+    expect(res.requierePlanMejora).toBe(true)
+  })
+
+  it('debe manejar caso incompleto: sin evaluación de estudiantes (provisional sobre escala 5.0)', () => {
+    const studentAvg = null
+    const autoAvg = 4.20
+    const res = calculateConsolidatedGrade(studentAvg, autoAvg)
+    expect(res.studentAvg).toBeNull()
+    expect(res.studentWeighted).toBeNull()
+    expect(res.autoAvg).toBe(4.20)
+    expect(res.autoWeighted).toBe(1.26) // 4.20 * 0.30
+    expect(res.finalScore).toBe(4.20) // Nota provisional sobre 5.0
+    expect(res.isProvisional).toBe(true)
+    expect(res.status).toBe('pendiente_estudiantes')
+    expect(res.requierePlanMejora).toBe(false)
+  })
+
+  it('debe manejar caso sin evaluar (ambos nulos)', () => {
+    const res = calculateConsolidatedGrade(null, null)
+    expect(res.finalScore).toBe(0)
+    expect(res.hasEvaluations).toBe(false)
+    expect(res.status).toBe('sin_evaluar')
+    expect(res.requierePlanMejora).toBe(false)
+  })
+
+  it('debe conservar precisión a dos decimales con valores fraccionarios', () => {
+    // 3.83 * 0.70 = 2.681 -> 2.68
+    // 4.17 * 0.30 = 1.251 -> 1.25
+    // 2.681 + 1.251 = 3.932 -> 3.93
+    const res = calculateConsolidatedGrade(3.83, 4.17)
+    expect(res.finalScore).toBe(3.93)
+    expect(res.studentWeighted).toBe(2.68)
+    expect(res.autoWeighted).toBe(1.25)
+  })
+})
+
+/* ================================================================================
+   3. Filtrado estricto en "Reporte de mejora" (Umbral <= 3.9)
+   ================================================================================ */
+
+describe('Filtrado estricto en "Reporte de mejora" (Umbral <= 3.9)', () => {
+  it('docente con nota final exacta de 3.90 DEBE figurar en el requerimiento de plan de mejora', () => {
+    const res = calculateConsolidatedGrade(3.90, 3.90)
+    expect(res.finalScore).toBe(3.90)
+    expect(res.requierePlanMejora).toBe(true)
+  })
+
+  it('docente con nota final de 3.85 DEBE figurar en el requerimiento de plan de mejora', () => {
+    const res = calculateConsolidatedGrade(4.0, 3.5) // (4.0 * 0.70) + (3.5 * 0.30) = 2.80 + 1.05 = 3.85
+    expect(res.finalScore).toBe(3.85)
+    expect(res.requierePlanMejora).toBe(true)
+  })
+
+  it('docente con nota final frontera de 4.00 NO debe figurar en plan de mejora (es satisfactorio)', () => {
+    const res = calculateConsolidatedGrade(4.0, 4.0) // 4.00
+    expect(res.finalScore).toBe(4.00)
+    expect(res.requierePlanMejora).toBe(false)
+  })
+
+  it('docente con nota final de 4.20 NO debe figurar en plan de mejora', () => {
+    const res = calculateConsolidatedGrade(4.2, 4.2)
+    expect(res.finalScore).toBe(4.20)
+    expect(res.requierePlanMejora).toBe(false)
+  })
+
+  it('docente sin evaluaciones registradas NO debe requerir plan de mejora', () => {
+    const res = calculateConsolidatedGrade(null, null)
+    expect(res.requierePlanMejora).toBe(false)
+  })
+})
+
+/* ================================================================================
+   4. Control de anonimato y bloqueo de doble voto
    ================================================================================ */
 
 describe('Control de anonimato y bloqueo de doble voto', () => {
@@ -148,7 +272,7 @@ describe('Control de anonimato y bloqueo de doble voto', () => {
 })
 
 /* ================================================================================
-   3. Sistema de reputación docente
+   5. Sistema de reputación docente
    ================================================================================ */
 
 describe('Reputación docente (labels y umbrales)', () => {
@@ -196,7 +320,7 @@ describe('Reputación docente (labels y umbrales)', () => {
 })
 
 /* ================================================================================
-   4. Ponderación institucional PGC (20% nota CADI Articulador)
+   6. Ponderación institucional PGC (20% nota CADI Articulador)
    ================================================================================ */
 
 describe('Ponderación PGC 20%', () => {
@@ -220,7 +344,136 @@ describe('Ponderación PGC 20%', () => {
 })
 
 /* ================================================================================
-   5. Validación de roles y restricciones institucionales
+   7. Integración de getTeacherConsolidatedGrade con estado DB
+   ================================================================================ */
+
+describe('Integración getTeacherConsolidatedGrade con base de datos en memoria', () => {
+  it('debe calcular correctamente notas desde respuestas reales de estudiantes y autoevaluación', () => {
+    const teacherId = 'doc-1'
+    const studentId = 'est-1'
+    const evalForm: Form = {
+      id: 'form-eval-1',
+      kind: 'evaluacion',
+      title: 'Evaluación Docente 2026-1',
+      description: '',
+      period: '2026-1',
+      start: '2026-01-01',
+      end: '2026-12-31',
+      questions: [
+        { id: 'q1', text: 'Claridad', type: 'escala', options: [], required: true, dimension: 'Pedagógica y Didáctica' },
+        { id: 'q2', text: 'Dominio', type: 'escala', options: [], required: true, dimension: 'Disciplinar e Investigativa' },
+      ],
+    }
+    const autoForm: Form = {
+      id: 'form-auto-1',
+      kind: 'autoevaluacion',
+      title: 'Autoevaluación Docente 2026-1',
+      description: '',
+      period: '2026-1',
+      start: '2026-01-01',
+      end: '2026-12-31',
+      questions: [
+        { id: 'qa1', text: 'Autoevaluación didáctica', type: 'escala', options: [], required: true, dimension: 'Pedagógica y Didáctica' },
+      ],
+    }
+
+    const mockDb: DB = {
+      users: [
+        { id: teacherId, name: 'Docente Prueba', email: 'doc@udec.edu.co', password: '123', role: 'docente', active: true },
+        { id: studentId, name: 'Estudiante 1', email: 'est@udec.edu.co', password: '123', role: 'estudiante', active: true },
+      ],
+      cadis: [],
+      feedbacks: [],
+      feedbackResponses: [],
+      forms: [evalForm, autoForm],
+      formResponses: [
+        // Respuestas de estudiante: q1=4, q2=4 -> promedio estudiantes = 4.00
+        {
+          id: 'resp-1',
+          formId: evalForm.id,
+          userId: studentId,
+          teacherId: teacherId,
+          answers: { q1: '4', q2: '4' },
+          observation: 'Buen desempeño',
+          date: new Date().toISOString(),
+        },
+        // Respuestas de autoevaluación: qa1=5 -> promedio auto = 5.00
+        {
+          id: 'resp-2',
+          formId: autoForm.id,
+          userId: teacherId,
+          teacherId: teacherId,
+          answers: { qa1: '5' },
+          observation: 'Reflexión propia',
+          date: new Date().toISOString(),
+        },
+      ],
+      connected: true,
+      loading: false,
+      error: null,
+    }
+
+    const consolidated = getTeacherConsolidatedGrade(mockDb, teacherId, '2026-1')
+    expect(consolidated.studentAvg).toBe(4.00)
+    expect(consolidated.studentWeighted).toBe(2.80) // 4.0 * 0.70
+    expect(consolidated.autoAvg).toBe(5.00)
+    expect(consolidated.autoWeighted).toBe(1.50) // 5.0 * 0.30
+    expect(consolidated.finalScore).toBe(4.30)
+    expect(consolidated.requierePlanMejora).toBe(false)
+    expect(consolidated.status).toBe('completo')
+  })
+
+  it('debe detectar requerimiento de plan de mejora cuando la nota consolidada es <= 3.9', () => {
+    const teacherId = 'doc-2'
+    const studentId = 'est-2'
+    const evalForm: Form = {
+      id: 'form-eval-2',
+      kind: 'evaluacion',
+      title: 'Evaluación Docente 2026-1',
+      description: '',
+      period: '2026-1',
+      start: '2026-01-01',
+      end: '2026-12-31',
+      questions: [
+        { id: 'q1', text: 'Puntualidad', type: 'escala', options: [], required: true },
+      ],
+    }
+
+    const mockDb: DB = {
+      users: [
+        { id: teacherId, name: 'Docente 2', email: 'doc2@udec.edu.co', password: '123', role: 'docente', active: true },
+      ],
+      cadis: [],
+      feedbacks: [],
+      feedbackResponses: [],
+      forms: [evalForm],
+      formResponses: [
+        {
+          id: 'resp-3',
+          formId: evalForm.id,
+          userId: studentId,
+          teacherId: teacherId,
+          answers: { q1: '3' },
+          observation: '',
+          date: new Date().toISOString(),
+        },
+      ],
+      connected: true,
+      loading: false,
+      error: null,
+    }
+
+    const consolidated = getTeacherConsolidatedGrade(mockDb, teacherId, '2026-1')
+    expect(consolidated.studentAvg).toBe(3.00)
+    expect(consolidated.autoAvg).toBeNull()
+    expect(consolidated.finalScore).toBe(3.00) // Provisional 3.00
+    expect(consolidated.requierePlanMejora).toBe(true)
+    expect(consolidated.isProvisional).toBe(true)
+  })
+})
+
+/* ================================================================================
+   8. Validación de roles y restricciones institucionales
    ================================================================================ */
 
 describe('Validación de roles institucionales UdeC', () => {
@@ -243,3 +496,4 @@ describe('Validación de roles institucionales UdeC', () => {
     expect(validarLongitud(observacionExcedida)).toBe(false)
   })
 })
+

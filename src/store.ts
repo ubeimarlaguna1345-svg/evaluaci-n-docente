@@ -321,12 +321,203 @@ export function stats(db: DB, formId: string, teacherId?: string) {
   Object.keys(porDimension).forEach((dim) => {
     const validItems = porDimension[dim].items.filter((x) => x.n > 0)
     porDimension[dim].avg = validItems.length
-      ? validItems.reduce((acc, curr) => acc + curr.avg, 0) / validItems.length
+      ? Number((validItems.reduce((acc, curr) => acc + curr.avg, 0) / validItems.length).toFixed(2))
       : 0
     porDimension[dim].count = porDimension[dim].items.length
   })
 
-  return { form, responses: rs, perQ, overall, pgcPonderado20, porDimension }
+  const consolidatedGrade = teacherId ? getTeacherConsolidatedGrade(db, teacherId, form.period) : null
+
+  return { form, responses: rs, perQ, overall, pgcPonderado20, porDimension, consolidatedGrade }
+}
+
+export interface TeacherGradeConsolidated {
+  teacherId: string
+  studentAvg: number | null
+  studentWeighted: number | null // Ponderado 70% (factor 0.70)
+  autoAvg: number | null
+  autoWeighted: number | null    // Ponderado 30% (factor 0.30)
+  finalScore: number             // Nota final consolidada o provisional sobre 5.0
+  hasEvaluations: boolean
+  isProvisional: boolean
+  status: 'completo' | 'pendiente_autoevaluacion' | 'pendiente_estudiantes' | 'sin_evaluar'
+  statusLabel: string
+  requierePlanMejora: boolean    // true únicamente si hasEvaluations y finalScore <= 3.9
+  studentResponsesCount: number
+  autoResponsesCount: number
+}
+
+/**
+ * Función pura que calcula la nota consolidada aplicando la ponderación académica:
+ * - Evaluación Docente (Estudiantes): 70% (factor 0.70)
+ * - Autoevaluación Docente: 30% (factor 0.30)
+ * Fórmula: Nota Final Consolidada = (Promedio Estudiantes * 0.70) + (Promedio Autoevaluación * 0.30)
+ * Manejo de casos incompletos: nota provisional sobre escala 5.0 conservando dos decimales.
+ */
+export function calculateConsolidatedGrade(
+  studentAvg: number | null,
+  autoAvg: number | null,
+  teacherId: string = '',
+  studentResponsesCount: number = 0,
+  autoResponsesCount: number = 0
+): TeacherGradeConsolidated {
+  const hasStudent = studentAvg !== null && !isNaN(studentAvg) && studentAvg > 0
+  const hasAuto = autoAvg !== null && !isNaN(autoAvg) && autoAvg > 0
+
+  if (hasStudent && hasAuto) {
+    const sAvg = Number(studentAvg.toFixed(2))
+    const aAvg = Number(autoAvg.toFixed(2))
+    const studentWeighted = Number((sAvg * 0.70).toFixed(2))
+    const autoWeighted = Number((aAvg * 0.30).toFixed(2))
+    const finalScore = Number(((sAvg * 0.70) + (aAvg * 0.30)).toFixed(2))
+    return {
+      teacherId,
+      studentAvg: sAvg,
+      studentWeighted,
+      autoAvg: aAvg,
+      autoWeighted,
+      finalScore,
+      hasEvaluations: true,
+      isProvisional: false,
+      status: 'completo',
+      statusLabel: 'Consolidado (100%)',
+      requierePlanMejora: finalScore <= 3.9,
+      studentResponsesCount,
+      autoResponsesCount,
+    }
+  }
+
+  if (hasStudent && !hasAuto) {
+    const sAvg = Number(studentAvg.toFixed(2))
+    const studentWeighted = Number((sAvg * 0.70).toFixed(2))
+    const finalScore = sAvg // Provisional sobre escala 5.0
+    return {
+      teacherId,
+      studentAvg: sAvg,
+      studentWeighted,
+      autoAvg: null,
+      autoWeighted: null,
+      finalScore,
+      hasEvaluations: true,
+      isProvisional: true,
+      status: 'pendiente_autoevaluacion',
+      statusLabel: 'Pendiente Autoevaluación',
+      requierePlanMejora: finalScore <= 3.9,
+      studentResponsesCount,
+      autoResponsesCount,
+    }
+  }
+
+  if (!hasStudent && hasAuto) {
+    const aAvg = Number(autoAvg.toFixed(2))
+    const autoWeighted = Number((aAvg * 0.30).toFixed(2))
+    const finalScore = aAvg // Provisional sobre escala 5.0
+    return {
+      teacherId,
+      studentAvg: null,
+      studentWeighted: null,
+      autoAvg: aAvg,
+      autoWeighted,
+      finalScore,
+      hasEvaluations: true,
+      isProvisional: true,
+      status: 'pendiente_estudiantes',
+      statusLabel: 'Pendiente Estudiantes',
+      requierePlanMejora: finalScore <= 3.9,
+      studentResponsesCount,
+      autoResponsesCount,
+    }
+  }
+
+  return {
+    teacherId,
+    studentAvg: null,
+    studentWeighted: null,
+    autoAvg: null,
+    autoWeighted: null,
+    finalScore: 0,
+    hasEvaluations: false,
+    isProvisional: false,
+    status: 'sin_evaluar',
+    statusLabel: 'Sin evaluar',
+    requierePlanMejora: false,
+    studentResponsesCount: 0,
+    autoResponsesCount: 0,
+  }
+}
+
+/**
+ * Obtiene la calificación consolidada (70% Estudiantes - 30% Autoevaluación) de un docente
+ * a partir de la base de datos, opcionalmente filtrada por período.
+ */
+export function getTeacherConsolidatedGrade(
+  db: DB,
+  teacherId: string,
+  period?: string
+): TeacherGradeConsolidated {
+  // 1. Evaluaciones de estudiantes (formularios tipo 'evaluacion')
+  const evalForms = db.forms.filter(
+    (f) => f.kind === 'evaluacion' && (!period || f.period === period)
+  )
+  const evalFormIds = new Set(evalForms.map((f) => f.id))
+  const evalResponses = db.formResponses.filter(
+    (r) => r.teacherId === teacherId && evalFormIds.has(r.formId)
+  )
+
+  const studentValues: number[] = []
+  evalResponses.forEach((r) => {
+    const form = evalForms.find((f) => f.id === r.formId)
+    if (!form) return
+    const scaleQuestionIds = new Set(
+      form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
+    )
+    Object.entries(r.answers).forEach(([qId, val]) => {
+      if (scaleQuestionIds.has(qId)) {
+        const num = Number(val)
+        if (!isNaN(num) && num > 0) studentValues.push(num)
+      }
+    })
+  })
+
+  const studentAvg = studentValues.length
+    ? Number((studentValues.reduce((a, b) => a + b, 0) / studentValues.length).toFixed(2))
+    : null
+
+  // 2. Autoevaluaciones del docente (formularios tipo 'autoevaluacion')
+  const autoForms = db.forms.filter(
+    (f) => f.kind === 'autoevaluacion' && (!period || f.period === period)
+  )
+  const autoFormIds = new Set(autoForms.map((f) => f.id))
+  const autoResponses = db.formResponses.filter(
+    (r) => (r.teacherId === teacherId || r.userId === teacherId) && autoFormIds.has(r.formId)
+  )
+
+  const autoValues: number[] = []
+  autoResponses.forEach((r) => {
+    const form = autoForms.find((f) => f.id === r.formId)
+    if (!form) return
+    const scaleQuestionIds = new Set(
+      form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
+    )
+    Object.entries(r.answers).forEach(([qId, val]) => {
+      if (scaleQuestionIds.has(qId)) {
+        const num = Number(val)
+        if (!isNaN(num) && num > 0) autoValues.push(num)
+      }
+    })
+  })
+
+  const autoAvg = autoValues.length
+    ? Number((autoValues.reduce((a, b) => a + b, 0) / autoValues.length).toFixed(2))
+    : null
+
+  return calculateConsolidatedGrade(
+    studentAvg,
+    autoAvg,
+    teacherId,
+    evalResponses.length,
+    autoResponses.length
+  )
 }
 
 export interface TeacherReputation {
@@ -335,32 +526,23 @@ export interface TeacherReputation {
   label: string
   badgeClass: string
   isTop: boolean
+  consolidated: TeacherGradeConsolidated
 }
 
-/** Calcula la reputación de un docente a partir de su histórico de evaluaciones */
+/** Calcula la reputación de un docente a partir de su calificación consolidada (70% - 30%) */
 export function getTeacherReputation(db: DB, teacherId: string): TeacherReputation {
-  const teacherResponses = db.formResponses.filter((r) => r.teacherId === teacherId)
-  const values: number[] = []
+  const consolidated = getTeacherConsolidatedGrade(db, teacherId)
+  const totalResponses = consolidated.studentResponsesCount + consolidated.autoResponsesCount
+  const avg = consolidated.finalScore
 
-  teacherResponses.forEach((r) => {
-    Object.values(r.answers).forEach((val) => {
-      const num = Number(val)
-      if (!isNaN(num) && num > 0) values.push(num)
-    })
-  })
-
-  const totalResponses = teacherResponses.length
-  const avg = values.length
-    ? Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2))
-    : 0
-
-  if (totalResponses === 0) {
+  if (!consolidated.hasEvaluations || totalResponses === 0) {
     return {
       avg: 0,
       totalResponses: 0,
       label: 'Sin evaluar',
       badgeClass: 'bg-paper text-ink/50 border border-line',
       isTop: false,
+      consolidated,
     }
   }
 
@@ -371,6 +553,7 @@ export function getTeacherReputation(db: DB, teacherId: string): TeacherReputati
       label: '⭐ Destacado',
       badgeClass: 'bg-moss/20 text-pine border border-moss/40 font-semibold shadow-xs',
       isTop: true,
+      consolidated,
     }
   } else if (avg >= 4.0) {
     return {
@@ -379,6 +562,7 @@ export function getTeacherReputation(db: DB, teacherId: string): TeacherReputati
       label: '✓ Sobresaliente',
       badgeClass: 'bg-pine/10 text-pine border border-pine/30 font-medium',
       isTop: false,
+      consolidated,
     }
   } else if (avg >= 3.0) {
     return {
@@ -387,6 +571,7 @@ export function getTeacherReputation(db: DB, teacherId: string): TeacherReputati
       label: 'Aceptable',
       badgeClass: 'bg-ochre/15 text-ochre border border-ochre/40 font-medium',
       isTop: false,
+      consolidated,
     }
   } else {
     return {
@@ -395,6 +580,7 @@ export function getTeacherReputation(db: DB, teacherId: string): TeacherReputati
       label: '⚠️ En Seguimiento',
       badgeClass: 'bg-red-50 text-red-700 border border-red-200 font-medium',
       isTop: false,
+      consolidated,
     }
   }
 }
@@ -414,7 +600,7 @@ export function getFacultyGlobalMetrics(db: DB) {
     })
     .sort((a, b) => b.avg - a.avg)
 
-  const teachersWithScores = teachers.filter((t) => t.totalResponses > 0)
+  const teachersWithScores = teachers.filter((t) => t.consolidated.hasEvaluations && t.totalResponses > 0)
   const overallAvg = teachersWithScores.length
     ? Number((teachersWithScores.reduce((acc, t) => acc + t.avg, 0) / teachersWithScores.length).toFixed(2))
     : 0

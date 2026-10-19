@@ -628,3 +628,280 @@ apiRouter.post('/sql', async (req, res) => {
     })
   }
 })
+
+// 13. Calificaciones consolidadas (70% Evaluación Estudiantes + 30% Autoevaluación Docente)
+apiRouter.get('/calificaciones-consolidadas', async (req, res) => {
+  const { period } = req.query || {}
+  try {
+    const teachersRes = await pool.query(
+      "SELECT id, nombre AS name, correo AS email, sede, carrera FROM usuarios WHERE rol = 'docente' AND activo = TRUE ORDER BY nombre"
+    )
+
+    const evalQuery = `
+      SELECT
+        rf.docente_id,
+        ROUND(AVG(NULLIF(BTRIM(d.valor), '')::NUMERIC), 2) AS promedio_estudiantes,
+        COUNT(DISTINCT rf.id) AS total_evaluaciones
+      FROM detalle_respuesta d
+      JOIN respuestas_formulario rf ON rf.id = d.respuesta_id
+      JOIN preguntas p ON p.id = d.pregunta_id
+      JOIN formularios f ON f.id = rf.formulario_id
+      WHERE p.tipo_respuesta = 'escala'
+        AND f.tipo = 'evaluacion'
+        ${period ? 'AND f.periodo = $1' : ''}
+      GROUP BY rf.docente_id
+    `
+    const evalRes = await pool.query(evalQuery, period ? [period] : [])
+    const evalByTeacher = {}
+    for (const r of evalRes.rows) {
+      evalByTeacher[r.docente_id] = {
+        promedio: Number(r.promedio_estudiantes),
+        count: Number(r.total_evaluaciones),
+      }
+    }
+
+    const autoQuery = `
+      SELECT
+        COALESCE(rf.docente_id, rf.usuario_id) AS docente_id,
+        ROUND(AVG(NULLIF(BTRIM(d.valor), '')::NUMERIC), 2) AS promedio_autoevaluacion,
+        COUNT(DISTINCT rf.id) AS total_autoevaluaciones
+      FROM detalle_respuesta d
+      JOIN respuestas_formulario rf ON rf.id = d.respuesta_id
+      JOIN preguntas p ON p.id = d.pregunta_id
+      JOIN formularios f ON f.id = rf.formulario_id
+      WHERE p.tipo_respuesta = 'escala'
+        AND f.tipo = 'autoevaluacion'
+        ${period ? 'AND f.periodo = $1' : ''}
+      GROUP BY COALESCE(rf.docente_id, rf.usuario_id)
+    `
+    const autoRes = await pool.query(autoQuery, period ? [period] : [])
+    const autoByTeacher = {}
+    for (const r of autoRes.rows) {
+      autoByTeacher[r.docente_id] = {
+        promedio: Number(r.promedio_autoevaluacion),
+        count: Number(r.total_autoevaluaciones),
+      }
+    }
+
+    const data = teachersRes.rows.map((t) => {
+      const ev = evalByTeacher[t.id]
+      const au = autoByTeacher[t.id]
+
+      const studentAvg = ev ? ev.promedio : null
+      const autoAvg = au ? au.promedio : null
+
+      const studentWeighted = studentAvg !== null ? Number((studentAvg * 0.70).toFixed(2)) : null
+      const autoWeighted = autoAvg !== null ? Number((autoAvg * 0.30).toFixed(2)) : null
+
+      let finalScore = 0
+      let status = 'sin_evaluar'
+      let statusLabel = 'Sin evaluar'
+      let isProvisional = false
+      let hasEvaluations = false
+
+      if (studentAvg !== null && autoAvg !== null) {
+        finalScore = Number(((studentAvg * 0.70) + (autoAvg * 0.30)).toFixed(2))
+        status = 'completo'
+        statusLabel = 'Consolidado (100%)'
+        hasEvaluations = true
+      } else if (studentAvg !== null && autoAvg === null) {
+        finalScore = studentAvg
+        status = 'pendiente_autoevaluacion'
+        statusLabel = 'Pendiente Autoevaluación'
+        isProvisional = true
+        hasEvaluations = true
+      } else if (studentAvg === null && autoAvg !== null) {
+        finalScore = autoAvg
+        status = 'pendiente_estudiantes'
+        statusLabel = 'Pendiente Estudiantes'
+        isProvisional = true
+        hasEvaluations = true
+      }
+
+      const requierePlanMejora = hasEvaluations && finalScore <= 3.9
+
+      return {
+        teacherId: t.id,
+        teacherName: t.name,
+        email: t.email,
+        sede: t.sede,
+        carrera: t.carrera,
+        studentAvg,
+        studentWeighted,
+        autoAvg,
+        autoWeighted,
+        finalScore,
+        isProvisional,
+        status,
+        statusLabel,
+        hasEvaluations,
+        requierePlanMejora,
+        studentResponsesCount: ev ? ev.count : 0,
+        autoResponsesCount: au ? au.count : 0,
+      }
+    })
+
+    sendJson(res, 200, { ok: true, data })
+  } catch (error) {
+    console.error('Error calculando calificaciones consolidadas:', error.message)
+    sendJson(res, 500, { ok: false, message: 'Error al calcular calificaciones.', detail: error.message })
+  }
+})
+
+// 14. Reporte de mejora (filtro estricto <= 3.9)
+apiRouter.get('/reporte-mejora', async (req, res) => {
+  const { period } = req.query || {}
+  try {
+    const teachersRes = await pool.query(
+      "SELECT id, nombre AS name, correo AS email, sede, carrera FROM usuarios WHERE rol = 'docente' AND activo = TRUE ORDER BY nombre"
+    )
+
+    const evalQuery = `
+      SELECT
+        rf.docente_id,
+        ROUND(AVG(NULLIF(BTRIM(d.valor), '')::NUMERIC), 2) AS promedio_estudiantes,
+        COUNT(DISTINCT rf.id) AS total_evaluaciones
+      FROM detalle_respuesta d
+      JOIN respuestas_formulario rf ON rf.id = d.respuesta_id
+      JOIN preguntas p ON p.id = d.pregunta_id
+      JOIN formularios f ON f.id = rf.formulario_id
+      WHERE p.tipo_respuesta = 'escala'
+        AND f.tipo = 'evaluacion'
+        ${period ? 'AND f.periodo = $1' : ''}
+      GROUP BY rf.docente_id
+    `
+    const evalRes = await pool.query(evalQuery, period ? [period] : [])
+    const evalByTeacher = {}
+    for (const r of evalRes.rows) {
+      evalByTeacher[r.docente_id] = {
+        promedio: Number(r.promedio_estudiantes),
+        count: Number(r.total_evaluaciones),
+      }
+    }
+
+    const autoQuery = `
+      SELECT
+        COALESCE(rf.docente_id, rf.usuario_id) AS docente_id,
+        ROUND(AVG(NULLIF(BTRIM(d.valor), '')::NUMERIC), 2) AS promedio_autoevaluacion,
+        COUNT(DISTINCT rf.id) AS total_autoevaluaciones
+      FROM detalle_respuesta d
+      JOIN respuestas_formulario rf ON rf.id = d.respuesta_id
+      JOIN preguntas p ON p.id = d.pregunta_id
+      JOIN formularios f ON f.id = rf.formulario_id
+      WHERE p.tipo_respuesta = 'escala'
+        AND f.tipo = 'autoevaluacion'
+        ${period ? 'AND f.periodo = $1' : ''}
+      GROUP BY COALESCE(rf.docente_id, rf.usuario_id)
+    `
+    const autoRes = await pool.query(autoQuery, period ? [period] : [])
+    const autoByTeacher = {}
+    for (const r of autoRes.rows) {
+      autoByTeacher[r.docente_id] = {
+        promedio: Number(r.promedio_autoevaluacion),
+        count: Number(r.total_autoevaluaciones),
+      }
+    }
+
+    // Dimensiones MEDIT críticas por docente
+    const meditQuery = `
+      SELECT
+        rf.docente_id,
+        COALESCE(p.dimension, 'General') AS dimension,
+        ROUND(AVG(NULLIF(BTRIM(d.valor), '')::NUMERIC), 2) AS avg_dimension,
+        COUNT(*) AS count_respuestas
+      FROM detalle_respuesta d
+      JOIN respuestas_formulario rf ON rf.id = d.respuesta_id
+      JOIN preguntas p ON p.id = d.pregunta_id
+      JOIN formularios f ON f.id = rf.formulario_id
+      WHERE p.tipo_respuesta = 'escala'
+        ${period ? 'AND f.periodo = $1' : ''}
+      GROUP BY rf.docente_id, COALESCE(p.dimension, 'General')
+    `
+    const meditRes = await pool.query(meditQuery, period ? [period] : [])
+    const meditByTeacher = {}
+    for (const r of meditRes.rows) {
+      if (!meditByTeacher[r.docente_id]) meditByTeacher[r.docente_id] = []
+      meditByTeacher[r.docente_id].push({
+        dimension: r.dimension,
+        avg: Number(r.avg_dimension),
+        count: Number(r.count_respuestas),
+        esCritica: Number(r.avg_dimension) <= 3.9,
+      })
+    }
+
+    const docentes = teachersRes.rows
+      .map((t) => {
+        const ev = evalByTeacher[t.id]
+        const au = autoByTeacher[t.id]
+
+        const studentAvg = ev ? ev.promedio : null
+        const autoAvg = au ? au.promedio : null
+
+        const studentWeighted = studentAvg !== null ? Number((studentAvg * 0.70).toFixed(2)) : null
+        const autoWeighted = autoAvg !== null ? Number((autoAvg * 0.30).toFixed(2)) : null
+
+        let finalScore = 0
+        let status = 'sin_evaluar'
+        let statusLabel = 'Sin evaluar'
+        let isProvisional = false
+        let hasEvaluations = false
+
+        if (studentAvg !== null && autoAvg !== null) {
+          finalScore = Number(((studentAvg * 0.70) + (autoAvg * 0.30)).toFixed(2))
+          status = 'completo'
+          statusLabel = 'Consolidado (100%)'
+          hasEvaluations = true
+        } else if (studentAvg !== null && autoAvg === null) {
+          finalScore = studentAvg
+          status = 'pendiente_autoevaluacion'
+          statusLabel = 'Pendiente Autoevaluación'
+          isProvisional = true
+          hasEvaluations = true
+        } else if (studentAvg === null && autoAvg !== null) {
+          finalScore = autoAvg
+          status = 'pendiente_estudiantes'
+          statusLabel = 'Pendiente Estudiantes'
+          isProvisional = true
+          hasEvaluations = true
+        }
+
+        const dims = meditByTeacher[t.id] || []
+        const dimensionesCriticas = dims.filter((d) => d.esCritica).sort((a, b) => a.avg - b.avg)
+
+        return {
+          teacherId: t.id,
+          teacherName: t.name,
+          email: t.email,
+          sede: t.sede,
+          carrera: t.carrera,
+          studentAvg,
+          studentWeighted,
+          autoAvg,
+          autoWeighted,
+          finalScore,
+          isProvisional,
+          status,
+          statusLabel,
+          hasEvaluations,
+          requierePlanMejora: hasEvaluations && finalScore <= 3.9,
+          dimensiones: dims,
+          dimensionesCriticas,
+        }
+      })
+      // Filtro estricto: ÚNICAMENTE docentes con calificación consolidada <= 3.9
+      .filter((d) => d.hasEvaluations && d.finalScore <= 3.9)
+
+    if (docentes.length === 0) {
+      return sendJson(res, 200, {
+        ok: true,
+        data: [],
+        message: 'No hay docentes que requieran plan de mejora pedagógica en este período (todos los promedios son iguales o superiores a 4.0).',
+      })
+    }
+
+    sendJson(res, 200, { ok: true, data: docentes })
+  } catch (error) {
+    console.error('Error generando reporte de mejora:', error.message)
+    sendJson(res, 500, { ok: false, message: 'Error al generar reporte de mejora.', detail: error.message })
+  }
+})

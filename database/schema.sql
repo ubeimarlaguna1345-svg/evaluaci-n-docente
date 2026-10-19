@@ -121,3 +121,73 @@ GROUP BY
   rf.docente_id,
   p.id,
   p.enunciado;
+
+-- 11. Vista de calificaciones consolidadas (70% Evaluación Estudiantes + 30% Autoevaluación Docente)
+-- Umbral de Plan de Mejora Pedagógica: nota_final_consolidada <= 3.9
+CREATE OR REPLACE VIEW v_calificaciones_consolidadas AS
+WITH promedios_estudiantes AS (
+  SELECT
+    rf.docente_id,
+    f.periodo,
+    ROUND(AVG(NULLIF(BTRIM(d.valor), '')::NUMERIC), 2) AS promedio_estudiantes,
+    COUNT(DISTINCT rf.id) AS total_eval_estudiantes
+  FROM detalle_respuesta d
+  JOIN respuestas_formulario rf ON rf.id = d.respuesta_id
+  JOIN preguntas p ON p.id = d.pregunta_id
+  JOIN formularios f ON f.id = rf.formulario_id
+  WHERE p.tipo_respuesta = 'escala' AND f.tipo = 'evaluacion'
+  GROUP BY rf.docente_id, f.periodo
+),
+promedios_auto AS (
+  SELECT
+    COALESCE(rf.docente_id, rf.usuario_id) AS docente_id,
+    f.periodo,
+    ROUND(AVG(NULLIF(BTRIM(d.valor), '')::NUMERIC), 2) AS promedio_autoevaluacion,
+    COUNT(DISTINCT rf.id) AS total_autoeval
+  FROM detalle_respuesta d
+  JOIN respuestas_formulario rf ON rf.id = d.respuesta_id
+  JOIN preguntas p ON p.id = d.pregunta_id
+  JOIN formularios f ON f.id = rf.formulario_id
+  WHERE p.tipo_respuesta = 'escala' AND f.tipo = 'autoevaluacion'
+  GROUP BY COALESCE(rf.docente_id, rf.usuario_id), f.periodo
+)
+SELECT
+  u.id AS docente_id,
+  u.nombre AS docente_nombre,
+  u.correo AS docente_correo,
+  COALESCE(pe.periodo, pa.periodo, 'General') AS periodo,
+  pe.promedio_estudiantes,
+  ROUND(pe.promedio_estudiantes * 0.70, 2) AS eval_estudiantes_70,
+  pa.promedio_autoevaluacion,
+  ROUND(pa.promedio_autoevaluacion * 0.30, 2) AS autoevaluacion_30,
+  ROUND(
+    CASE
+      WHEN pe.promedio_estudiantes IS NOT NULL AND pa.promedio_autoevaluacion IS NOT NULL
+        THEN (pe.promedio_estudiantes * 0.70) + (pa.promedio_autoevaluacion * 0.30)
+      WHEN pe.promedio_estudiantes IS NOT NULL THEN pe.promedio_estudiantes
+      WHEN pa.promedio_autoevaluacion IS NOT NULL THEN pa.promedio_autoevaluacion
+      ELSE 0
+    END, 2
+  ) AS nota_final_consolidada,
+  CASE
+    WHEN pe.promedio_estudiantes IS NOT NULL AND pa.promedio_autoevaluacion IS NOT NULL THEN 'completo'
+    WHEN pe.promedio_estudiantes IS NOT NULL THEN 'pendiente_autoevaluacion'
+    WHEN pa.promedio_autoevaluacion IS NOT NULL THEN 'pendiente_estudiantes'
+    ELSE 'sin_evaluar'
+  END AS estado,
+  CASE
+    WHEN ROUND(
+      CASE
+        WHEN pe.promedio_estudiantes IS NOT NULL AND pa.promedio_autoevaluacion IS NOT NULL
+          THEN (pe.promedio_estudiantes * 0.70) + (pa.promedio_autoevaluacion * 0.30)
+        WHEN pe.promedio_estudiantes IS NOT NULL THEN pe.promedio_estudiantes
+        WHEN pa.promedio_autoevaluacion IS NOT NULL THEN pa.promedio_autoevaluacion
+        ELSE 0
+      END, 2
+    ) <= 3.9 AND (pe.promedio_estudiantes IS NOT NULL OR pa.promedio_autoevaluacion IS NOT NULL) THEN TRUE
+    ELSE FALSE
+  END AS requiere_plan_mejora
+FROM usuarios u
+LEFT JOIN promedios_estudiantes pe ON pe.docente_id = u.id
+LEFT JOIN promedios_auto pa ON pa.docente_id = u.id AND (pe.periodo IS NULL OR pa.periodo = pe.periodo)
+WHERE u.rol = 'docente' AND u.activo = TRUE;

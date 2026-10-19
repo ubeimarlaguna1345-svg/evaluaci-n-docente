@@ -1,10 +1,11 @@
 /// <reference types="react" />
 import { useEffect, useState, type ReactNode } from 'react'
 import {
-  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, Trash2, UserPlus, Users, X, Check, AlertCircle, Send, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star, Pencil,
+  BarChart3, CalendarClock, ClipboardList, FileText, GraduationCap, LogOut, MessageSquare, Plus, Trash2, UserPlus, Users, X, Check, AlertCircle, AlertTriangle, Send, BookOpen, Award, Layers, Scale as ScaleIcon, CheckCircle2, Building2, Star, Pencil,
 } from 'lucide-react'
 import {
   useDB, actions, initDB, uid, isOpen, fmt, stats, ROLE_LABEL, OBS_LIMIT, MEDIT_DIMENSIONES, getTeacherReputation, getFacultyGlobalMetrics,
+  calculateConsolidatedGrade, getTeacherConsolidatedGrade, type TeacherGradeConsolidated,
   type User, type Role, type Question, type AnswerType, type Form, type FormKind, type CADI,
 } from './store'
 
@@ -769,18 +770,214 @@ function Results() {
   const [formId, setFormId] = useState(db.forms[0]?.id ?? '')
   const [teacherId, setTeacherId] = useState('')
   const s = stats(db, formId, teacherId)
+  const selectedForm = db.forms.find((f) => f.id === formId)
+  const teacher = db.users.find((u) => u.id === teacherId)
+  const consolidated = teacherId ? getTeacherConsolidatedGrade(db, teacherId, selectedForm?.period) : null
+
+  // Docentes para tabla comparativa si se selecciona "Todos los docentes"
+  const allTeachersConsolidated = db.users
+    .filter((u) => u.role === 'docente' && u.active)
+    .map((t) => ({
+      teacher: t,
+      grade: getTeacherConsolidatedGrade(db, t.id, selectedForm?.period),
+      cadi: db.cadis.find((c) => c.docenteId === t.id),
+    }))
+
   return (
     <>
-      <Header title="Resultados de evaluación" sub="Resultados consolidados por evaluación, docente o período." />
+      <Header
+        title="Resultados de evaluación"
+        sub="Ponderación institucional: 70% Evaluación Estudiantes + 30% Autoevaluación Docente."
+      />
       <Filters {...{ formId, setFormId, teacherId, setTeacherId }} />
-      {!s || !s.responses.length ? <Empty text="No hay resultados disponibles para los filtros seleccionados." /> : (
+
+      {/* Si se seleccionó un docente específico, mostramos sus 3 tarjetas de desglose */}
+      {teacher && consolidated && (
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          {/* Tarjeta 1: Eval. Estudiantes (70%) */}
+          <div className="rounded-lg border border-line bg-pine/5 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-pine">Eval. Estudiantes (70%)</p>
+              <span className="text-[11px] font-mono text-ink/50">Factor 0.70</span>
+            </div>
+            <p className="mt-2 font-serif text-3xl font-bold text-pine">
+              {consolidated.studentAvg !== null ? (
+                <>
+                  {consolidated.studentAvg.toFixed(2)}
+                  <span className="text-sm font-normal text-ink/50"> / 5.00</span>
+                </>
+              ) : (
+                <span className="text-lg font-medium text-ochre">Pendiente</span>
+              )}
+            </p>
+            <p className="mt-1 text-xs text-ink/60">
+              {consolidated.studentWeighted !== null
+                ? `Aporte ponderado: ${consolidated.studentWeighted.toFixed(2)} / 3.50 pts`
+                : 'Sin evaluaciones de estudiantes registradas'}
+            </p>
+          </div>
+
+          {/* Tarjeta 2: Autoevaluación (30%) */}
+          <div className="rounded-lg border border-line bg-ochre/10 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-ochre">Autoevaluación (30%)</p>
+              <span className="text-[11px] font-mono text-ink/50">Factor 0.30</span>
+            </div>
+            <p className="mt-2 font-serif text-3xl font-bold text-ochre">
+              {consolidated.autoAvg !== null ? (
+                <>
+                  {consolidated.autoAvg.toFixed(2)}
+                  <span className="text-sm font-normal text-ink/50"> / 5.00</span>
+                </>
+              ) : (
+                <span className="text-lg font-medium text-ochre">Pendiente</span>
+              )}
+            </p>
+            <p className="mt-1 text-xs text-ink/60">
+              {consolidated.autoWeighted !== null
+                ? `Aporte ponderado: ${consolidated.autoWeighted.toFixed(2)} / 1.50 pts`
+                : 'Autoevaluación aún no completada por el docente'}
+            </p>
+          </div>
+
+          {/* Tarjeta 3: Definitiva Consolidada */}
+          <div className={`rounded-lg border p-4 ${
+            consolidated.finalScore <= 3.9 && consolidated.hasEvaluations
+              ? 'border-red-300 bg-red-50/60'
+              : 'border-moss/40 bg-moss/10'
+          }`}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-pine">Definitiva Consolidada</p>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                consolidated.isProvisional ? 'bg-ochre/20 text-ochre' : 'bg-moss/20 text-pine'
+              }`}>
+                {consolidated.isProvisional ? 'Provisional' : 'Oficial (100%)'}
+              </span>
+            </div>
+            <p className="mt-2 font-serif text-3xl font-bold text-pine">
+              {consolidated.hasEvaluations ? (
+                <>
+                  {consolidated.finalScore.toFixed(2)}
+                  <span className="text-sm font-normal text-ink/50"> / 5.00</span>
+                </>
+              ) : (
+                <span className="text-lg font-medium text-ink/40">Sin evaluar</span>
+              )}
+            </p>
+            <p className="mt-1 text-xs">
+              {consolidated.requierePlanMejora ? (
+                <span className="font-semibold text-red-700 flex items-center gap-1">
+                  <AlertTriangle size={12} /> Requiere plan de mejora (≤ 3.9)
+                </span>
+              ) : consolidated.hasEvaluations ? (
+                <span className="font-medium text-pine flex items-center gap-1">
+                  <Check size={12} /> Desempeño satisfactorio (≥ 4.0)
+                </span>
+              ) : (
+                <span className="text-ink/50">Pendiente de instrumentos</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Si se selecciona "Todos los docentes", mostramos tabla de desglose consolidada */}
+      {!teacherId && (
+        <Card className="mb-6 p-0">
+          <div className="border-b border-line p-4">
+            <h3 className="font-semibold text-pine">Consolidado General de Docentes (70% - 30%)</h3>
+            <p className="text-xs text-ink/50">
+              Desglose institucional: 70% evaluación estudiantil y 30% autoevaluación docente.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-paper uppercase tracking-wider text-ink/60">
+                <tr>
+                  <th className="p-3">Docente</th>
+                  <th className="p-3">CADI Asignado</th>
+                  <th className="p-3">Eval. Estudiantes (70%)</th>
+                  <th className="p-3">Autoevaluación (30%)</th>
+                  <th className="p-3">Definitiva Consolidada</th>
+                  <th className="p-3">Estado</th>
+                  <th className="p-3">Plan de Mejora</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {allTeachersConsolidated.map(({ teacher: t, grade, cadi }) => (
+                  <tr key={t.id} className="hover:bg-paper/30 transition">
+                    <td className="p-3 font-semibold text-pine">{t.name}</td>
+                    <td className="p-3 text-ink/70">{cadi?.nombre || '—'}</td>
+                    <td className="p-3">
+                      {grade.studentAvg !== null ? (
+                        <span>
+                          <b className="font-mono">{grade.studentAvg.toFixed(2)}</b>
+                          <span className="text-[11px] text-ink/50"> ({grade.studentWeighted?.toFixed(2)} pts)</span>
+                        </span>
+                      ) : (
+                        <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {grade.autoAvg !== null ? (
+                        <span>
+                          <b className="font-mono">{grade.autoAvg.toFixed(2)}</b>
+                          <span className="text-[11px] text-ink/50"> ({grade.autoWeighted?.toFixed(2)} pts)</span>
+                        </span>
+                      ) : (
+                        <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
+                      )}
+                    </td>
+                    <td className="p-3 font-serif font-bold text-pine text-sm">
+                      {grade.hasEvaluations ? `${grade.finalScore.toFixed(2)} / 5.00` : '—'}
+                    </td>
+                    <td className="p-3">
+                      <span className="inline-flex rounded-full bg-paper px-2 py-0.5 text-[10px] text-ink/70 border border-line">
+                        {grade.statusLabel}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      {grade.requierePlanMejora ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                          <AlertTriangle size={10} /> Requiere plan (≤ 3.9)
+                        </span>
+                      ) : grade.hasEvaluations ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-moss/20 px-2 py-0.5 text-[10px] font-medium text-pine">
+                          <Check size={10} /> Satisfactorio (≥ 4.0)
+                        </span>
+                      ) : (
+                        <span className="text-ink/40 text-[10px]">Sin evaluar</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {!s || !s.responses.length ? (
+        <Empty text="No hay respuestas registradas para los filtros seleccionados." />
+      ) : (
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <Card className="flex flex-col justify-between bg-pine text-paper">
-            <p className="text-xs uppercase tracking-wider text-paper/60">Promedio general</p>
-            <p className="font-serif text-7xl">{s.overall.toFixed(2)}</p>
-            <p className="text-sm text-paper/60">sobre 5 · {s.responses.length} respuestas</p>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-paper/60">Promedio del Instrumento</p>
+              <p className="mt-2 font-serif text-6xl">{s.overall.toFixed(2)}</p>
+              <p className="mt-1 text-sm text-paper/60">sobre 5.00 · {s.responses.length} respuestas recibidas</p>
+            </div>
+            {consolidated && (
+              <div className="mt-4 border-t border-paper/15 pt-3 text-xs text-paper/80">
+                <p>Nota Consolidada Docente:</p>
+                <p className="font-serif text-2xl font-bold text-paper">{consolidated.finalScore.toFixed(2)} / 5.00</p>
+              </div>
+            )}
           </Card>
-          <Card className="space-y-4">{s.perQ.map((p) => <Bar key={p.question.id} label={p.question.text} value={p.avg} />)}</Card>
+          <Card className="space-y-4">
+            <h3 className="font-semibold text-pine">Promedio por Pregunta en este Instrumento</h3>
+            {s.perQ.map((p) => <Bar key={p.question.id} label={p.question.text} value={p.avg} />)}
+          </Card>
           <TextAnswers form={s.form} responses={s.responses} />
         </div>
       )}
@@ -814,14 +1011,23 @@ function Statistics() {
     { label: 'Evaluaciones', v: evals.length },
     { label: 'Respuestas totales', v: db.formResponses.length },
   ]
-  const rows = teachers.map((t) => ({ t, s: stats(db, formId, t.id) })).filter((r) => r.s?.responses.length)
   const autoDone = autos.map((a) => ({ a, n: new Set(db.formResponses.filter((r) => r.formId === a.id).map((r) => r.userId)).size }))
   const formActual = db.forms.find((f) => f.id === formId)
   const globalStats = formActual ? stats(db, formId) : null
 
+  // Consolidado 70%-30% para cada docente
+  const teachersConsolidated = teachers.map((t) => ({
+    teacher: t,
+    grade: getTeacherConsolidatedGrade(db, t.id, formActual?.period),
+    cadi: db.cadis.find((c) => c.docenteId === t.id),
+  }))
+
   return (
     <>
-      <Header title="Estadísticas y reportes" sub="Promedios, comparativos, dimensiones del MEDIT y participación." />
+      <Header
+        title="Estadísticas y reportes"
+        sub="Ponderación institucional (70% Estudiantes - 30% Autoevaluación) y dimensiones MEDIT."
+      />
       <div className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line lg:grid-cols-4">
         {kpis.map((k) => <div key={k.label} className="bg-white p-5"><p className="font-serif text-5xl text-pine">{k.v}</p><p className="text-xs uppercase tracking-wider text-ink/50">{k.label}</p></div>)}
       </div>
@@ -840,19 +1046,104 @@ function Statistics() {
         </Card>
       )}
 
+      {/* Tabla comparativa 70%-30% */}
+      <Card className="mb-6 p-0">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line p-4">
+          <div>
+            <h3 className="font-semibold text-pine">Consolidado por Docente (70% - 30%)</h3>
+            <p className="text-xs text-ink/50">Desglose de calificaciones y clasificación frente al umbral de mejora (≤ 3.9)</p>
+          </div>
+          <select className={`${input} w-auto`} value={formId} onChange={(e) => setFormId(e.target.value)}>
+            {evals.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
+          </select>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-paper uppercase tracking-wider text-ink/60">
+              <tr>
+                <th className="p-3">Docente</th>
+                <th className="p-3">CADI</th>
+                <th className="p-3">Eval. Estudiantes (70%)</th>
+                <th className="p-3">Autoevaluación (30%)</th>
+                <th className="p-3">Definitiva Consolidada</th>
+                <th className="p-3">Desempeño</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {teachersConsolidated.map(({ teacher: t, grade, cadi }) => (
+                <tr key={t.id} className="hover:bg-paper/30 transition">
+                  <td className="p-3 font-semibold text-pine">{t.name}</td>
+                  <td className="p-3 text-ink/70">{cadi?.nombre || '—'}</td>
+                  <td className="p-3">
+                    {grade.studentAvg !== null ? (
+                      <span>
+                        <b className="font-mono">{grade.studentAvg.toFixed(2)}</b>
+                        <span className="text-[11px] text-ink/50"> ({grade.studentWeighted?.toFixed(2)} pts)</span>
+                      </span>
+                    ) : (
+                      <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {grade.autoAvg !== null ? (
+                      <span>
+                        <b className="font-mono">{grade.autoAvg.toFixed(2)}</b>
+                        <span className="text-[11px] text-ink/50"> ({grade.autoWeighted?.toFixed(2)} pts)</span>
+                      </span>
+                    ) : (
+                      <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
+                    )}
+                  </td>
+                  <td className="p-3 font-serif font-bold text-pine text-sm">
+                    {grade.hasEvaluations ? `${grade.finalScore.toFixed(2)} / 5.00` : '—'}
+                  </td>
+                  <td className="p-3">
+                    {grade.requierePlanMejora ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+                        <AlertTriangle size={11} /> Requiere Plan de Mejora (≤ 3.9)
+                      </span>
+                    ) : grade.hasEvaluations ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-moss/20 px-2.5 py-1 text-[11px] font-medium text-pine">
+                        <Check size={11} /> Satisfactorio (≥ 4.0)
+                      </span>
+                    ) : (
+                      <span className="text-ink/40">Sin evaluar</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <h3 className="font-semibold">Promedio por docente</h3>
-            <select className={`${input} w-auto`} value={formId} onChange={(e) => setFormId(e.target.value)}>
-              {evals.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
-            </select>
-          </div>
-          {rows.length ? rows.map(({ t, s }) => <Bar key={t.id} label={`${t.name} (${s!.responses.length})`} value={s!.overall} />) : <Empty text="No existe información para generar estadísticas." />}
+          <h3 className="font-semibold text-pine">Participación en autoevaluación docente</h3>
+          {autoDone.length ? autoDone.map(({ a, n }) => <Bar key={a.id} label={`${a.title} · ${n}/${teachers.length} docentes`} value={n} max={Math.max(teachers.length, 1)} />) : <Empty text="No hay autoevaluaciones." />}
         </Card>
         <Card className="space-y-4">
-          <h3 className="font-semibold">Participación en autoevaluación</h3>
-          {autoDone.length ? autoDone.map(({ a, n }) => <Bar key={a.id} label={`${a.title} · ${n}/${teachers.length} docentes`} value={n} max={Math.max(teachers.length, 1)} />) : <Empty text="No hay autoevaluaciones." />}
+          <h3 className="font-semibold text-pine">Distribución de Cumplimiento</h3>
+          <div className="space-y-3 text-xs">
+            <div className="flex items-center justify-between rounded-lg bg-moss/10 p-3 text-pine">
+              <span className="font-semibold">Docentes con Desempeño Satisfactorio (≥ 4.0)</span>
+              <span className="font-serif text-lg font-bold">
+                {teachersConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore >= 4.0).length}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-red-50 p-3 text-red-700">
+              <span className="font-semibold">Docentes con Requerimiento de Mejora (≤ 3.9)</span>
+              <span className="font-serif text-lg font-bold">
+                {teachersConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore <= 3.9).length}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-paper p-3 text-ink/70">
+              <span>Docentes sin evaluaciones registradas</span>
+              <span className="font-serif text-lg font-bold">
+                {teachersConsolidated.filter((tc) => !tc.grade.hasEvaluations).length}
+              </span>
+            </div>
+          </div>
         </Card>
       </div>
     </>
@@ -862,87 +1153,350 @@ function Statistics() {
 /* ---------- REQ-18 Reporte de mejora ---------- */
 function Report() {
   const db = useDB()
-  const teachers = db.users.filter((u) => u.role === 'docente')
-  const [teacherId, setTeacherId] = useState(teachers[0]?.id ?? '')
-  const [formId, setFormId] = useState(db.forms.find((f) => f.kind === 'evaluacion')?.id ?? '')
+  const allTeachers = db.users.filter((u) => u.role === 'docente')
+  const evals = db.forms.filter((f) => f.kind === 'evaluacion')
+  const [formId, setFormId] = useState(evals[0]?.id ?? '')
+  const selectedForm = db.forms.find((f) => f.id === formId)
+  const selectedPeriod = selectedForm?.period
+
+  // Calculamos la calificación consolidada 70%-30% para cada docente en el período
+  const teachersWithGrades = allTeachers.map((t) => ({
+    teacher: t,
+    grade: getTeacherConsolidatedGrade(db, t.id, selectedPeriod),
+    cadi: db.cadis.find((c) => c.docenteId === t.id),
+  }))
+
+  // FILTRADO ESTRICTO: ÚNICAMENTE aquellos cuya calificación consolidada final sea <= 3.9
+  // Los docentes con calificación >= 4.0 NO deben figurar en la lista de requerimiento de mejora.
+  const improvementTeachers = teachersWithGrades.filter(
+    (item) => item.grade.hasEvaluations && item.grade.finalScore <= 3.9
+  )
+
+  const [teacherId, setTeacherId] = useState(improvementTeachers[0]?.teacher.id ?? '')
   const [generated, setGenerated] = useState(false)
-  const s = stats(db, formId, teacherId)
-  const auto = db.formResponses.filter((r) => r.userId === teacherId && db.forms.find((f) => f.id === r.formId)?.kind === 'autoevaluacion')
-  const teacher = db.users.find((u) => u.id === teacherId)
+
+  // Sincronizar el docente activo con la lista filtrada
+  const activeTeacherId = improvementTeachers.some((it) => it.teacher.id === teacherId)
+    ? teacherId
+    : (improvementTeachers[0]?.teacher.id ?? '')
+
+  const currentItem = improvementTeachers.find((it) => it.teacher.id === activeTeacherId)
+  const s = selectedForm && activeTeacherId ? stats(db, selectedForm.id, activeTeacherId) : null
   const cadiArticulador = db.cadis.find((c) => c.esArticulador)
+  const auto = db.formResponses.filter(
+    (r) => (r.userId === activeTeacherId || r.teacherId === activeTeacherId) &&
+      db.forms.find((f) => f.id === r.formId)?.kind === 'autoevaluacion' &&
+      (!selectedPeriod || db.forms.find((f) => f.id === r.formId)?.period === selectedPeriod)
+  )
+
+  // Dimensiones MEDIT ordenadas por puntaje crítico
+  const sortedDimensions = s && s.porDimension
+    ? Object.entries(s.porDimension).sort((a, b) => a[1].avg - b[1].avg)
+    : []
+
+  const criticalDimensions = sortedDimensions.filter(([, data]) => data.avg <= 3.9)
 
   return (
     <>
-      <Header title="Reporte de mejora docente" sub="Fortalezas, oportunidades de mejora, ponderación del 20% y dimensiones del MEDIT." />
+      <Header
+        title="Reporte de mejora docente"
+        sub="Detección y formulación de planes de mejoramiento pedagógico (Umbral institucional: Calificación consolidada ≤ 3.9)."
+      />
+
       <div className="mb-6 flex flex-wrap items-end gap-3">
-        <div className="min-w-60 flex-1"><Filters kind="evaluacion" formId={formId} setFormId={(v) => { setFormId(v); setGenerated(false) }} teacherId={teacherId} setTeacherId={(v) => { setTeacherId(v); setGenerated(false) }} /></div>
-      </div>
-      <button className={`${btn} mb-6`} onClick={() => setGenerated(true)} disabled={!teacherId}><FileText size={16} />Generar reporte</button>
-      {generated && (!s || !s.responses.length ? <Empty text="No hay datos suficientes para generar el reporte." /> : (
-        <Card className="space-y-6">
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-ochre">{s.form.title}</p>
-              <h2 className="font-serif text-4xl">{teacher?.name}</h2>
-              <p className="mt-1 text-xs text-ink/50">Docente / Gestor del conocimiento · Facultad de Ingeniería (Facatativá)</p>
-            </div>
-            <div className="text-right">
-              <p className="font-serif text-5xl text-pine">{s.overall.toFixed(2)}</p>
-              <p className="text-xs text-ink/50">{s.responses.length} evaluaciones recibidas</p>
-            </div>
-          </div>
+        <div className="w-64">
+          <Field label="Evaluación / período">
+            <select
+              className={input}
+              value={formId}
+              onChange={(e) => {
+                setFormId(e.target.value)
+                setGenerated(false)
+              }}
+            >
+              {evals.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.title} ({f.period})
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
 
-          {/* Tarjetas de Ponderación Oficial PGC (Numeral 13 Lineamientos UdeC) */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border border-line bg-pine/5 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-pine">Calificación Cuantitativa</p>
-              <p className="font-serif text-3xl font-bold text-pine">{s.overall.toFixed(2)} <span className="text-sm font-normal text-ink/50">/ 5.00</span></p>
-              <p className="mt-1 text-xs text-ink/60">Escala de evaluación institucional</p>
-            </div>
-            <div className="rounded-lg border border-ochre/30 bg-ochre/10 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ochre">Ponderación PGC (20%)</p>
-              <p className="font-serif text-3xl font-bold text-ochre">{s.pgcPonderado20.toFixed(2)} <span className="text-sm font-normal text-ink/50">/ 1.00 pts</span></p>
-              <p className="mt-1 text-xs text-ink/60">Numeral 13 Lineamientos PGC UdeC</p>
-            </div>
-            <div className="rounded-lg border border-line bg-paper p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">CADI Articulador</p>
-              <p className="font-serif text-lg font-bold text-pine">{cadiArticulador?.nombre || 'Programación II'}</p>
-              <p className="mt-1 text-xs text-ink/60">Semestre III · Ciclo I Fundamentación</p>
-            </div>
-          </div>
-
-          {/* Desglose por dimensiones MEDIT */}
-          {Object.keys(s.porDimension).length > 0 && (
-            <div className="space-y-3 rounded-lg border border-line bg-paper/50 p-4">
-              <h3 className="flex items-center gap-2 font-semibold text-pine"><Layers size={17} />Desglose por Dimensiones del MEDIT</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {Object.entries(s.porDimension).map(([dim, data]) => (
-                  <Bar key={dim} label={`${dim} (${data.count} preg.)`} value={data.avg} />
+        {/* Si existen docentes <= 3.9, mostramos el selector estrictamente filtrado */}
+        {improvementTeachers.length > 0 && (
+          <div className="flex-1 min-w-72">
+            <Field label="Docente con Requerimiento de Plan de Mejora (Consolidado ≤ 3.9)">
+              <select
+                className={input}
+                value={activeTeacherId}
+                onChange={(e) => {
+                  setTeacherId(e.target.value)
+                  setGenerated(false)
+                }}
+              >
+                {improvementTeachers.map(({ teacher, grade }) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name} — Definitiva: {grade.finalScore.toFixed(2)} / 5.00 ({grade.statusLabel})
+                  </option>
                 ))}
-              </div>
-            </div>
-          )}
+              </select>
+            </Field>
+          </div>
+        )}
+      </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-3">
-              <h3 className="font-semibold text-moss">Fortalezas detectadas (≥ 4.0)</h3>
-              {s.perQ.filter((p) => p.avg >= 4).map((p) => <Bar key={p.question.id} label={p.question.text} value={p.avg} />)}
-              {!s.perQ.some((p) => p.avg >= 4) && <p className="text-sm text-ink/50">Sin ítems con promedio ≥ 4.</p>}
-            </div>
-            <div className="space-y-3">
-              <h3 className="font-semibold text-red-700">Oportunidades de mejora (&lt; 3.5)</h3>
-              {s.perQ.filter((p) => p.avg < 3.5 && p.n).map((p) => <Bar key={p.question.id} label={p.question.text} value={p.avg} />)}
-              {!s.perQ.some((p) => p.avg < 3.5 && p.n) && <p className="text-sm text-ink/50">Sin ítems por debajo de 3.5.</p>}
-            </div>
+      {/* Si NINGÚN docente obtiene puntaje inferior a 4.0, mensaje limpio según especificación */}
+      {improvementTeachers.length === 0 ? (
+        <Card className="border-moss/40 bg-moss/5 text-center p-8">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-moss/20 text-pine">
+            <CheckCircle2 size={32} />
           </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold">Observaciones cualitativas de estudiantes</h3>
-            {s.responses.filter((r) => r.observation).map((r) => <p key={r.id} className="border-l-2 border-ochre pl-3 font-serif text-lg">“{r.observation}”</p>)}
-          </div>
-          <p className="rounded-md bg-paper p-3 text-sm">Autoevaluación del docente: {auto.length ? `respondida (${auto.length})` : 'pendiente por parte del docente.'}</p>
-          <button className={btnGhost} onClick={() => window.print()}>Imprimir / guardar PDF</button>
+          <h3 className="font-serif text-2xl font-bold text-pine">Desempeño Satisfactorio</h3>
+          <p className="mx-auto mt-2 max-w-xl text-sm font-medium text-pine/90">
+            No hay docentes que requieran plan de mejora pedagógica en este período (todos los promedios son iguales o superiores a 4.0).
+          </p>
+          <p className="mx-auto mt-1 max-w-lg text-xs text-ink/60">
+            Los docentes evaluados en este ciclo académico cumplen con los estándares de excelencia del MEDIT y no ameritan apertura de plan de intervención.
+          </p>
         </Card>
-      ))}
+      ) : (
+        <>
+          <button
+            className={`${btn} mb-6`}
+            onClick={() => setGenerated(true)}
+            disabled={!activeTeacherId}
+          >
+            <FileText size={16} />
+            Generar reporte de mejora
+          </button>
+
+          {generated && currentItem && (
+            <Card className="space-y-6">
+              {/* Encabezado del docente en plan de mejora */}
+              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                      ⚠️ Plan de Mejora Pedagógica Requerido
+                    </span>
+                    <span className="text-xs uppercase tracking-wider text-ochre">
+                      {selectedForm?.period || 'Período Activo'}
+                    </span>
+                  </div>
+                  <h2 className="mt-2 font-serif text-4xl text-pine">{currentItem.teacher.name}</h2>
+                  <p className="mt-1 text-xs text-ink/60">
+                    Docente / Gestor del conocimiento · {currentItem.teacher.sede || 'Facultad de Ingeniería'} · {currentItem.teacher.carrera}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Nota Final Consolidada</p>
+                  <p className="font-serif text-5xl font-bold text-red-600">
+                    {currentItem.grade.finalScore.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-ink/50">sobre 5.00 ({currentItem.grade.statusLabel})</p>
+                </div>
+              </div>
+
+              {/* Desglose oficial de ponderación: 70% Estudiantes - 30% Autoevaluación */}
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="rounded-lg border border-line bg-pine/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-pine">Eval. Estudiantes (70%)</p>
+                  <p className="mt-2 font-serif text-2xl font-bold text-pine">
+                    {currentItem.grade.studentAvg !== null ? (
+                      <>
+                        {currentItem.grade.studentAvg.toFixed(2)}
+                        <span className="text-xs font-normal text-ink/50"> / 5.00</span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-medium text-ochre">Pendiente</span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-ink/60">
+                    {currentItem.grade.studentWeighted !== null
+                      ? `Aporte: ${currentItem.grade.studentWeighted.toFixed(2)} / 3.50 pts`
+                      : 'Pendiente de respuestas'}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-line bg-ochre/10 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-ochre">Autoevaluación (30%)</p>
+                  <p className="mt-2 font-serif text-2xl font-bold text-ochre">
+                    {currentItem.grade.autoAvg !== null ? (
+                      <>
+                        {currentItem.grade.autoAvg.toFixed(2)}
+                        <span className="text-xs font-normal text-ink/50"> / 5.00</span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-medium text-ochre">Pendiente</span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-ink/60">
+                    {currentItem.grade.autoWeighted !== null
+                      ? `Aporte: ${currentItem.grade.autoWeighted.toFixed(2)} / 1.50 pts`
+                      : 'Autoevaluación pendiente'}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-red-300 bg-red-50/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-red-700">Definitiva Consolidada</p>
+                  <p className="mt-2 font-serif text-2xl font-bold text-red-700">
+                    {currentItem.grade.finalScore.toFixed(2)}
+                    <span className="text-xs font-normal text-ink/50"> / 5.00</span>
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {currentItem.grade.finalScore <= 3.9 ? 'Calificación ≤ 3.9 (Crítica)' : 'Satisfactoria'}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-line bg-paper p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Ponderación PGC (20%)</p>
+                  <p className="mt-2 font-serif text-2xl font-bold text-pine">
+                    {(currentItem.grade.finalScore * 0.20).toFixed(2)}
+                    <span className="text-xs font-normal text-ink/50"> / 1.00 pts</span>
+                  </p>
+                  <p className="mt-1 text-xs text-ink/60">Numeral 13 Lineamientos PGC</p>
+                </div>
+              </div>
+
+              {/* SECCIÓN CRÍTICA: Dimensiones MEDIT con puntajes críticos (<= 3.9) */}
+              <div className="space-y-4 rounded-lg border-2 border-red-200 bg-red-50/30 p-5">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="text-red-600" size={20} />
+                  <div>
+                    <h3 className="font-semibold text-red-900">
+                      Dimensiones MEDIT Críticas (Prioridad de Compromisos de Mejora)
+                    </h3>
+                    <p className="text-xs text-red-700/80">
+                      Dimensiones evaluadas con puntaje promedio menor o igual a 3.9 que requieren intervención pedagógica prioritaria.
+                    </p>
+                  </div>
+                </div>
+
+                {criticalDimensions.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {criticalDimensions.map(([dim, data]) => (
+                      <div key={dim} className="rounded-md border border-red-200 bg-white p-4 shadow-xs">
+                        <div className="flex items-baseline justify-between">
+                          <span className="font-semibold text-sm text-red-900">{dim}</span>
+                          <span className="rounded bg-red-100 px-2 py-0.5 font-mono text-xs font-bold text-red-700">
+                            {data.avg.toFixed(2)} / 5.00
+                          </span>
+                        </div>
+                        <div className="mt-2 h-2 w-full rounded-full bg-paper">
+                          <div
+                            className="h-2 rounded-full bg-red-600"
+                            style={{ width: `${(data.avg / 5) * 100}%` }}
+                          />
+                        </div>
+                        <p className="mt-2 text-[11px] text-ink/60">
+                          {data.count} preguntas evaluadas en esta dimensión.
+                        </p>
+                        <div className="mt-2 rounded bg-red-50 p-2 text-[11px] text-red-800">
+                          <b>Recomendación MEDIT:</b> Formular compromisos formativos específicos en metodologías activas y acompañamiento tutorial para esta dimensión.
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-ink/60">
+                    Las dimensiones individuales se encuentran homogéneas. Revisar oportunidades específicas por pregunta.
+                  </p>
+                )}
+              </div>
+
+              {/* Desglose general por Dimensiones MEDIT */}
+              {sortedDimensions.length > 0 && (
+                <div className="space-y-3 rounded-lg border border-line bg-paper/50 p-4">
+                  <h3 className="flex items-center gap-2 font-semibold text-pine">
+                    <Layers size={17} />Desglose Completo por Dimensiones del MEDIT
+                  </h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {sortedDimensions.map(([dim, data]) => (
+                      <Bar
+                        key={dim}
+                        label={`${dim} ${data.avg <= 3.9 ? '⚠️ (Crítico)' : ''} (${data.count} preg.)`}
+                        value={data.avg}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fortalezas y Oportunidades de mejora */}
+              {s && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-moss">Fortalezas detectadas (≥ 4.0)</h3>
+                    {s.perQ.filter((p) => p.avg >= 4).map((p) => (
+                      <Bar key={p.question.id} label={p.question.text} value={p.avg} />
+                    ))}
+                    {!s.perQ.some((p) => p.avg >= 4) && (
+                      <p className="text-sm text-ink/50">Sin ítems con promedio ≥ 4.0.</p>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-red-700">Oportunidades de mejora (&lt; 3.5)</h3>
+                    {s.perQ.filter((p) => p.avg < 3.5 && p.n > 0).map((p) => (
+                      <Bar key={p.question.id} label={p.question.text} value={p.avg} />
+                    ))}
+                    {!s.perQ.some((p) => p.avg < 3.5 && p.n > 0) && (
+                      <p className="text-sm text-ink/50">Sin ítems por debajo de 3.5.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Observaciones cualitativas */}
+              {s && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-pine">Observaciones cualitativas de estudiantes</h3>
+                  {s.responses.filter((r) => r.observation).map((r) => (
+                    <blockquote key={r.id} className="border-l-2 border-ochre pl-3 font-serif text-lg">
+                      “{r.observation}”
+                    </blockquote>
+                  ))}
+                  {!s.responses.some((r) => r.observation) && (
+                    <p className="text-xs text-ink/50">Sin observaciones de texto en este período.</p>
+                  )}
+                </div>
+              )}
+
+              <p className="rounded-md bg-paper p-3 text-sm">
+                Autoevaluación del docente: {auto.length ? `Diligenciada (${auto.length} registro)` : 'Pendiente por parte del docente.'}
+              </p>
+
+              {/* Formato de formulación de compromisos de mejora */}
+              <div className="rounded-lg border border-line bg-white p-5 space-y-3">
+                <h3 className="font-serif text-xl text-pine">Formulación de Compromisos de Mejora Pedagógica</h3>
+                <p className="text-xs text-ink/60">
+                  De acuerdo con los lineamientos del MEDIT y los resultados críticos obtenidos (≤ 3.9), el docente y la coordinación establecen los siguientes compromisos:
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                  <div className="rounded border border-line p-3 bg-paper/40">
+                    <b>Dimensión(es) a intervenir:</b>
+                    <p className="mt-1 text-ink/80">
+                      {criticalDimensions.length > 0
+                        ? criticalDimensions.map(([d]) => d).join(', ')
+                        : 'Actualización metodológica general'}
+                    </p>
+                  </div>
+                  <div className="rounded border border-line p-3 bg-paper/40">
+                    <b>Acciones pedagógicas recomendadas:</b>
+                    <p className="mt-1 text-ink/80">
+                      Participación en talleres de pedagogía activa del MEDIT, rediseño de rúbricas de evaluación de CADI y retroalimentación intermedia de clase.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button className={btnGhost} onClick={() => window.print()}>
+                Imprimir / guardar PDF
+              </button>
+            </Card>
+          )}
+        </>
+      )}
     </>
   )
 }
@@ -1980,9 +2534,10 @@ function DirectivoDashboard() {
               <tr>
                 <th className="p-4">Posición / Docente</th>
                 <th>CADI / Asignatura</th>
-                <th>Evaluaciones</th>
-                <th>Promedio Histórico</th>
-                <th>Reputación</th>
+                <th>Eval. Estudiantes (70%)</th>
+                <th>Autoevaluación (30%)</th>
+                <th>Definitiva Consolidada</th>
+                <th>Reputación / Estado</th>
                 <th className="p-4">Desempeño</th>
               </tr>
             </thead>
@@ -2015,19 +2570,51 @@ function DirectivoDashboard() {
                     )}
                   </td>
                   <td>
-                    <span className="font-semibold">{item.totalResponses}</span>
-                    <span className="text-ink/50"> recibidas</span>
+                    {item.consolidated.studentAvg !== null ? (
+                      <div>
+                        <span className="font-semibold font-mono text-sm">{item.consolidated.studentAvg.toFixed(2)}</span>
+                        <span className="text-[11px] text-ink/50"> ({item.consolidated.studentWeighted?.toFixed(2)} pts)</span>
+                        <p className="text-[10px] text-ink/40">{item.consolidated.studentResponsesCount} respuestas</p>
+                      </div>
+                    ) : (
+                      <span className="rounded bg-ochre/15 px-2 py-0.5 text-[11px] font-medium text-ochre">Pendiente</span>
+                    )}
                   </td>
                   <td>
-                    <span className="font-serif text-lg font-bold text-pine">
-                      {item.avg ? item.avg.toFixed(2) : '—'}
-                    </span>
-                    <span className="text-[11px] text-ink/50"> / 5.00</span>
+                    {item.consolidated.autoAvg !== null ? (
+                      <div>
+                        <span className="font-semibold font-mono text-sm">{item.consolidated.autoAvg.toFixed(2)}</span>
+                        <span className="text-[11px] text-ink/50"> ({item.consolidated.autoWeighted?.toFixed(2)} pts)</span>
+                        <p className="text-[10px] text-ink/40">Diligenciada</p>
+                      </div>
+                    ) : (
+                      <span className="rounded bg-ochre/15 px-2 py-0.5 text-[11px] font-medium text-ochre">Pendiente</span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="flex items-baseline gap-1">
+                      <span className="font-serif text-lg font-bold text-pine">
+                        {item.consolidated.hasEvaluations ? item.consolidated.finalScore.toFixed(2) : '—'}
+                      </span>
+                      <span className="text-[11px] text-ink/50">/ 5.00</span>
+                    </div>
+                    {item.consolidated.requierePlanMejora ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                        <AlertTriangle size={10} /> Plan de mejora (≤ 3.9)
+                      </span>
+                    ) : item.consolidated.hasEvaluations ? (
+                      <span className="text-[10px] text-moss font-medium">✓ Satisfactorio</span>
+                    ) : (
+                      <span className="text-[10px] text-ink/40">Sin evaluar</span>
+                    )}
                   </td>
                   <td>
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs ${item.badgeClass}`}>
                       {item.label}
                     </span>
+                    {item.consolidated.isProvisional && (
+                      <p className="text-[10px] text-ochre font-medium mt-0.5">Nota Provisional</p>
+                    )}
                   </td>
                   <td className="p-4 w-44">
                     <div className="w-full">
