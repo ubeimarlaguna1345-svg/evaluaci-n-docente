@@ -1,6 +1,6 @@
 import express from 'express'
 import cors from 'cors'
-import { apiRouter } from '../server/api.js'
+import { apiRouter } from '../backend/routes/index.js'
 
 export const app = express()
 

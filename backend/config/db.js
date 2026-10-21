@@ -5,7 +5,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Cargar variables de entorno desde .env.local y luego .env
-dotenv.config({ path: '.env.local' })
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
@@ -63,10 +64,12 @@ pool.on('error', (err) => {
 export async function initSchema() {
   try {
     const candidatePaths = [
-      path.resolve(__dirname, '..', 'database', 'schema.sql'),
+      path.resolve(__dirname, '..', '..', 'database', 'schema.sql'),
       path.resolve(process.cwd(), 'database', 'schema.sql'),
-      path.resolve(__dirname, '..', 'database', 'schema.postgres.sql'),
+      path.resolve(process.cwd(), '..', 'database', 'schema.sql'),
+      path.resolve(__dirname, '..', '..', 'database', 'schema.postgres.sql'),
       path.resolve(process.cwd(), 'database', 'schema.postgres.sql'),
+      path.resolve(process.cwd(), '..', 'database', 'schema.postgres.sql'),
     ]
     const schemaPath = candidatePaths.find((p) => fs.existsSync(p))
     if (schemaPath) {
@@ -85,4 +88,3 @@ export async function initSchema() {
     return false
   }
 }
-

@@ -1,4 +1,9 @@
 import { useEffect, useState } from 'react'
+import {
+  usuarioService,
+  evaluacionService,
+  reporteService,
+} from './services'
 
 export type Role = 'admin' | 'directivo' | 'coordinador' | 'docente' | 'estudiante'
 export type AnswerType = 'escala' | 'seleccion' | 'texto'
@@ -38,12 +43,12 @@ export const OBS_LIMIT = 500
 
 export const MEDIT_DIMENSIONES = [
   'Pedagógica y Didáctica',
-  'Disciplinar e Investigativa',
-  'Relacional y Comunicación',
-  'Ética y Transmoderna',
-] as const
+  'Disciplina e Investigativa',
+  'Evaluativa y Curricular',
+  'Interacción Social y Ética',
+  'Gestión y Formación Continua',
+]
 
-// Estado inicial en cero (Inicio limpio sin datos quemados / mock data)
 let state: DB = {
   users: [],
   cadis: [],
@@ -59,19 +64,15 @@ let state: DB = {
 const subs = new Set<() => void>()
 const notify = () => subs.forEach((fn) => fn())
 
-/** Inicializa la conexión y carga los datos desde PostgreSQL real */
+/** Inicializa la conexión y carga los datos desde PostgreSQL real a través de reporteService */
 export async function initDB() {
   state.loading = true
   notify()
 
   try {
-    const res = await fetch('/api/bootstrap')
-    if (!res.ok) {
-      throw new Error(`Error HTTP ${res.status}: Fallo de conexión con la API de PostgreSQL`)
-    }
-    const data = await res.json()
-    if (!data.ok) {
-      throw new Error(data.message || 'No fue posible conectar con PostgreSQL.')
+    const data = (await reporteService.getBootstrap()) as DB & { ok?: boolean }
+    if (data.ok === false && data.connected === false) {
+      throw new Error(data.error || 'No fue posible conectar con PostgreSQL.')
     }
 
     state = {
@@ -98,16 +99,10 @@ export async function initDB() {
   }
 }
 
-/** Acciones que interactúan directamente con la base de datos PostgreSQL */
+/** Acciones centralizadas que delegan en los servicios HTTP de la capa de API */
 export const actions = {
   createUser: async (u: Omit<User, 'id' | 'active'>) => {
-    const res = await fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(u),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Error al crear usuario en PostgreSQL.')
+    const data = await usuarioService.createUser(u)
     if (data.user) {
       state.users = [...state.users, data.user]
       notify()
@@ -117,162 +112,84 @@ export const actions = {
   },
 
   deactivateUser: async (id: string) => {
-    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || 'Error al desactivar usuario en PostgreSQL.')
-    }
+    await usuarioService.deleteUser(id)
     state.users = state.users.map((u) => (u.id === id ? { ...u, active: false } : u))
     notify()
   },
 
   createForm: async (f: Omit<Form, 'id'>) => {
-    const res = await fetch('/api/forms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(f),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Error al guardar formulario en PostgreSQL.')
+    await evaluacionService.createForm(f)
     await initDB()
   },
 
   updateForm: async (id: string, f: Omit<Form, 'id'>) => {
-    const res = await fetch(`/api/forms/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(f),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.message || 'Error al actualizar formulario en PostgreSQL.')
+    await evaluacionService.updateForm(id, f)
     await initDB()
   },
 
   deleteForm: async (id: string) => {
-    const res = await fetch(`/api/forms/${id}`, {
-      method: 'DELETE',
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.message || 'Error al eliminar formulario en PostgreSQL.')
+    await evaluacionService.deleteForm(id)
     await initDB()
   },
 
   setFormDates: async (id: string, start: string, end: string) => {
-    const res = await fetch(`/api/forms/${id}/dates`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start, end }),
-    })
-    if (!res.ok) throw new Error('Error al actualizar fechas en PostgreSQL.')
+    await evaluacionService.setFormDates(id, start, end)
     state.forms = state.forms.map((f) => (f.id === id ? { ...f, start, end } : f))
     notify()
   },
 
   respondForm: async (r: Omit<FormResponse, 'id' | 'date'>) => {
-    const res = await fetch('/api/form-responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(r),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Error al registrar evaluación en PostgreSQL.')
+    await evaluacionService.respondForm(r)
     await initDB()
   },
 
   createCADI: async (c: Omit<CADI, 'id'>) => {
-    const res = await fetch('/api/cadis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(c),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Error al registrar CADI en PostgreSQL.')
+    await evaluacionService.createCADI(c)
     await initDB()
   },
 
   updateCADI: async (id: string, c: Partial<Omit<CADI, 'id'>>) => {
-    const res = await fetch(`/api/cadis/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(c),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.message || 'Error al actualizar CADI en PostgreSQL.')
+    await evaluacionService.updateCADI(id, c)
     await initDB()
   },
 
   deleteCADI: async (id: string) => {
-    const res = await fetch(`/api/cadis/${id}`, {
-      method: 'DELETE',
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.message || 'Error al eliminar CADI en PostgreSQL.')
+    await evaluacionService.deleteCADI(id)
     await initDB()
   },
 
   assignCadiTeacher: async (cadiId: string, docenteId: string | null) => {
-    const res = await fetch(`/api/cadis/${cadiId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ docenteId }),
-    })
-    if (!res.ok) throw new Error('Error al asignar docente en PostgreSQL.')
+    await evaluacionService.assignCadiTeacher(cadiId, docenteId)
     state.cadis = state.cadis.map((c) => (c.id === cadiId ? { ...c, docenteId: docenteId || undefined } : c))
     notify()
   },
 
   createFeedback: async (b: (Omit<Feedback, 'id' | 'createdAt'> & { questions?: Question[] }) | { teacherId: string; course: string; questions: Question[]; start: string; end: string }) => {
-    const res = await fetch('/api/feedbacks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(b),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Error al crear retroalimentación en PostgreSQL.')
+    await evaluacionService.createFeedback(b)
     await initDB()
   },
 
   respondFeedback: async (feedbackId: string, studentId: string, value: string) => {
-    const res = await fetch('/api/feedback-responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feedbackId, studentId, value }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Error al responder retroalimentación en PostgreSQL.')
+    await evaluacionService.respondFeedback(feedbackId, studentId, value)
     await initDB()
   },
 }
 
 /** Consola SQL PostgreSQL: ejecuta cualquier consulta contra PostgreSQL real */
 export async function execRaw(query: string): Promise<{ columns: string[]; values: unknown[][] }> {
-  const res = await fetch('/api/sql', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
-  })
-  const data = await res.json()
-  if (!res.ok || !data.ok) {
-    throw new Error(data.message || 'Error al ejecutar consulta en PostgreSQL.')
-  }
-  // Si fue una mutación (INSERT, UPDATE, DELETE), sincronizamos el estado reactivo
-  if (!/^\s*select/i.test(query)) {
-    initDB()
-  }
-  return {
-    columns: data.columns || [],
-    values: data.values || [],
-  }
+  const data = await reporteService.executeSql(query)
+  return { columns: data.columns || [], values: data.values || [] }
 }
 
+/** Hook reactivo para consumir el estado global */
 export function useDB() {
-  const [, force] = useState(0)
+  const [val, setVal] = useState(state)
   useEffect(() => {
-    const s = () => force((n) => n + 1)
-    subs.add(s)
-    return () => { subs.delete(s) }
+    const fn = () => setVal({ ...state })
+    subs.add(fn)
+    return () => { subs.delete(fn) }
   }, [])
-  return state
+  return val
 }
 
 export const isOpen = (start: string, end: string) => {
@@ -331,28 +248,26 @@ export function stats(db: DB, formId: string, teacherId?: string) {
   return { form, responses: rs, perQ, overall, pgcPonderado20, porDimension, consolidatedGrade }
 }
 
+
 export interface TeacherGradeConsolidated {
   teacherId: string
   studentAvg: number | null
   studentWeighted: number | null // Ponderado 70% (factor 0.70)
   autoAvg: number | null
-  autoWeighted: number | null    // Ponderado 30% (factor 0.30)
-  finalScore: number             // Nota final consolidada o provisional sobre 5.0
+  autoWeighted: number | null // Ponderado 30% (factor 0.30)
+  finalScore: number // Suma ponderada con precisión a 2 decimales
   hasEvaluations: boolean
   isProvisional: boolean
   status: 'completo' | 'pendiente_autoevaluacion' | 'pendiente_estudiantes' | 'sin_evaluar'
   statusLabel: string
-  requierePlanMejora: boolean    // true únicamente si hasEvaluations y finalScore <= 3.9
+  requierePlanMejora: boolean // True si finalScore <= 3.9
   studentResponsesCount: number
   autoResponsesCount: number
 }
 
 /**
- * Función pura que calcula la nota consolidada aplicando la ponderación académica:
- * - Evaluación Docente (Estudiantes): 70% (factor 0.70)
- * - Autoevaluación Docente: 30% (factor 0.30)
- * Fórmula: Nota Final Consolidada = (Promedio Estudiantes * 0.70) + (Promedio Autoevaluación * 0.30)
- * Manejo de casos incompletos: nota provisional sobre escala 5.0 conservando dos decimales.
+ * Calcula la calificación consolidada aplicando la ponderación institucional:
+ * 70% Evaluación de Estudiantes + 30% Autoevaluación Docente
  */
 export function calculateConsolidatedGrade(
   studentAvg: number | null,
@@ -455,7 +370,6 @@ export function getTeacherConsolidatedGrade(
   teacherId: string,
   period?: string
 ): TeacherGradeConsolidated {
-  // 1. Evaluaciones de estudiantes (formularios tipo 'evaluacion')
   const evalForms = db.forms.filter(
     (f) => f.kind === 'evaluacion' && (!period || f.period === period)
   )
@@ -483,7 +397,6 @@ export function getTeacherConsolidatedGrade(
     ? Number((studentValues.reduce((a, b) => a + b, 0) / studentValues.length).toFixed(2))
     : null
 
-  // 2. Autoevaluaciones del docente (formularios tipo 'autoevaluacion')
   const autoForms = db.forms.filter(
     (f) => f.kind === 'autoevaluacion' && (!period || f.period === period)
   )
@@ -713,4 +626,3 @@ export function getStudentTeacherEvaluationStatus(
     }
   }
 }
-

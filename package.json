@@ -4,11 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "server": "node server/index.js",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run"
+    "dev": "vite frontend --host 0.0.0.0",
+    "dev:backend": "node backend/server.js",
+    "server": "node backend/server.js",
+    "build": "vite build frontend",
+    "preview": "vite preview frontend --host 0.0.0.0",
+    "test": "vitest run --dir frontend"
   },
   "keywords": [],
   "author": "",
