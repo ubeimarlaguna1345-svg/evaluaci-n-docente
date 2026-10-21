@@ -14,13 +14,11 @@ import {
 
 export const evaluacionRoutes = express.Router()
 
-// CADIs
 evaluacionRoutes.post('/cadis', createCadi)
 evaluacionRoutes.put('/cadis/:id', updateCadi)
 evaluacionRoutes.patch('/cadis/:id', updateCadi)
 evaluacionRoutes.delete('/cadis/:id', deleteCadi)
 
-// Formularios de evaluación
 evaluacionRoutes.post('/forms', createForm)
 evaluacionRoutes.put('/forms/:id', updateForm)
 evaluacionRoutes.patch('/forms/:id', updateForm)
@@ -30,9 +28,7 @@ evaluacionRoutes.delete('/forms/:id', deleteForm)
 evaluacionRoutes.delete('/evaluaciones/:id', deleteForm)
 evaluacionRoutes.patch('/forms/:id/dates', updateFormDates)
 
-// Respuestas a evaluaciones
 evaluacionRoutes.post('/form-responses', createFormResponse)
 
-// Retroalimentaciones de clase
 evaluacionRoutes.post('/feedbacks', createFeedback)
 evaluacionRoutes.post('/feedback-responses', createFeedbackResponse)

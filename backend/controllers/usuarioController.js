@@ -8,10 +8,6 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload))
 }
 
-/**
- * Crear nuevo usuario en PostgreSQL
- * POST /api/users
- */
 export async function createUser(req, res) {
   const { name, email, password, role, sede, carrera } = req.body || {}
   if (!name?.trim() || !email?.trim() || !password || !role) {
@@ -48,10 +44,6 @@ export async function createUser(req, res) {
   }
 }
 
-/**
- * Desactivar / dar de baja usuario
- * DELETE /api/users/:id
- */
 export async function deleteUser(req, res) {
   const { id } = req.params
   try {

@@ -62,7 +62,6 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       return
     }
 
-    // Validación del rol seleccionado
     if (u.role !== selectedRole) {
       setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
       return

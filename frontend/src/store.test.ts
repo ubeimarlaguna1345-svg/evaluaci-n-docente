@@ -1,28 +1,14 @@
-/**
- * Pruebas unitarias – Objetivo Específico 4 & Requisitos Académicos UdeC
- *
- * Validan la lógica pura del sistema SIARD-UdeC:
- * 1. Ponderación consolidada 70% Estudiantes - 30% Autoevaluación
- * 2. Filtrado estricto de Reporte de Mejora (Umbral <= 3.9)
- * 3. Precisión a dos decimales (toFixed(2))
- * 4. Control de anonimato y prevención de doble voto
- * 5. Sistema de reputación institucional y ponderación PGC 20%
- */
 import { describe, it, expect } from 'vitest'
-import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, getStudentTeacherEvaluationStatus, type DB, type Form, type User } from './store'
-
-/* ---------- Helpers de lógica pura del sistema ---------- */
+import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, getStudentTeacherEvaluationStatus, type DB, type Form } from './store'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
-/** Función pura de cálculo de promedios con precisión a dos decimales */
 export function calcularPromedio(notas: number[]): number {
   if (!notas.length) return 0
   const suma = notas.reduce((acc, curr) => acc + curr, 0)
   return Number((suma / notas.length).toFixed(2))
 }
 
-/** Sistema de control de anonimato y prevención de doble voto */
 export interface RegistroVoto {
   formularioId: string
   usuarioId: string
@@ -32,7 +18,6 @@ export interface RegistroVoto {
 export class GestorEvaluaciones {
   private votos: RegistroVoto[] = []
 
-  /** Registra un voto asegurando la restricción UNIQUE (formularioId, usuarioId, docenteId) */
   registrarVoto(formularioId: string, usuarioId: string, docenteId: string): { ok: boolean; error?: string } {
     if (this.haVotado(formularioId, usuarioId, docenteId)) {
       throw new Error('UNIQUE constraint failed: el estudiante ya evaluó a este docente en este formulario')
@@ -41,7 +26,6 @@ export class GestorEvaluaciones {
     return { ok: true }
   }
 
-  /** Detecta si un estudiante ya evaluó a un docente para bloquear el doble voto */
   haVotado(formularioId: string, usuarioId: string, docenteId: string): boolean {
     return this.votos.some(
       (v) => v.formularioId === formularioId && v.usuarioId === usuarioId && v.docenteId === docenteId
@@ -53,7 +37,6 @@ export class GestorEvaluaciones {
   }
 }
 
-/** Lógica de reputación docente según umbrales institucionales */
 export function clasificarReputacion(avg: number, totalResponses: number) {
   if (totalResponses === 0) return { label: 'Sin evaluar', isTop: false }
   if (avg >= 4.5) return { label: '⭐ Destacado', isTop: true }
@@ -62,30 +45,23 @@ export function clasificarReputacion(avg: number, totalResponses: number) {
   return { label: '⚠️ En Seguimiento', isTop: false }
 }
 
-/* ================================================================================
-   1. Cálculo de promedios de calificación con precisión a dos decimales
-   ================================================================================ */
-
 describe('Cálculo de promedios de calificación con precisión a dos decimales', () => {
   it('debe calcular correctamente el promedio de notas [5, 4, 3] = 4.00', () => {
     const notas = [5, 4, 3]
-    const resultado = calcularPromedio(notas)
-    expect(resultado).toBe(4.00)
+    expect(calcularPromedio(notas)).toBe(4.00)
   })
 
-  it('debe calcular el promedio general conservando dos decimales', () => {
-    const promediosPreguntas = [5.0, 3.0]
-    const promedioGeneral = calcularPromedio(promediosPreguntas)
-    expect(promedioGeneral).toBe(4.00)
+  it('debe redondear a 2 decimales para [4, 4, 5] = 4.33', () => {
+    const notas = [4, 4, 5]
+    expect(calcularPromedio(notas)).toBe(4.33)
   })
 
-  it('debe devolver 0 si la lista de notas está vacía', () => {
+  it('debe retornar 0 cuando la lista de notas está vacía', () => {
     expect(calcularPromedio([])).toBe(0)
   })
 
-  it('debe redondear adecuadamente notas con decimales a toFixed(2)', () => {
-    const notas = [4.5, 4.2, 4.8]
-    expect(calcularPromedio(notas)).toBe(4.50)
+  it('debe calcular nota única correctamente', () => {
+    expect(calcularPromedio([4.8])).toBe(4.80)
   })
 
   it('debe calcular promedio con precisión de dos decimales para [4.33, 4.67] = 4.50', () => {
@@ -94,15 +70,10 @@ describe('Cálculo de promedios de calificación con precisión a dos decimales'
   })
 })
 
-/* ================================================================================
-   2. Ponderación de Calificación Consolidada (70% - 30%)
-   ================================================================================ */
-
 describe('Ponderación de Calificación Consolidada (70% Estudiantes - 30% Autoevaluación)', () => {
   it('debe calcular exactamente la fórmula (Estudiantes * 0.70) + (Autoevaluación * 0.30)', () => {
     const studentAvg = 4.0
     const autoAvg = 5.0
-    // (4.0 * 0.70) + (5.0 * 0.30) = 2.80 + 1.50 = 4.30
     const res = calculateConsolidatedGrade(studentAvg, autoAvg)
     expect(res.studentWeighted).toBe(2.80)
     expect(res.autoWeighted).toBe(1.50)
@@ -132,10 +103,10 @@ describe('Ponderación de Calificación Consolidada (70% Estudiantes - 30% Autoe
     const autoAvg = null
     const res = calculateConsolidatedGrade(studentAvg, autoAvg)
     expect(res.studentAvg).toBe(3.80)
-    expect(res.studentWeighted).toBe(2.66) // 3.80 * 0.70
+    expect(res.studentWeighted).toBe(2.66)
     expect(res.autoAvg).toBeNull()
     expect(res.autoWeighted).toBeNull()
-    expect(res.finalScore).toBe(3.80) // Nota provisional sobre 5.0 sin alterar escala
+    expect(res.finalScore).toBe(3.80)
     expect(res.isProvisional).toBe(true)
     expect(res.status).toBe('pendiente_autoevaluacion')
     expect(res.requierePlanMejora).toBe(true)
@@ -148,8 +119,8 @@ describe('Ponderación de Calificación Consolidada (70% Estudiantes - 30% Autoe
     expect(res.studentAvg).toBeNull()
     expect(res.studentWeighted).toBeNull()
     expect(res.autoAvg).toBe(4.20)
-    expect(res.autoWeighted).toBe(1.26) // 4.20 * 0.30
-    expect(res.finalScore).toBe(4.20) // Nota provisional sobre 5.0
+    expect(res.autoWeighted).toBe(1.26)
+    expect(res.finalScore).toBe(4.20)
     expect(res.isProvisional).toBe(true)
     expect(res.status).toBe('pendiente_estudiantes')
     expect(res.requierePlanMejora).toBe(false)
@@ -164,19 +135,12 @@ describe('Ponderación de Calificación Consolidada (70% Estudiantes - 30% Autoe
   })
 
   it('debe conservar precisión a dos decimales con valores fraccionarios', () => {
-    // 3.83 * 0.70 = 2.681 -> 2.68
-    // 4.17 * 0.30 = 1.251 -> 1.25
-    // 2.681 + 1.251 = 3.932 -> 3.93
     const res = calculateConsolidatedGrade(3.83, 4.17)
     expect(res.finalScore).toBe(3.93)
     expect(res.studentWeighted).toBe(2.68)
     expect(res.autoWeighted).toBe(1.25)
   })
 })
-
-/* ================================================================================
-   3. Filtrado estricto en "Reporte de mejora" (Umbral <= 3.9)
-   ================================================================================ */
 
 describe('Filtrado estricto en "Reporte de mejora" (Umbral <= 3.9)', () => {
   it('docente con nota final exacta de 3.90 DEBE figurar en el requerimiento de plan de mejora', () => {
@@ -186,13 +150,13 @@ describe('Filtrado estricto en "Reporte de mejora" (Umbral <= 3.9)', () => {
   })
 
   it('docente con nota final de 3.85 DEBE figurar en el requerimiento de plan de mejora', () => {
-    const res = calculateConsolidatedGrade(4.0, 3.5) // (4.0 * 0.70) + (3.5 * 0.30) = 2.80 + 1.05 = 3.85
+    const res = calculateConsolidatedGrade(4.0, 3.5)
     expect(res.finalScore).toBe(3.85)
     expect(res.requierePlanMejora).toBe(true)
   })
 
   it('docente con nota final frontera de 4.00 NO debe figurar en plan de mejora (es satisfactorio)', () => {
-    const res = calculateConsolidatedGrade(4.0, 4.0) // 4.00
+    const res = calculateConsolidatedGrade(4.0, 4.0)
     expect(res.finalScore).toBe(4.00)
     expect(res.requierePlanMejora).toBe(false)
   })
@@ -209,10 +173,6 @@ describe('Filtrado estricto en "Reporte de mejora" (Umbral <= 3.9)', () => {
   })
 })
 
-/* ================================================================================
-   4. Control de anonimato y bloqueo de doble voto
-   ================================================================================ */
-
 describe('Control de anonimato y bloqueo de doble voto', () => {
   it('debe impedir que un estudiante evalúe dos veces al mismo docente en el mismo formulario', () => {
     const gestor = new GestorEvaluaciones()
@@ -220,10 +180,7 @@ describe('Control de anonimato y bloqueo de doble voto', () => {
     const estId = uid()
     const docId = uid()
 
-    // Primera evaluación exitosa
     expect(() => gestor.registrarVoto(formId, estId, docId)).not.toThrow()
-
-    // Segundo voto: debe lanzar error de restricción de integridad (UNIQUE constraint)
     expect(() => gestor.registrarVoto(formId, estId, docId)).toThrow(
       /el estudiante ya evaluó a este docente/
     )
@@ -235,10 +192,7 @@ describe('Control de anonimato y bloqueo de doble voto', () => {
     const estId = uid()
     const docId = uid()
 
-    // Antes de votar
     expect(gestor.haVotado(formId, estId, docId)).toBe(false)
-
-    // Después de votar
     gestor.registrarVoto(formId, estId, docId)
     expect(gestor.haVotado(formId, estId, docId)).toBe(true)
   })
@@ -252,7 +206,6 @@ describe('Control de anonimato y bloqueo de doble voto', () => {
 
     expect(() => gestor.registrarVoto(formId, estA, docId)).not.toThrow()
     expect(() => gestor.registrarVoto(formId, estB, docId)).not.toThrow()
-
     expect(gestor.totalVotosDocente(formId, docId)).toBe(2)
   })
 
@@ -265,15 +218,10 @@ describe('Control de anonimato y bloqueo de doble voto', () => {
 
     expect(() => gestor.registrarVoto(formId, estId, doc1)).not.toThrow()
     expect(() => gestor.registrarVoto(formId, estId, doc2)).not.toThrow()
-
     expect(gestor.haVotado(formId, estId, doc1)).toBe(true)
     expect(gestor.haVotado(formId, estId, doc2)).toBe(true)
   })
 })
-
-/* ================================================================================
-   5. Sistema de reputación docente
-   ================================================================================ */
 
 describe('Reputación docente (labels y umbrales)', () => {
   it('debe clasificar promedio >= 4.5 como "⭐ Destacado"', () => {
@@ -319,10 +267,6 @@ describe('Reputación docente (labels y umbrales)', () => {
   })
 })
 
-/* ================================================================================
-   6. Ponderación institucional PGC (20% nota CADI Articulador)
-   ================================================================================ */
-
 describe('Ponderación PGC 20%', () => {
   it('promedio 4.6 × 0.20 = 0.92 sobre la nota del CADI Articulador', () => {
     const overall = 4.6
@@ -342,10 +286,6 @@ describe('Ponderación PGC 20%', () => {
     expect(pgcPonderado20).toBe(0)
   })
 })
-
-/* ================================================================================
-   7. Integración de getTeacherConsolidatedGrade con estado DB
-   ================================================================================ */
 
 describe('Integración getTeacherConsolidatedGrade con base de datos en memoria', () => {
   it('debe calcular correctamente notas desde respuestas reales de estudiantes y autoevaluación', () => {
@@ -387,7 +327,6 @@ describe('Integración getTeacherConsolidatedGrade con base de datos en memoria'
       feedbackResponses: [],
       forms: [evalForm, autoForm],
       formResponses: [
-        // Respuestas de estudiante: q1=4, q2=4 -> promedio estudiantes = 4.00
         {
           id: 'resp-1',
           formId: evalForm.id,
@@ -397,7 +336,6 @@ describe('Integración getTeacherConsolidatedGrade con base de datos en memoria'
           observation: 'Buen desempeño',
           date: new Date().toISOString(),
         },
-        // Respuestas de autoevaluación: qa1=5 -> promedio auto = 5.00
         {
           id: 'resp-2',
           formId: autoForm.id,
@@ -415,9 +353,9 @@ describe('Integración getTeacherConsolidatedGrade con base de datos en memoria'
 
     const consolidated = getTeacherConsolidatedGrade(mockDb, teacherId, '2026-1')
     expect(consolidated.studentAvg).toBe(4.00)
-    expect(consolidated.studentWeighted).toBe(2.80) // 4.0 * 0.70
+    expect(consolidated.studentWeighted).toBe(2.80)
     expect(consolidated.autoAvg).toBe(5.00)
-    expect(consolidated.autoWeighted).toBe(1.50) // 5.0 * 0.30
+    expect(consolidated.autoWeighted).toBe(1.50)
     expect(consolidated.finalScore).toBe(4.30)
     expect(consolidated.requierePlanMejora).toBe(false)
     expect(consolidated.status).toBe('completo')
@@ -466,15 +404,11 @@ describe('Integración getTeacherConsolidatedGrade con base de datos en memoria'
     const consolidated = getTeacherConsolidatedGrade(mockDb, teacherId, '2026-1')
     expect(consolidated.studentAvg).toBe(3.00)
     expect(consolidated.autoAvg).toBeNull()
-    expect(consolidated.finalScore).toBe(3.00) // Provisional 3.00
+    expect(consolidated.finalScore).toBe(3.00)
     expect(consolidated.requierePlanMejora).toBe(true)
     expect(consolidated.isProvisional).toBe(true)
   })
 })
-
-/* ================================================================================
-   8. Validación de roles y restricciones institucionales
-   ================================================================================ */
 
 describe('Validación de roles institucionales UdeC', () => {
   const ROLES_VALIDOS = ['admin', 'coordinador', 'docente', 'estudiante', 'directivo']
@@ -496,10 +430,6 @@ describe('Validación de roles institucionales UdeC', () => {
     expect(validarLongitud(observacionExcedida)).toBe(false)
   })
 })
-
-/* ================================================================================
-   9. Validación individual del badge de evaluación docente por estudiante
-   ================================================================================ */
 
 describe('Validación individual de badges de evaluación docente por estudiante', () => {
   const form: Form = {
@@ -527,7 +457,6 @@ describe('Validación individual de badges de evaluación docente por estudiante
     feedbackResponses: [],
     forms: [form],
     formResponses: [
-      // Estudiante 2 evaluó a Docente 1 con 5.0 (Sobresaliente/Destacado)
       {
         id: 'resp-e2',
         formId: form.id,
@@ -584,11 +513,8 @@ describe('Validación individual de badges de evaluación docente por estudiante
     expect(statusE1.label).toBe('✓ Sobresaliente')
     expect(statusE1.score).toBe(4.00)
 
-    // El estudiante 2 sigue viendo su propia valoración individual (5.0 -> Destacado)
     const statusE2 = getStudentTeacherEvaluationStatus(dbConEvaluacion, form, 'estudiante-2', 'docente-1')
     expect(statusE2.label).toBe('⭐ Destacado')
     expect(statusE2.score).toBe(5.00)
   })
 })
-
-

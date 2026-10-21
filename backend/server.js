@@ -5,7 +5,6 @@ import cors from 'cors'
 import { apiRouter } from './routes/index.js'
 import { pool, initSchema } from './config/db.js'
 
-// Cargar variables de entorno
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 dotenv.config()
@@ -19,10 +18,8 @@ app.use(cors({
 
 app.use(express.json())
 
-// Montar endpoints REST bajo /api
 app.use('/api', apiRouter)
 
-// Endpoint de diagnóstico en raíz
 app.get('/', (_req, res) => {
   res.json({
     app: 'SIARD-UdeC API',
@@ -33,7 +30,6 @@ app.get('/', (_req, res) => {
   })
 })
 
-// Inicializar esquema en PostgreSQL al arrancar
 initSchema().catch((err) => {
   console.warn('Aviso al inicializar esquema PostgreSQL:', err.message)
 })

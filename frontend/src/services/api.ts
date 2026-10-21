@@ -1,6 +1,3 @@
-/**
- * Cliente HTTP base para peticiones a la API de SIARD-UdeC
- */
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`
   const headers = {

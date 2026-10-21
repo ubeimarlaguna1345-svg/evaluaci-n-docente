@@ -7,9 +7,6 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload))
 }
 
-/* =====================================================================
-   CADIs / Asignaturas
-   ===================================================================== */
 
 export async function createCadi(req, res) {
   const { codigo, nombre, semestre, esArticulador, docenteId } = req.body || {}
@@ -82,9 +79,6 @@ export async function deleteCadi(req, res) {
   }
 }
 
-/* =====================================================================
-   Formularios de Evaluación / Autoevaluación
-   ===================================================================== */
 
 export async function createForm(req, res) {
   const { kind, title, description, period, cadiId, start, end, questions } = req.body || {}
@@ -263,9 +257,6 @@ export async function updateFormDates(req, res) {
   }
 }
 
-/* =====================================================================
-   Respuestas a Evaluaciones (Control de Voto Único)
-   ===================================================================== */
 
 export async function createFormResponse(req, res) {
   const { formId, userId, teacherId, answers, observation } = req.body || {}
@@ -304,9 +295,6 @@ export async function createFormResponse(req, res) {
   }
 }
 
-/* =====================================================================
-   Retroalimentaciones de Clase
-   ===================================================================== */
 
 export async function createFeedback(req, res) {
   const { teacherId, course, question, questions, start, end } = req.body || {}

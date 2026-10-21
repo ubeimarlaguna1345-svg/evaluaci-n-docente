@@ -2,7 +2,6 @@ import { apiFetch } from './api'
 import type { Form, FormResponse, CADI, Feedback, Question } from '../store'
 
 export const evaluacionService = {
-  // CADIs
   createCADI: async (c: Omit<CADI, 'id'>): Promise<{ ok: boolean; id: string }> => {
     return apiFetch<{ ok: boolean; id: string }>('/api/cadis', {
       method: 'POST',
@@ -30,7 +29,6 @@ export const evaluacionService = {
     })
   },
 
-  // Formularios de evaluación
   createForm: async (f: Omit<Form, 'id'>): Promise<{ ok: boolean; id: string }> => {
     return apiFetch<{ ok: boolean; id: string }>('/api/forms', {
       method: 'POST',
@@ -58,7 +56,6 @@ export const evaluacionService = {
     })
   },
 
-  // Respuestas a formularios
   respondForm: async (r: Omit<FormResponse, 'id' | 'date'>): Promise<{ ok: boolean; id: string }> => {
     return apiFetch<{ ok: boolean; id: string }>('/api/form-responses', {
       method: 'POST',
@@ -66,7 +63,6 @@ export const evaluacionService = {
     })
   },
 
-  // Retroalimentaciones de clase
   createFeedback: async (
     b:
       | (Omit<Feedback, 'id' | 'createdAt'> & { questions?: Question[] })

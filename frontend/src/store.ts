@@ -64,7 +64,6 @@ let state: DB = {
 const subs = new Set<() => void>()
 const notify = () => subs.forEach((fn) => fn())
 
-/** Inicializa la conexión y carga los datos desde PostgreSQL real a través de reporteService */
 export async function initDB() {
   state.loading = true
   notify()
@@ -99,7 +98,6 @@ export async function initDB() {
   }
 }
 
-/** Acciones centralizadas que delegan en los servicios HTTP de la capa de API */
 export const actions = {
   createUser: async (u: Omit<User, 'id' | 'active'>) => {
     const data = await usuarioService.createUser(u)
@@ -175,13 +173,11 @@ export const actions = {
   },
 }
 
-/** Consola SQL PostgreSQL: ejecuta cualquier consulta contra PostgreSQL real */
 export async function execRaw(query: string): Promise<{ columns: string[]; values: unknown[][] }> {
   const data = await reporteService.executeSql(query)
   return { columns: data.columns || [], values: data.values || [] }
 }
 
-/** Hook reactivo para consumir el estado global */
 export function useDB() {
   const [val, setVal] = useState(state)
   useEffect(() => {
@@ -200,7 +196,6 @@ export const isOpen = (start: string, end: string) => {
 export const fmt = (s: string) =>
   new Date(s).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
 
-/** Promedio por pregunta de escala para un formulario y (opcionalmente) un docente */
 export function stats(db: DB, formId: string, teacherId?: string) {
   const form = db.forms.find((f) => f.id === formId)
   if (!form) return null
@@ -224,10 +219,8 @@ export function stats(db: DB, formId: string, teacherId?: string) {
   const valid = perQ.filter((p) => p.n > 0)
   const overall = valid.length ? valid.reduce((a, b) => a + b.avg, 0) / valid.length : 0
 
-  // Ponderación institucional PGC: 20% de la nota final del CADI Articulador (Numeral 13 Lineamientos UdeC)
   const pgcPonderado20 = Number((overall * 0.20).toFixed(2))
 
-  // Agrupación por dimensiones MEDIT
   const porDimension: Record<string, { avg: number; count: number; items: typeof perQ }> = {}
   perQ.forEach((pq) => {
     const dim = pq.question.dimension || 'General'
@@ -252,23 +245,19 @@ export function stats(db: DB, formId: string, teacherId?: string) {
 export interface TeacherGradeConsolidated {
   teacherId: string
   studentAvg: number | null
-  studentWeighted: number | null // Ponderado 70% (factor 0.70)
+  studentWeighted: number | null
   autoAvg: number | null
-  autoWeighted: number | null // Ponderado 30% (factor 0.30)
-  finalScore: number // Suma ponderada con precisión a 2 decimales
+  autoWeighted: number | null
+  finalScore: number
   hasEvaluations: boolean
   isProvisional: boolean
   status: 'completo' | 'pendiente_autoevaluacion' | 'pendiente_estudiantes' | 'sin_evaluar'
   statusLabel: string
-  requierePlanMejora: boolean // True si finalScore <= 3.9
+  requierePlanMejora: boolean
   studentResponsesCount: number
   autoResponsesCount: number
 }
 
-/**
- * Calcula la calificación consolidada aplicando la ponderación institucional:
- * 70% Evaluación de Estudiantes + 30% Autoevaluación Docente
- */
 export function calculateConsolidatedGrade(
   studentAvg: number | null,
   autoAvg: number | null,
@@ -305,7 +294,7 @@ export function calculateConsolidatedGrade(
   if (hasStudent && !hasAuto) {
     const sAvg = Number(studentAvg.toFixed(2))
     const studentWeighted = Number((sAvg * 0.70).toFixed(2))
-    const finalScore = sAvg // Provisional sobre escala 5.0
+    const finalScore = sAvg
     return {
       teacherId,
       studentAvg: sAvg,
@@ -326,7 +315,7 @@ export function calculateConsolidatedGrade(
   if (!hasStudent && hasAuto) {
     const aAvg = Number(autoAvg.toFixed(2))
     const autoWeighted = Number((aAvg * 0.30).toFixed(2))
-    const finalScore = aAvg // Provisional sobre escala 5.0
+    const finalScore = aAvg
     return {
       teacherId,
       studentAvg: null,
@@ -361,10 +350,6 @@ export function calculateConsolidatedGrade(
   }
 }
 
-/**
- * Obtiene la calificación consolidada (70% Estudiantes - 30% Autoevaluación) de un docente
- * a partir de la base de datos, opcionalmente filtrada por período.
- */
 export function getTeacherConsolidatedGrade(
   db: DB,
   teacherId: string,
@@ -442,7 +427,6 @@ export interface TeacherReputation {
   consolidated: TeacherGradeConsolidated
 }
 
-/** Calcula la reputación de un docente a partir de su calificación consolidada (70% - 30%) */
 export function getTeacherReputation(db: DB, teacherId: string): TeacherReputation {
   const consolidated = getTeacherConsolidatedGrade(db, teacherId)
   const totalResponses = consolidated.studentResponsesCount + consolidated.autoResponsesCount
@@ -498,7 +482,6 @@ export function getTeacherReputation(db: DB, teacherId: string): TeacherReputati
   }
 }
 
-/** Métrica consolidada para el Módulo Directivo (Decanatura / Consejo de Facultad) */
 export function getFacultyGlobalMetrics(db: DB) {
   const teachers = db.users
     .filter((u) => u.role === 'docente' && u.active)
@@ -544,12 +527,6 @@ export interface StudentTeacherEvaluationStatus {
   title: string
 }
 
-/**
- * Obtiene el estado y etiqueta de desempeño de un docente de forma individual
- * para el estudiante en sesión actual.
- * Evita mostrar etiquetas globales o de otros estudiantes cuando el estudiante
- * aún no ha evaluado al docente.
- */
 export function getStudentTeacherEvaluationStatus(
   db: DB,
   form: Form,

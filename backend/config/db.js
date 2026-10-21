@@ -4,7 +4,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// Cargar variables de entorno desde .env.local y luego .env
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 dotenv.config()
@@ -17,9 +16,6 @@ const { Pool } = pg
 const connectionString = process.env.DATABASE_URL ||
   `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'postgres'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'siard_udec'}`
 
-/**
- * Determina si la conexión a PostgreSQL requiere SSL (Neon.tech, Supabase, RDS u otros hosts remotos).
- */
 function shouldEnableSSL() {
   const host = (process.env.DB_HOST || '').toLowerCase()
   const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === ''
@@ -36,7 +32,6 @@ function shouldEnableSSL() {
         return true
       }
     } catch {
-      // Si la URL no es parseable directamente por URL(), continuar
     }
   }
 
@@ -58,9 +53,6 @@ pool.on('error', (err) => {
   console.error('Error imprevisto en el Connection Pool de PostgreSQL:', err.message)
 })
 
-/**
- * Inicializa el esquema en PostgreSQL ejecutando database/schema.sql si las tablas no existen
- */
 export async function initSchema() {
   try {
     const candidatePaths = [
@@ -75,7 +67,6 @@ export async function initSchema() {
     if (schemaPath) {
       const sql = fs.readFileSync(schemaPath, 'utf-8')
       await pool.query(sql)
-      // Asegurar columnas institucionales si la tabla ya existía previamente
       await pool.query(`
         ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sede TEXT NOT NULL DEFAULT 'Sede Facatativá';
         ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS carrera TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación';

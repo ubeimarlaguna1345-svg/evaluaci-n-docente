@@ -7,7 +7,6 @@ export const apiRouter = express.Router()
 
 apiRouter.use(express.json())
 
-// Montar submódulos
 apiRouter.use(usuarioRoutes)
 apiRouter.use(evaluacionRoutes)
 apiRouter.use(reporteRoutes)

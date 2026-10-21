@@ -6,9 +6,6 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload))
 }
 
-/* =====================================================================
-   Health Check
-   ===================================================================== */
 
 export async function getHealth(_req, res) {
   try {
@@ -31,25 +28,19 @@ export async function getHealth(_req, res) {
   }
 }
 
-/* =====================================================================
-   Bootstrap: Carga de Estado Completo
-   ===================================================================== */
 
 export async function getBootstrap(_req, res) {
   try {
     await initSchema()
 
-    // 1. Usuarios
     const usersRes = await pool.query(
       "SELECT id, nombre AS name, correo AS email, contrasena AS password, rol AS role, activo AS active, COALESCE(sede, 'Sede Facatativá') AS sede, COALESCE(carrera, 'Ingeniería de Sistemas y Computación') AS carrera FROM usuarios ORDER BY rol, nombre"
     )
 
-    // 2. CADIs
     const cadisRes = await pool.query(
       'SELECT id, codigo, nombre, semestre, COALESCE(es_articulador, false) AS "esArticulador", docente_id AS "docenteId" FROM cadis ORDER BY semestre, nombre'
     )
 
-    // 3. Formularios con preguntas y opciones
     const formsRes = await pool.query(
       'SELECT id, tipo AS kind, titulo AS title, descripcion AS description, periodo AS period, cadi_id AS "cadiId", fecha_inicio AS start, fecha_cierre AS end FROM formularios ORDER BY fecha_inicio DESC'
     )
@@ -91,7 +82,6 @@ export async function getBootstrap(_req, res) {
       questions: questionsByForm[f.id] || [],
     }))
 
-    // 4. Respuestas a formularios con detalle
     const responsesRes = await pool.query(
       'SELECT id, formulario_id AS "formId", usuario_id AS "userId", docente_id AS "teacherId", observacion AS observation, fecha AS date FROM respuestas_formulario'
     )
@@ -111,7 +101,6 @@ export async function getBootstrap(_req, res) {
       answers: answersByResp[r.id] || {},
     }))
 
-    // 5. Retroalimentaciones
     const feedbacksRes = await pool.query(
       'SELECT id, docente_id AS "teacherId", pregunta_id AS "questionId", curso AS course, fecha_inicio AS start, fecha_cierre AS end, creada_en AS "createdAt" FROM retroalimentaciones ORDER BY creada_en DESC'
     )
@@ -136,7 +125,6 @@ export async function getBootstrap(_req, res) {
       }
     })
 
-    // 6. Respuestas de retroalimentación
     const feedbackResponsesRes = await pool.query(
       'SELECT id, retroalimentacion_id AS "feedbackId", estudiante_id AS "studentId", valor AS value, fecha AS date FROM respuestas_retroalimentacion'
     )
@@ -168,9 +156,6 @@ export async function getBootstrap(_req, res) {
   }
 }
 
-/* =====================================================================
-   Consola SQL
-   ===================================================================== */
 
 export async function executeSql(req, res) {
   const { query } = req.body || {}
@@ -196,9 +181,6 @@ export async function executeSql(req, res) {
   }
 }
 
-/* =====================================================================
-   Calificaciones Consolidadas (70% Estudiantes - 30% Autoevaluación)
-   ===================================================================== */
 
 export async function getCalificacionesConsolidadas(req, res) {
   const { period } = req.query || {}
@@ -318,9 +300,6 @@ export async function getCalificacionesConsolidadas(req, res) {
   }
 }
 
-/* =====================================================================
-   Reporte de Mejora (Umbral <= 3.9)
-   ===================================================================== */
 
 export async function getReporteMejora(req, res) {
   const { period } = req.query || {}

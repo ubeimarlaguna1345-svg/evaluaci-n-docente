@@ -7,7 +7,6 @@ export const app = express()
 app.use(cors({ origin: '*' }))
 app.use(express.json())
 
-// Estado informativo en la raíz de la API
 app.get('/', (_req, res) => {
   res.json({
     app: 'SIARD-UdeC API (Vercel Serverless)',
@@ -16,13 +15,9 @@ app.get('/', (_req, res) => {
   })
 })
 
-// Soportar peticiones tanto con prefijo /api como sin prefijo para máxima compatibilidad con Vercel
 app.use('/api', apiRouter)
 app.use('/', apiRouter)
 
-/**
- * Normaliza la URL para funciones Serverless en Vercel (soporta tanto rewrites como rutas catch-all [...path])
- */
 export function handleRequest(req, res) {
   if (req.query?.path) {
     const subpath = Array.isArray(req.query.path)
