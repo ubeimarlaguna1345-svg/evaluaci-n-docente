@@ -29,6 +29,7 @@ export function StudentEvaluation({ me }: { me: User }) {
             <button className="underline" onClick={() => setSel(null)}>volver</button>
           </p>
           <Respond
+            key={`${form.id}-${sel.teacherId}`}
             form={form}
             withObservation
             onSubmit={(answers, observation) => {
@@ -48,20 +49,22 @@ export function StudentEvaluation({ me }: { me: User }) {
           </div>
           <div className="divide-y divide-line">
             {teachers.map((t) => {
-              const yaRespondio = db.formResponses.some(
-                (ev) => ev.formId === f.id && ev.teacherId === t.id && ev.userId === me?.id
+              const yaRespondio = Boolean(me?.id) && db.formResponses.some(
+                (ev) => ev.formId === f.id && ev.teacherId === t.id && ev.userId === me.id
               )
-              const status = getStudentTeacherEvaluationStatus(db, f, me.id, t.id)
+              const status = getStudentTeacherEvaluationStatus(db, f, me?.id || '', t.id)
               return (
                 <div key={t.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-2.5">
                     <span className="font-medium text-pine">{t.name}</span>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${status.badgeClass}`}
-                      title={status.title}
-                    >
-                      {status.label}
-                    </span>
+                    {yaRespondio && status.hasEvaluated && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${status.badgeClass}`}
+                        title={status.title}
+                      >
+                        {status.label}
+                      </span>
+                    )}
                   </div>
                   {yaRespondio ? (
                     <span className="flex items-center gap-1 text-sm text-moss font-medium">

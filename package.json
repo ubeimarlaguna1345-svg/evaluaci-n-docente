@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite frontend --host 0.0.0.0",
+    "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"node backend/server.js\" \"vite frontend --host 0.0.0.0\"",
+    "dev:frontend": "vite frontend --host 0.0.0.0",
     "dev:backend": "node backend/server.js",
     "server": "node backend/server.js",
     "build": "vite build frontend",
@@ -31,6 +32,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^10.0.6",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.8.3",
     "vite": "^7.1.0",

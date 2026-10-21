@@ -10,8 +10,17 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            // Manejo silencioso durante el arranque inicial o reinicio del backend
+            if (res && 'writeHead' in res && typeof res.writeHead === 'function') {
+              res.writeHead(503, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: false, connected: false, message: 'Backend inicializando...' }))
+            }
+          })
+        },
       },
     },
   },

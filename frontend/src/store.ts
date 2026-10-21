@@ -533,6 +533,16 @@ export function getStudentTeacherEvaluationStatus(
   studentId: string,
   teacherId: string
 ): StudentTeacherEvaluationStatus {
+  if (!db || !form?.id || !studentId || !teacherId) {
+    return {
+      hasEvaluated: false,
+      label: 'Pendiente por evaluar',
+      badgeClass: 'bg-paper text-ink/50 border border-line',
+      score: null,
+      title: 'Aún no ha evaluado a este docente',
+    }
+  }
+
   const userResp = db.formResponses.find(
     (r) => r.formId === form.id && r.userId === studentId && r.teacherId === teacherId
   )

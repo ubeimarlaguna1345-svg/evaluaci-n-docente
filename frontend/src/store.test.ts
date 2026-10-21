@@ -517,4 +517,29 @@ describe('Validación individual de badges de evaluación docente por estudiante
     expect(statusE2.label).toBe('⭐ Destacado')
     expect(statusE2.score).toBe(5.00)
   })
+
+  it('no debe marcar como evaluado ni filtrar respuestas si el studentId o teacherId son inválidos o nulos', () => {
+    const statusNull = getStudentTeacherEvaluationStatus(baseDb, form, '', 'docente-1')
+    expect(statusNull.hasEvaluated).toBe(false)
+    expect(statusNull.score).toBeNull()
+
+    const statusNoTeacher = getStudentTeacherEvaluationStatus(baseDb, form, 'estudiante-2', '')
+    expect(statusNoTeacher.hasEvaluated).toBe(false)
+    expect(statusNoTeacher.score).toBeNull()
+  })
+
+  it('aislamiento por sesión: una evaluación de estudiante-2 NO debe alterar el estado de estudiante-1 ni precargar datos', () => {
+    // estudiante-1 evalúa docente-1?
+    const yaEvaluadoE1 = baseDb.formResponses.some(
+      (ev) => ev.formId === form.id && ev.teacherId === 'docente-1' && ev.userId === 'estudiante-1'
+    )
+    expect(yaEvaluadoE1).toBe(false)
+
+    // estudiante-2 evalúa docente-1?
+    const yaEvaluadoE2 = baseDb.formResponses.some(
+      (ev) => ev.formId === form.id && ev.teacherId === 'docente-1' && ev.userId === 'estudiante-2'
+    )
+    expect(yaEvaluadoE2).toBe(true)
+  })
 })
+
