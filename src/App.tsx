@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import {
   useDB, actions, initDB, uid, isOpen, fmt, stats, ROLE_LABEL, OBS_LIMIT, MEDIT_DIMENSIONES, getTeacherReputation, getFacultyGlobalMetrics,
-  calculateConsolidatedGrade, getTeacherConsolidatedGrade, type TeacherGradeConsolidated,
+  calculateConsolidatedGrade, getTeacherConsolidatedGrade, getStudentTeacherEvaluationStatus, type TeacherGradeConsolidated,
   type User, type Role, type Question, type AnswerType, type Form, type FormKind, type CADI,
 } from './store'
 
@@ -1834,19 +1834,22 @@ function StudentEvaluation({ me }: { me: User }) {
           </div>
           <div className="divide-y divide-line">
             {teachers.map((t) => {
-              const rep = getTeacherReputation(db, t.id)
+              const yaRespondio = db.formResponses.some(
+                (ev) => ev.formId === f.id && ev.teacherId === t.id && ev.userId === me?.id
+              )
+              const status = getStudentTeacherEvaluationStatus(db, f, me.id, t.id)
               return (
                 <div key={t.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-2.5">
                     <span className="font-medium text-pine">{t.name}</span>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${rep.badgeClass}`}
-                      title={`Promedio histórico: ${rep.avg || '—'} (${rep.totalResponses} evaluaciones)`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${status.badgeClass}`}
+                      title={status.title}
                     >
-                      {rep.label}
+                      {status.label}
                     </span>
                   </div>
-                  {done(f.id, t.id) ? (
+                  {yaRespondio ? (
                     <span className="flex items-center gap-1 text-sm text-moss font-medium"><Check size={16} />Respondida</span>
                   ) : (
                     <button className={btnGhost} disabled={!isOpen(f.start, f.end)} onClick={() => { setOk(false); setSel({ formId: f.id, teacherId: t.id }) }}>Evaluar</button>

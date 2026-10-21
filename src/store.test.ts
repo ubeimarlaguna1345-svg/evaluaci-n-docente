@@ -9,7 +9,7 @@
  * 5. Sistema de reputación institucional y ponderación PGC 20%
  */
 import { describe, it, expect } from 'vitest'
-import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, type DB, type Form, type User } from './store'
+import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, getStudentTeacherEvaluationStatus, type DB, type Form, type User } from './store'
 
 /* ---------- Helpers de lógica pura del sistema ---------- */
 
@@ -496,4 +496,99 @@ describe('Validación de roles institucionales UdeC', () => {
     expect(validarLongitud(observacionExcedida)).toBe(false)
   })
 })
+
+/* ================================================================================
+   9. Validación individual del badge de evaluación docente por estudiante
+   ================================================================================ */
+
+describe('Validación individual de badges de evaluación docente por estudiante', () => {
+  const form: Form = {
+    id: 'form-eval-1',
+    kind: 'evaluacion',
+    title: 'Evaluación Docente 2026-1',
+    description: '',
+    period: '2026-1',
+    start: '2026-01-01',
+    end: '2026-12-31',
+    questions: [
+      { id: 'q1', text: 'Dominio del tema', type: 'escala', options: [], required: true },
+      { id: 'q2', text: 'Metodología pedagógica', type: 'escala', options: [], required: true },
+    ],
+  }
+
+  const baseDb: DB = {
+    users: [
+      { id: 'estudiante-1', name: 'Estudiante 1', email: 'e1@udec.edu.co', password: '123', role: 'estudiante', active: true },
+      { id: 'estudiante-2', name: 'Estudiante 2', email: 'e2@udec.edu.co', password: '123', role: 'estudiante', active: true },
+      { id: 'docente-1', name: 'Docente 1', email: 'd1@udec.edu.co', password: '123', role: 'docente', active: true },
+    ],
+    cadis: [],
+    feedbacks: [],
+    feedbackResponses: [],
+    forms: [form],
+    formResponses: [
+      // Estudiante 2 evaluó a Docente 1 con 5.0 (Sobresaliente/Destacado)
+      {
+        id: 'resp-e2',
+        formId: form.id,
+        userId: 'estudiante-2',
+        teacherId: 'docente-1',
+        answers: { q1: '5', q2: '5' },
+        observation: 'Excelente',
+        date: '2026-03-01',
+      },
+    ],
+    connected: true,
+    loading: false,
+    error: null,
+  }
+
+  it('NO debe mostrar etiquetas de desempeño a estudiante-1 cuando aún no ha evaluado al docente (debe ser Pendiente)', () => {
+    const status = getStudentTeacherEvaluationStatus(baseDb, form, 'estudiante-1', 'docente-1')
+
+    expect(status.hasEvaluated).toBe(false)
+    expect(status.label).toBe('Pendiente por evaluar')
+    expect(status.score).toBeNull()
+    expect(status.label).not.toBe('⭐ Destacado')
+    expect(status.label).not.toBe('✓ Sobresaliente')
+    expect(status.label).not.toBe('Aceptable')
+  })
+
+  it('debe mostrar la etiqueta del estudiante-2 basada estrictamente en su propia evaluación', () => {
+    const status = getStudentTeacherEvaluationStatus(baseDb, form, 'estudiante-2', 'docente-1')
+
+    expect(status.hasEvaluated).toBe(true)
+    expect(status.label).toBe('⭐ Destacado')
+    expect(status.score).toBe(5.00)
+  })
+
+  it('debe reflejar la calificación individual del estudiante tras responder (ej. 4.0 -> Sobresaliente)', () => {
+    const dbConEvaluacion: DB = {
+      ...baseDb,
+      formResponses: [
+        ...baseDb.formResponses,
+        {
+          id: 'resp-e1',
+          formId: form.id,
+          userId: 'estudiante-1',
+          teacherId: 'docente-1',
+          answers: { q1: '4', q2: '4' },
+          observation: 'Buen docente',
+          date: '2026-03-02',
+        },
+      ],
+    }
+
+    const statusE1 = getStudentTeacherEvaluationStatus(dbConEvaluacion, form, 'estudiante-1', 'docente-1')
+    expect(statusE1.hasEvaluated).toBe(true)
+    expect(statusE1.label).toBe('✓ Sobresaliente')
+    expect(statusE1.score).toBe(4.00)
+
+    // El estudiante 2 sigue viendo su propia valoración individual (5.0 -> Destacado)
+    const statusE2 = getStudentTeacherEvaluationStatus(dbConEvaluacion, form, 'estudiante-2', 'docente-1')
+    expect(statusE2.label).toBe('⭐ Destacado')
+    expect(statusE2.score).toBe(5.00)
+  })
+})
+
 

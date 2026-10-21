@@ -622,3 +622,95 @@ export function getFacultyGlobalMetrics(db: DB) {
     topTeachersCount,
   }
 }
+
+export interface StudentTeacherEvaluationStatus {
+  hasEvaluated: boolean
+  label: string
+  badgeClass: string
+  score: number | null
+  title: string
+}
+
+/**
+ * Obtiene el estado y etiqueta de desempeño de un docente de forma individual
+ * para el estudiante en sesión actual.
+ * Evita mostrar etiquetas globales o de otros estudiantes cuando el estudiante
+ * aún no ha evaluado al docente.
+ */
+export function getStudentTeacherEvaluationStatus(
+  db: DB,
+  form: Form,
+  studentId: string,
+  teacherId: string
+): StudentTeacherEvaluationStatus {
+  const userResp = db.formResponses.find(
+    (r) => r.formId === form.id && r.userId === studentId && r.teacherId === teacherId
+  )
+
+  if (!userResp) {
+    return {
+      hasEvaluated: false,
+      label: 'Pendiente por evaluar',
+      badgeClass: 'bg-paper text-ink/50 border border-line',
+      score: null,
+      title: 'Aún no ha evaluado a este docente',
+    }
+  }
+
+  const scaleQuestionIds = new Set(
+    form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
+  )
+  const values = Object.entries(userResp.answers || {})
+    .filter(([qId]) => scaleQuestionIds.has(qId))
+    .map(([_, val]) => Number(val))
+    .filter((v) => !isNaN(v) && v > 0)
+
+  const avg = values.length
+    ? Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2))
+    : null
+
+  if (avg === null) {
+    return {
+      hasEvaluated: true,
+      label: '✓ Evaluado',
+      badgeClass: 'bg-pine/10 text-pine border border-pine/30 font-medium',
+      score: null,
+      title: 'Docente evaluado por usted',
+    }
+  }
+
+  if (avg >= 4.5) {
+    return {
+      hasEvaluated: true,
+      label: '⭐ Destacado',
+      badgeClass: 'bg-moss/20 text-pine border border-moss/40 font-semibold shadow-xs',
+      score: avg,
+      title: `Su valoración individual: ${avg.toFixed(2)} / 5.00`,
+    }
+  } else if (avg >= 4.0) {
+    return {
+      hasEvaluated: true,
+      label: '✓ Sobresaliente',
+      badgeClass: 'bg-pine/10 text-pine border border-pine/30 font-medium',
+      score: avg,
+      title: `Su valoración individual: ${avg.toFixed(2)} / 5.00`,
+    }
+  } else if (avg >= 3.0) {
+    return {
+      hasEvaluated: true,
+      label: 'Aceptable',
+      badgeClass: 'bg-ochre/15 text-ochre border border-ochre/40 font-medium',
+      score: avg,
+      title: `Su valoración individual: ${avg.toFixed(2)} / 5.00`,
+    }
+  } else {
+    return {
+      hasEvaluated: true,
+      label: '⚠️ En Seguimiento',
+      badgeClass: 'bg-red-50 text-red-700 border border-red-200 font-medium',
+      score: avg,
+      title: `Su valoración individual: ${avg.toFixed(2)} / 5.00`,
+    }
+  }
+}
+
