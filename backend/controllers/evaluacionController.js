@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { pool } from '../config/db.js'
+import { Evaluacion } from '../models/index.js'
 
 function sendJson(res, statusCode, payload) {
   res.statusCode = statusCode
@@ -264,6 +265,19 @@ export async function createFormResponse(req, res) {
     return sendJson(res, 400, { ok: false, message: 'Faltan parámetros obligatorios de evaluación.' })
   }
 
+  // Instanciación formal del modelo de dominio Evaluacion
+  const evaluacion = new Evaluacion({
+    formularioId: formId,
+    estudianteId: userId,
+    docenteId: teacherId,
+    respuestas: answers,
+    observacion: observation,
+  })
+
+  const promedio = evaluacion.calcularPromedio()
+  const desempeno = evaluacion.obtenerDesempeno()
+  const requierePlanMejora = evaluacion.requierePlanMejora()
+
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -272,10 +286,10 @@ export async function createFormResponse(req, res) {
     await client.query(
       `INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
        VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [respId, formId, userId, teacherId, observation ? String(observation).slice(0, 500) : '']
+      [respId, formId, userId, teacherId, evaluacion.getObservacion()]
     )
 
-    for (const [pregId, val] of Object.entries(answers)) {
+    for (const [pregId, val] of Object.entries(evaluacion.getRespuestas())) {
       await client.query(
         'INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor) VALUES ($1, $2, $3)',
         [respId, pregId, String(val)]
@@ -283,7 +297,13 @@ export async function createFormResponse(req, res) {
     }
 
     await client.query('COMMIT')
-    sendJson(res, 201, { ok: true, id: respId })
+    sendJson(res, 201, {
+      ok: true,
+      id: respId,
+      promedio,
+      desempeno,
+      requierePlanMejora,
+    })
   } catch (error) {
     await client.query('ROLLBACK')
     if (error.code === '23505') {

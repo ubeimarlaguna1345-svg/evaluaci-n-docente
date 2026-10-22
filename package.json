@@ -10,7 +10,9 @@
     "server": "node backend/server.js",
     "build": "vite build frontend",
     "preview": "vite preview frontend --host 0.0.0.0",
-    "test": "vitest run --dir frontend"
+    "test": "vitest run frontend/src/store.test.ts backend/models/models.test.js",
+    "test:frontend": "vitest run --dir frontend",
+    "test:backend": "vitest run backend/models/models.test.js"
   },
   "keywords": [],
   "author": "",

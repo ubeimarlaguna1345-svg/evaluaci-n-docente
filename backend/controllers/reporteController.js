@@ -1,4 +1,5 @@
 import { pool, initSchema } from '../config/db.js'
+import { UsuarioFactory, Evaluacion } from '../models/index.js'
 
 function sendJson(res, statusCode, payload) {
   res.statusCode = statusCode
@@ -96,10 +97,25 @@ export async function getBootstrap(_req, res) {
       answersByResp[d.respuesta_id][d.pregunta_id] = d.valor
     }
 
-    const formResponses = responsesRes.rows.map((r) => ({
-      ...r,
-      answers: answersByResp[r.id] || {},
-    }))
+    const formResponses = responsesRes.rows.map((r) => {
+      const answers = answersByResp[r.id] || {}
+      const ev = new Evaluacion({
+        id: r.id,
+        formularioId: r.formId,
+        usuarioId: r.userId,
+        docenteId: r.teacherId,
+        observacion: r.observation,
+        fecha: r.date,
+        respuestas: answers,
+      })
+      return {
+        ...r,
+        answers,
+        promedio: ev.calcularPromedio(),
+        desempeno: ev.obtenerDesempeno(),
+        requierePlanMejora: ev.requierePlanMejora(),
+      }
+    })
 
     const feedbacksRes = await pool.query(
       'SELECT id, docente_id AS "teacherId", pregunta_id AS "questionId", curso AS course, fecha_inicio AS start, fecha_cierre AS end, creada_en AS "createdAt" FROM retroalimentaciones ORDER BY creada_en DESC'
@@ -129,10 +145,12 @@ export async function getBootstrap(_req, res) {
       'SELECT id, retroalimentacion_id AS "feedbackId", estudiante_id AS "studentId", valor AS value, fecha AS date FROM respuestas_retroalimentacion'
     )
 
+    const usuariosDominio = usersRes.rows.map((u) => UsuarioFactory.crearUsuario(u).toJSON())
+
     sendJson(res, 200, {
       ok: true,
       connected: true,
-      users: usersRes.rows,
+      users: usuariosDominio,
       cadis: cadisRes.rows,
       forms,
       formResponses,
