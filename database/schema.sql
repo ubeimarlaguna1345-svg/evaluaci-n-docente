@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo          TEXT NOT NULL UNIQUE,
   contrasena      TEXT NOT NULL,
   contrasena_hash TEXT,
-  rol             TEXT NOT NULL CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante', 'directivo')),
+  rol             TEXT NOT NULL CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante')),
   activo          BOOLEAN NOT NULL DEFAULT TRUE,
   sede            TEXT NOT NULL DEFAULT 'Sede Facatativá',
   carrera         TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación'

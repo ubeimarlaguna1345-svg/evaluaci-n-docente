@@ -5,7 +5,6 @@ import {
   Docente,
   Coordinador,
   Admin,
-  Directivo,
   UsuarioFactory,
   Evaluacion,
 } from './index.js'
@@ -96,12 +95,9 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(coord.obtenerPermisos()).toEqual(['reportes_medit', 'planes_mejora', 'gestion_docentes'])
     })
 
-    it('Admin y Directivo: deben tener sus respectivos permisos institucionales', () => {
+    it('Admin: debe tener permisos de administración total', () => {
       const admin = new Admin({ id: 'adm-1', nombre: 'Admin', correo: 'admin@udec.edu.co' })
       expect(admin.obtenerPermisos()).toContain('administracion_total')
-
-      const dir = new Directivo({ id: 'dir-1', nombre: 'Decano', correo: 'decano@udec.edu.co' })
-      expect(dir.obtenerPermisos()).toContain('dashboard_directivo')
     })
   })
 

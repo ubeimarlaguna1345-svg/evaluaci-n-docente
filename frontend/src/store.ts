@@ -5,7 +5,7 @@ import {
   reporteService,
 } from './services'
 
-export type Role = 'admin' | 'directivo' | 'coordinador' | 'docente' | 'estudiante'
+export type Role = 'admin' | 'coordinador' | 'docente' | 'estudiante'
 export type AnswerType = 'escala' | 'seleccion' | 'texto'
 export type FormKind = 'evaluacion' | 'autoevaluacion'
 
@@ -33,7 +33,6 @@ export const uid = () => Math.random().toString(36).slice(2, 10)
 
 export const ROLE_LABEL: Record<Role, string> = {
   admin: 'Administrador',
-  directivo: 'Directivo / Decanatura',
   coordinador: 'Coordinador',
   docente: 'Docente',
   estudiante: 'Estudiante',
@@ -479,43 +478,6 @@ export function getTeacherReputation(db: DB, teacherId: string): TeacherReputati
       isTop: false,
       consolidated,
     }
-  }
-}
-
-export function getFacultyGlobalMetrics(db: DB) {
-  const teachers = db.users
-    .filter((u) => u.role === 'docente' && u.active)
-    .map((t) => {
-      const rep = getTeacherReputation(db, t.id)
-      const cadi = db.cadis.find((c) => c.docenteId === t.id)
-      return {
-        teacher: t,
-        cadi,
-        ...rep,
-      }
-    })
-    .sort((a, b) => b.avg - a.avg)
-
-  const teachersWithScores = teachers.filter((t) => t.consolidated.hasEvaluations && t.totalResponses > 0)
-  const overallAvg = teachersWithScores.length
-    ? Number((teachersWithScores.reduce((acc, t) => acc + t.avg, 0) / teachersWithScores.length).toFixed(2))
-    : 0
-
-  const evaluatedStudents = new Set(
-    db.formResponses
-      .filter((r) => db.users.find((u) => u.id === r.userId)?.role === 'estudiante')
-      .map((r) => r.userId)
-  ).size
-
-  const totalEvaluations = db.formResponses.length
-  const topTeachersCount = teachers.filter((t) => t.avg >= 4.5).length
-
-  return {
-    overallAvg,
-    evaluatedStudents,
-    totalEvaluations,
-    teachers,
-    topTeachersCount,
   }
 }
 

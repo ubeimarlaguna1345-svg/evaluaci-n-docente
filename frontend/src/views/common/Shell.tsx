@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Award,
   BookOpen,
-  Building2,
   LogOut,
 } from 'lucide-react'
 import { useDB, ROLE_LABEL, type User, type Role } from '../../store'
@@ -16,7 +15,7 @@ import { NormativaView } from './NormativaView'
 import { StudentEvaluation, StudentFeedback } from '../estudiante'
 import { TeacherFeedback, SelfEvaluation } from '../docente'
 import { CadisView, FormsAdmin, Results, Statistics, Report } from '../coordinador'
-import { Accounts, DirectivoDashboard } from '../admin'
+import { Accounts } from '../admin'
 
 export type View = {
   id: string
@@ -28,13 +27,11 @@ export type View = {
 export const VIEWS: Record<Role, View[]> = (() => {
   const normativaView: View = { id: 'normativa', label: 'Normativa y MEDIT', icon: BookOpen, render: () => <NormativaView /> }
   const cadisView: View = { id: 'cadis', label: 'CADIs y PGC', icon: Award, render: () => <CadisView /> }
-  const directivoDashboardView: View = { id: 'directivo', label: 'Panel Directivo', icon: Building2, render: () => <DirectivoDashboard /> }
 
   const mgmt: View[] = [
     { id: 'cuentas', label: 'Cuentas', icon: Users, render: (me) => <Accounts me={me} /> },
     { id: 'formularios', label: 'Evaluaciones', icon: ClipboardList, render: () => <FormsAdmin /> },
     cadisView,
-    directivoDashboardView,
     { id: 'resultados', label: 'Resultados', icon: BarChart3, render: () => <Results /> },
     { id: 'estadisticas', label: 'Estadísticas', icon: BarChart3, render: () => <Statistics /> },
     { id: 'reporte', label: 'Reporte de mejora', icon: FileText, render: () => <Report /> },
@@ -43,13 +40,6 @@ export const VIEWS: Record<Role, View[]> = (() => {
 
   return {
     admin: mgmt,
-    directivo: [
-      directivoDashboardView,
-      { id: 'resultados', label: 'Resultados Facultad', icon: BarChart3, render: () => <Results /> },
-      { id: 'estadisticas', label: 'Estadísticas Globales', icon: BarChart3, render: () => <Statistics /> },
-      { id: 'reporte', label: 'Reportes de Mejora', icon: FileText, render: () => <Report /> },
-      normativaView,
-    ],
     coordinador: mgmt,
     docente: [
       { id: 'retro', label: 'Retroalimentación', icon: MessageSquare, render: (me) => <TeacherFeedback me={me} /> },

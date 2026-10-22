@@ -3,7 +3,6 @@ import { Estudiante } from './Estudiante.js'
 import { Docente } from './Docente.js'
 import { Coordinador } from './Coordinador.js'
 import { Admin } from './Admin.js'
-import { Directivo } from './Directivo.js'
 
 /**
  * Patrón Factory Method (Creacional)
@@ -13,7 +12,7 @@ export class UsuarioFactory {
   /**
    * Crea y retorna una instancia concreta según el rol del usuario.
    * @param {Object} datos
-   * @returns {Usuario} Instancia de Estudiante, Docente, Coordinador, Admin, Directivo o Usuario base.
+   * @returns {Usuario} Instancia de Estudiante, Docente, Coordinador, Admin o Usuario base.
    */
   static crearUsuario(datos = {}) {
     const rol = (datos.rol || datos.role || '').toLowerCase().trim()
@@ -27,8 +26,6 @@ export class UsuarioFactory {
         return new Coordinador(datos)
       case 'admin':
         return new Admin(datos)
-      case 'directivo':
-        return new Directivo(datos)
       default:
         return new Usuario(datos)
     }

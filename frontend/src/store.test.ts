@@ -411,13 +411,15 @@ describe('Integración getTeacherConsolidatedGrade con base de datos en memoria'
 })
 
 describe('Validación de roles institucionales UdeC', () => {
-  const ROLES_VALIDOS = ['admin', 'coordinador', 'docente', 'estudiante', 'directivo']
+  const ROLES_VALIDOS = ['admin', 'coordinador', 'docente', 'estudiante']
 
-  it('debe aceptar el rol "directivo" para Decanatura y Consejo de Facultad', () => {
-    expect(ROLES_VALIDOS.includes('directivo')).toBe(true)
+  it('debe contener exclusivamente los 4 roles institucionales permitidos', () => {
+    expect(ROLES_VALIDOS).toEqual(['admin', 'coordinador', 'docente', 'estudiante'])
+    expect(ROLES_VALIDOS.includes('directivo')).toBe(false)
   })
 
-  it('debe rechazar roles inválidos como "superadmin"', () => {
+  it('debe rechazar roles no permitidos como "directivo" o "superadmin"', () => {
+    expect(ROLES_VALIDOS.includes('directivo')).toBe(false)
     expect(ROLES_VALIDOS.includes('superadmin')).toBe(false)
   })
 

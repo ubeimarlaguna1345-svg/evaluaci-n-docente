@@ -16,7 +16,7 @@ export function Accounts({ me }: { me: User }) {
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [search, setSearch] = useState('')
   const [confirm, setConfirm] = useState<User | null>(null)
-  const roles: Role[] = me.role === 'admin' ? ['admin', 'directivo', 'coordinador', 'docente', 'estudiante'] : ['docente', 'estudiante']
+  const roles: Role[] = me.role === 'admin' ? ['admin', 'coordinador', 'docente', 'estudiante'] : ['docente', 'estudiante']
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault()

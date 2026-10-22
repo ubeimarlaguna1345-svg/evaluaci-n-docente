@@ -70,8 +70,11 @@ export async function initSchema() {
       await pool.query(`
         ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sede TEXT NOT NULL DEFAULT 'Sede Facatativá';
         ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS carrera TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación';
+        UPDATE usuarios SET rol = 'coordinador' WHERE rol = 'directivo' OR nombre ILIKE '%Daniel%Moreno%';
+        ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
+        ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante'));
       `)
-      console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente.')
+      console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente (4 roles principales).')
       return true
     }
   } catch (error) {
