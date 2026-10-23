@@ -195,62 +195,93 @@ export function Results() {
               <thead className="bg-paper uppercase tracking-wider text-ink/60">
                 <tr>
                   <th className="p-3">Docente</th>
-                  <th className="p-3">CADI Asignado</th>
+                  <th className="p-3">Materia Asignada (CADI / CAI)</th>
                   <th className="p-3">Eval. Estudiantes (70%)</th>
                   <th className="p-3">Autoevaluación (30%)</th>
                   <th className="p-3">Definitiva Consolidada</th>
                   <th className="p-3">Estado</th>
-                  <th className="p-3">Plan de Mejora</th>
+                  <th className="p-3">Desempeño Institucional</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {allTeachersConsolidated.map(({ teacher: t, grade, cadi }) => (
-                  <tr key={t.id} className="hover:bg-paper/30 transition">
-                    <td className="p-3 font-semibold text-pine">{t.name}</td>
-                    <td className="p-3 text-ink/70">{cadi?.nombre || '—'}</td>
-                    <td className="p-3">
-                      {grade.studentAvg !== null ? (
-                        <span>
-                          <b className="font-mono">{grade.studentAvg.toFixed(2)}</b>
-                          <span className="text-[11px] text-ink/50"> ({grade.studentWeighted?.toFixed(2)} pts)</span>
+                {allTeachersConsolidated.map(({ teacher: t, grade, cadi }) => {
+                  const isCai = cadi?.tipo === 'CAI'
+                  return (
+                    <tr key={t.id} className="hover:bg-paper/30 transition">
+                      <td className="p-3 font-semibold text-pine">{t.name}</td>
+                      <td className="p-3">
+                        {cadi ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-ink/80 font-medium">{cadi.nombre}</span>
+                            {isCai ? (
+                              <span className="inline-flex items-center rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                                CAI
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                CADI
+                              </span>
+                            )}
+                            <span className="text-[10px] text-ink/50">({cadi.semestre}°)</span>
+                          </div>
+                        ) : (
+                          <span className="text-ink/40 italic">—</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {grade.studentAvg !== null ? (
+                          <span>
+                            <b className="font-mono">{grade.studentAvg.toFixed(2)}</b>
+                            <span className="text-[11px] text-ink/50"> ({grade.studentWeighted?.toFixed(2)} pts)</span>
+                          </span>
+                        ) : (
+                          <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {grade.autoAvg !== null ? (
+                          <span>
+                            <b className="font-mono">{grade.autoAvg.toFixed(2)}</b>
+                            <span className="text-[11px] text-ink/50"> ({grade.autoWeighted?.toFixed(2)} pts)</span>
+                          </span>
+                        ) : (
+                          <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
+                        )}
+                      </td>
+                      <td className="p-3 font-serif font-bold text-pine text-sm">
+                        {grade.hasEvaluations ? `${grade.finalScore.toFixed(2)} / 5.00` : '—'}
+                      </td>
+                      <td className="p-3">
+                        <span className="inline-flex rounded-full bg-paper px-2 py-0.5 text-[10px] text-ink/70 border border-line">
+                          {grade.statusLabel}
                         </span>
-                      ) : (
-                        <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {grade.autoAvg !== null ? (
-                        <span>
-                          <b className="font-mono">{grade.autoAvg.toFixed(2)}</b>
-                          <span className="text-[11px] text-ink/50"> ({grade.autoWeighted?.toFixed(2)} pts)</span>
-                        </span>
-                      ) : (
-                        <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
-                      )}
-                    </td>
-                    <td className="p-3 font-serif font-bold text-pine text-sm">
-                      {grade.hasEvaluations ? `${grade.finalScore.toFixed(2)} / 5.00` : '—'}
-                    </td>
-                    <td className="p-3">
-                      <span className="inline-flex rounded-full bg-paper px-2 py-0.5 text-[10px] text-ink/70 border border-line">
-                        {grade.statusLabel}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      {grade.requierePlanMejora ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-                          <AlertTriangle size={10} /> Requiere plan (≤ 3.9)
-                        </span>
-                      ) : grade.hasEvaluations ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-moss/20 px-2 py-0.5 text-[10px] font-medium text-pine">
-                          <Check size={10} /> Satisfactorio (≥ 4.0)
-                        </span>
-                      ) : (
-                        <span className="text-ink/40 text-[10px]">Sin evaluar</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="p-3">
+                        {grade.hasEvaluations ? (
+                          grade.finalScore >= 4.6 ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-300">
+                              <Check size={10} /> Sobresaliente (4.6–5.0)
+                            </span>
+                          ) : grade.finalScore >= 4.0 ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 border border-sky-300">
+                              <Check size={10} /> Destacado (4.0–4.5)
+                            </span>
+                          ) : grade.finalScore >= 3.5 ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-300">
+                              <AlertTriangle size={10} /> Atención Preventiva (3.5–3.9)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-300">
+                              <AlertTriangle size={10} /> En Seguimiento (&lt; 3.5)
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-ink/40 text-[10px]">Sin evaluar</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

@@ -79,16 +79,144 @@ export async function initSchema() {
         ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
         ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante'));
 
-        INSERT INTO cadis (id, codigo, nombre, semestre, tipo, es_articulador)
+        INSERT INTO usuarios (id, nombre, correo, contrasena, contrasena_hash, rol, activo, sede, carrera)
         VALUES
-          ('cadi-calc-101', 'MAT101', 'Cálculo Diferencial', 1, 'CADI', false),
-          ('cai-lect-101', 'CAI101', 'Lectura Crítica y Competencias Comunicativas', 1, 'CAI', false),
-          ('cadi-prog-301', 'SIS301', 'Programación II', 3, 'CADI', true),
-          ('cadi-elec-302', 'ELC301', 'Electrónica Básica', 3, 'CADI', false)
+          ('usr-admin-1', 'Administrador General', 'admin@ucundinamarca.edu.co', 'admin123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'admin', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('usr-coord-1', 'Coordinación Académica', 'coordinador@ucundinamarca.edu.co', 'coord123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'coordinador', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('doc-navarro', 'Andrés Navarro', 'andres.navarro@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('doc-salazar', 'Diana Salazar', 'diana.salazar@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('doc-prieto', 'Gabriel Prieto', 'gabriel.prieto@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('doc-mendoza', 'Javier Mendoza', 'javier.mendoza@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('doc-cifuentes', 'Mariana Cifuentes', 'mariana.cifuentes@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('est-1', 'Juan David Romero', 'juan.romero@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('est-2', 'Valentina Ramos', 'valentina.ramos@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('est-3', 'Mateo Vargas', 'mateo.vargas@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('est-4', 'Sofía Morales', 'sofia.morales@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('est-5', 'Camilo Torres', 'camilo.torres@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación')
+        ON CONFLICT (correo) DO UPDATE
+        SET nombre = EXCLUDED.nombre, rol = EXCLUDED.rol, activo = TRUE;
+
+        INSERT INTO cadis (id, codigo, nombre, semestre, tipo, es_articulador, docente_id)
+        VALUES
+          ('cadi-calc-101', 'MAT101', 'Cálculo Diferencial', 1, 'CADI', false, 'doc-salazar'),
+          ('cai-lect-101', 'CAI101', 'Lectura Crítica y Competencias Comunicativas', 1, 'CAI', false, 'doc-prieto'),
+          ('cadi-prog-301', 'SIS301', 'Programación II', 3, 'CADI', true, 'doc-navarro'),
+          ('cadi-elec-302', 'ELC301', 'Electrónica Básica', 3, 'CADI', false, 'doc-mendoza'),
+          ('cai-etica-201', 'CAI201', 'Ética y Ciudadanía', 2, 'CAI', false, 'doc-cifuentes')
         ON CONFLICT (codigo) DO UPDATE
-        SET tipo = EXCLUDED.tipo;
+        SET tipo = EXCLUDED.tipo, docente_id = COALESCE(cadis.docente_id, EXCLUDED.docente_id);
+
+        INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
+        VALUES
+          ('form-eval-2026', 'evaluacion', 'Evaluación Docente 2026-I', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z'),
+          ('form-auto-2026', 'autoevaluacion', 'Autoevaluación Docente 2026-I', 'Instrumento de reflexión pedagógica y autoevaluación.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z')
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
+        VALUES
+          ('q-claridad', 'form-eval-2026', 'Claridad conceptual y explicación de los temas en clase', 'escala', 'Claridad conceptual y explicación', true, 1),
+          ('q-organizacion', 'form-eval-2026', 'Organización, puntualidad y cumplimiento del programa académico', 'escala', 'Organización y cumplimiento del programa', true, 2),
+          ('q-retro', 'form-eval-2026', 'Retroalimentación oportuna y claridad en entrega de calificaciones', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3),
+          ('q-metodologia', 'form-eval-2026', 'Metodología activa y aplicación práctica orientada al MEDIT', 'escala', 'Metodología y aplicación práctica', true, 4),
+          ('q-auto-1', 'form-auto-2026', 'Autoevaluación: Claridad didáctica y mediación pedagógica', 'escala', 'Claridad conceptual y explicación', true, 1),
+          ('q-auto-2', 'form-auto-2026', 'Autoevaluación: Cumplimiento de planeación y rúbricas', 'escala', 'Organización y cumplimiento del programa', true, 2),
+          ('q-auto-3', 'form-auto-2026', 'Autoevaluación: Oportunidad en retroalimentación formativa', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3),
+          ('q-auto-4', 'form-auto-2026', 'Autoevaluación: Innovación en prácticas y proyectos MEDIT', 'escala', 'Metodología y aplicación práctica', true, 4)
+        ON CONFLICT (id) DO UPDATE
+        SET enunciado = EXCLUDED.enunciado, dimension = EXCLUDED.dimension;
+
+        -- Respuestas para Diana Salazar (Sobresaliente ~4.85)
+        INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
+        VALUES
+          ('rf-sal-1', 'form-eval-2026', 'est-1', 'doc-salazar', 'Excelente docente, su dominio de los temas de cálculo y paciencia para resolver dudas complejas es insuperable.', NOW() - INTERVAL '5 days'),
+          ('rf-sal-2', 'form-eval-2026', 'est-2', 'doc-salazar', 'Clases muy ordenadas, rúbricas transparentes y retroalimentación constante que motiva a aprender.', NOW() - INTERVAL '4 days'),
+          ('rf-sal-3', 'form-eval-2026', 'est-3', 'doc-salazar', 'Gran metodología práctica, siempre propone talleres contextualizados a la ingeniería.', NOW() - INTERVAL '3 days'),
+          ('rf-sal-auto', 'form-auto-2026', 'doc-salazar', 'doc-salazar', 'Compromiso riguroso con la formación matemática y diseño de guías paso a paso.', NOW() - INTERVAL '2 days')
+        ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
+
+        -- Respuestas para Andrés Navarro (Destacado ~4.35)
+        INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
+        VALUES
+          ('rf-nav-1', 'form-eval-2026', 'est-1', 'doc-navarro', 'Muy buen profesor en programación, explica conceptos abstractos con ejemplos reales.', NOW() - INTERVAL '5 days'),
+          ('rf-nav-2', 'form-eval-2026', 'est-2', 'doc-navarro', 'Excelente dinamismo en clase. Podría otorgar más margen de tiempo en los laboratorios prácticos.', NOW() - INTERVAL '4 days'),
+          ('rf-nav-3', 'form-eval-2026', 'est-4', 'doc-navarro', 'Gran apoyo durante el desarrollo de los proyectos de aula integradores.', NOW() - INTERVAL '2 days'),
+          ('rf-nav-auto', 'form-auto-2026', 'doc-navarro', 'doc-navarro', 'Fomento continuo del aprendizaje basado en problemas de desarrollo de software.', NOW() - INTERVAL '1 days')
+        ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
+
+        -- Respuestas para Mariana Cifuentes (Destacado ~4.15)
+        INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
+        VALUES
+          ('rf-cif-1', 'form-eval-2026', 'est-2', 'doc-cifuentes', 'Propicia debates éticos muy constructivos y analiza dilemas profesionales de ingeniería.', NOW() - INTERVAL '6 days'),
+          ('rf-cif-2', 'form-eval-2026', 'est-3', 'doc-cifuentes', 'Cumplimiento impecable del cronograma y respeto mutuo en todas las sesiones.', NOW() - INTERVAL '4 days'),
+          ('rf-cif-3', 'form-eval-2026', 'est-5', 'doc-cifuentes', 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', NOW() - INTERVAL '2 days'),
+          ('rf-cif-auto', 'form-auto-2026', 'doc-cifuentes', 'doc-cifuentes', 'Promoción constante de la responsabilidad social universitaria bajo el MEDIT.', NOW() - INTERVAL '1 days')
+        ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
+
+        -- Respuestas para Gabriel Prieto (Aceptable / Atención Preventiva ~3.75)
+        INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
+        VALUES
+          ('rf-prie-1', 'form-eval-2026', 'est-1', 'doc-prieto', 'Tiene sólido conocimiento lingüístico, pero los tiempos de devolución de ensayos son algo extensos.', NOW() - INTERVAL '7 days'),
+          ('rf-prie-2', 'form-eval-2026', 'est-3', 'doc-prieto', 'Las lecturas seleccionadas son buenas. Se sugiere mayor dinamismo y participación oral en clase.', NOW() - INTERVAL '5 days'),
+          ('rf-prie-3', 'form-eval-2026', 'est-4', 'doc-prieto', 'Falta publicar las calificaciones intermedias con mayor anticipación a los cortes oficiales.', NOW() - INTERVAL '3 days'),
+          ('rf-prie-auto', 'form-auto-2026', 'doc-prieto', 'doc-prieto', 'Reflexión pedagógica orientada a optimizar tiempos de corrección escrita.', NOW() - INTERVAL '2 days')
+        ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
+
+        -- Respuestas para Javier Mendoza (En Seguimiento ~3.25)
+        INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
+        VALUES
+          ('rf-men-1', 'form-eval-2026', 'est-2', 'doc-mendoza', 'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas.', NOW() - INTERVAL '6 days'),
+          ('rf-men-2', 'form-eval-2026', 'est-4', 'doc-mendoza', 'Las rúbricas de evaluación no son claras y las retroalimentaciones de los circuitos son muy breves.', NOW() - INTERVAL '4 days'),
+          ('rf-men-3', 'form-eval-2026', 'est-5', 'doc-mendoza', 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', NOW() - INTERVAL '2 days'),
+          ('rf-men-auto', 'form-auto-2026', 'doc-mendoza', 'doc-mendoza', 'Reconozco la necesidad de incorporar simulaciones virtuales para fortalecer el componente práctico.', NOW() - INTERVAL '1 days')
+        ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
+
+        -- Detalle de respuestas numéricas por pregunta
+        -- Diana Salazar (5, 5, 5, 4 => Promedio ~4.85)
+        INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
+        VALUES
+          ('rf-sal-1', 'q-claridad', '5'), ('rf-sal-1', 'q-organizacion', '5'), ('rf-sal-1', 'q-retro', '5'), ('rf-sal-1', 'q-metodologia', '5'),
+          ('rf-sal-2', 'q-claridad', '5'), ('rf-sal-2', 'q-organizacion', '5'), ('rf-sal-2', 'q-retro', '4'), ('rf-sal-2', 'q-metodologia', '5'),
+          ('rf-sal-3', 'q-claridad', '5'), ('rf-sal-3', 'q-organizacion', '4'), ('rf-sal-3', 'q-retro', '5'), ('rf-sal-3', 'q-metodologia', '5'),
+          ('rf-sal-auto', 'q-auto-1', '5'), ('rf-sal-auto', 'q-auto-2', '5'), ('rf-sal-auto', 'q-auto-3', '4'), ('rf-sal-auto', 'q-auto-4', '5')
+        ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
+
+        -- Andrés Navarro (4, 5, 4, 4 => Promedio ~4.35)
+        INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
+        VALUES
+          ('rf-nav-1', 'q-claridad', '5'), ('rf-nav-1', 'q-organizacion', '4'), ('rf-nav-1', 'q-retro', '4'), ('rf-nav-1', 'q-metodologia', '5'),
+          ('rf-nav-2', 'q-claridad', '4'), ('rf-nav-2', 'q-organizacion', '5'), ('rf-nav-2', 'q-retro', '4'), ('rf-nav-2', 'q-metodologia', '4'),
+          ('rf-nav-3', 'q-claridad', '5'), ('rf-nav-3', 'q-organizacion', '4'), ('rf-nav-3', 'q-retro', '4'), ('rf-nav-3', 'q-metodologia', '4'),
+          ('rf-nav-auto', 'q-auto-1', '4'), ('rf-nav-auto', 'q-auto-2', '5'), ('rf-nav-auto', 'q-auto-3', '4'), ('rf-nav-auto', 'q-auto-4', '5')
+        ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
+
+        -- Mariana Cifuentes (4, 4, 4, 5 => Promedio ~4.15)
+        INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
+        VALUES
+          ('rf-cif-1', 'q-claridad', '4'), ('rf-cif-1', 'q-organizacion', '5'), ('rf-cif-1', 'q-retro', '4'), ('rf-cif-1', 'q-metodologia', '4'),
+          ('rf-cif-2', 'q-claridad', '4'), ('rf-cif-2', 'q-organizacion', '4'), ('rf-cif-2', 'q-retro', '4'), ('rf-cif-2', 'q-metodologia', '4'),
+          ('rf-cif-3', 'q-claridad', '4'), ('rf-cif-3', 'q-organizacion', '5'), ('rf-cif-3', 'q-retro', '4'), ('rf-cif-3', 'q-metodologia', '4'),
+          ('rf-cif-auto', 'q-auto-1', '4'), ('rf-cif-auto', 'q-auto-2', '4'), ('rf-cif-auto', 'q-auto-3', '4'), ('rf-cif-auto', 'q-auto-4', '5')
+        ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
+
+        -- Gabriel Prieto (4, 4, 3, 3 => Promedio ~3.75)
+        INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
+        VALUES
+          ('rf-prie-1', 'q-claridad', '4'), ('rf-prie-1', 'q-organizacion', '4'), ('rf-prie-1', 'q-retro', '3'), ('rf-prie-1', 'q-metodologia', '4'),
+          ('rf-prie-2', 'q-claridad', '4'), ('rf-prie-2', 'q-organizacion', '4'), ('rf-prie-2', 'q-retro', '3'), ('rf-prie-2', 'q-metodologia', '4'),
+          ('rf-prie-3', 'q-claridad', '4'), ('rf-prie-3', 'q-organizacion', '4'), ('rf-prie-3', 'q-retro', '3'), ('rf-prie-3', 'q-metodologia', '4'),
+          ('rf-prie-auto', 'q-auto-1', '4'), ('rf-prie-auto', 'q-auto-2', '4'), ('rf-prie-auto', 'q-auto-3', '4'), ('rf-prie-auto', 'q-auto-4', '4')
+        ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
+
+        -- Javier Mendoza (3, 3, 3, 4 => Promedio ~3.25)
+        INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
+        VALUES
+          ('rf-men-1', 'q-claridad', '3'), ('rf-men-1', 'q-organizacion', '3'), ('rf-men-1', 'q-retro', '3'), ('rf-men-1', 'q-metodologia', '4'),
+          ('rf-men-2', 'q-claridad', '3'), ('rf-men-2', 'q-organizacion', '4'), ('rf-men-2', 'q-retro', '3'), ('rf-men-2', 'q-metodologia', '3'),
+          ('rf-men-3', 'q-claridad', '3'), ('rf-men-3', 'q-organizacion', '3'), ('rf-men-3', 'q-retro', '3'), ('rf-men-3', 'q-metodologia', '4'),
+          ('rf-men-auto', 'q-auto-1', '4'), ('rf-men-auto', 'q-auto-2', '3'), ('rf-men-auto', 'q-auto-3', '3'), ('rf-men-auto', 'q-auto-4', '4')
+        ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
       `)
-      console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente (CADIs / CAIs y roles).')
+      console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente con docentes y evaluaciones.')
       return true
     }
   } catch (error) {

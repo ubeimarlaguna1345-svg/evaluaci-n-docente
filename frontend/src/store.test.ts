@@ -598,4 +598,38 @@ describe('Distinción institucional entre CADI y CAI (MEDIT - UdeC)', () => {
   })
 })
 
+describe('Clasificación institucional de desempeño docente (4 Bandas MEDIT)', () => {
+  const clasificarDesempeno = (score: number) => {
+    if (score >= 4.6) return 'Sobresaliente'
+    if (score >= 4.0) return 'Destacado'
+    if (score >= 3.5) return 'Aceptable / Atención Preventiva'
+    return 'En Seguimiento'
+  }
+
+  it('debe clasificar 4.85 como Sobresaliente', () => {
+    expect(clasificarDesempeno(4.85)).toBe('Sobresaliente')
+    expect(clasificarDesempeno(4.60)).toBe('Sobresaliente')
+    expect(clasificarDesempeno(5.00)).toBe('Sobresaliente')
+  })
+
+  it('debe clasificar 4.35 y 4.00 como Destacado', () => {
+    expect(clasificarDesempeno(4.35)).toBe('Destacado')
+    expect(clasificarDesempeno(4.00)).toBe('Destacado')
+    expect(clasificarDesempeno(4.59)).toBe('Destacado')
+  })
+
+  it('debe clasificar 3.80 y 3.50 como Aceptable / Atención Preventiva', () => {
+    expect(clasificarDesempeno(3.80)).toBe('Aceptable / Atención Preventiva')
+    expect(clasificarDesempeno(3.50)).toBe('Aceptable / Atención Preventiva')
+    expect(clasificarDesempeno(3.99)).toBe('Aceptable / Atención Preventiva')
+  })
+
+  it('debe clasificar notas menores a 3.5 como En Seguimiento', () => {
+    expect(clasificarDesempeno(3.49)).toBe('En Seguimiento')
+    expect(clasificarDesempeno(3.20)).toBe('En Seguimiento')
+    expect(clasificarDesempeno(1.50)).toBe('En Seguimiento')
+  })
+})
+
+
 
