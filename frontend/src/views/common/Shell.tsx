@@ -26,7 +26,7 @@ export type View = {
 
 export const VIEWS: Record<Role, View[]> = (() => {
   const normativaView: View = { id: 'normativa', label: 'Normativa y MEDIT', icon: BookOpen, render: () => <NormativaView /> }
-  const cadisView: View = { id: 'cadis', label: 'CADIs y PGC', icon: Award, render: () => <CadisView /> }
+  const cadisView: View = { id: 'cadis', label: 'CADIs / CAIs', icon: Award, render: () => <CadisView /> }
 
   const mgmt: View[] = [
     { id: 'cuentas', label: 'Cuentas', icon: Users, render: (me) => <Accounts me={me} /> },

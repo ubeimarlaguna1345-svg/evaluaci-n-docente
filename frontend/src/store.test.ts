@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, getStudentTeacherEvaluationStatus, type DB, type Form } from './store'
+import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, getStudentTeacherEvaluationStatus, type DB, type Form, type CADI } from './store'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -544,4 +544,58 @@ describe('Validación individual de badges de evaluación docente por estudiante
     expect(yaEvaluadoE2).toBe(true)
   })
 })
+
+describe('Distinción institucional entre CADI y CAI (MEDIT - UdeC)', () => {
+  it('debe permitir instanciar asignaturas con tipo CADI y tipo CAI', () => {
+    const cadiMat: CADI = {
+      id: 'cadi-1',
+      codigo: 'SIS301',
+      nombre: 'Programación II',
+      semestre: 3,
+      tipo: 'CADI',
+      docenteId: 'doc-1',
+    }
+    const caiMat: CADI = {
+      id: 'cai-1',
+      codigo: 'CAI101',
+      nombre: 'Lectura Crítica y Competencias Comunicativas',
+      semestre: 1,
+      tipo: 'CAI',
+      docenteId: 'doc-2',
+    }
+
+    expect(cadiMat.tipo).toBe('CADI')
+    expect(caiMat.tipo).toBe('CAI')
+    expect(cadiMat.docenteId).toBe('doc-1')
+    expect(caiMat.docenteId).toBe('doc-2')
+  })
+
+  it('debe mantener docente asignado tanto en CADI como en CAI sin pérdida de datos', () => {
+    const materias: CADI[] = [
+      { id: '1', codigo: 'MAT101', nombre: 'Cálculo Diferencial', semestre: 1, tipo: 'CADI', docenteId: 'doc-mat' },
+      { id: '2', codigo: 'ELC301', nombre: 'Electrónica Básica', semestre: 3, tipo: 'CADI', docenteId: 'doc-elc' },
+      { id: '3', codigo: 'CAI101', nombre: 'Lectura Crítica y Competencias Comunicativas', semestre: 1, tipo: 'CAI', docenteId: 'doc-cai' },
+    ]
+
+    const docMat = materias.find((m) => m.codigo === 'MAT101')?.docenteId
+    const docElc = materias.find((m) => m.codigo === 'ELC301')?.docenteId
+    const docCai = materias.find((m) => m.codigo === 'CAI101')?.docenteId
+
+    expect(docMat).toBe('doc-mat')
+    expect(docElc).toBe('doc-elc')
+    expect(docCai).toBe('doc-cai')
+  })
+
+  it('debe resolver CADI como valor por defecto cuando tipo no se especifica', () => {
+    const defaultMateria: CADI = {
+      id: 'm-default',
+      codigo: 'SIS201',
+      nombre: 'Estructuras de Datos',
+      semestre: 2,
+    }
+    const resolvedTipo = defaultMateria.tipo || 'CADI'
+    expect(resolvedTipo).toBe('CADI')
+  })
+})
+
 

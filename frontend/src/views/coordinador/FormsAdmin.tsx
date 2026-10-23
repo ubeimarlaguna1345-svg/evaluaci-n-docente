@@ -229,11 +229,11 @@ export function FormsAdmin() {
             </div>
           </Field>
           <Field label="Título"><input className={input} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Ej. Evaluación docente 2026-I" /></Field>
-          <Field label="CADI / Asignatura vinculada">
+          <Field label="CADI / CAI / Asignatura vinculada">
             <select className={input} value={f.cadiId} onChange={(e) => setF({ ...f, cadiId: e.target.value })}>
-              <option value="">Evaluación general (Todos los CADIs)</option>
+              <option value="">Evaluación general (Todos los CADIs / CAIs)</option>
               {db.cadis.map((c) => (
-                <option key={c.id} value={c.id}>{c.codigo} — {c.nombre}</option>
+                <option key={c.id} value={c.id}>{c.codigo} — {c.nombre} ({c.tipo || 'CADI'})</option>
               ))}
             </select>
           </Field>

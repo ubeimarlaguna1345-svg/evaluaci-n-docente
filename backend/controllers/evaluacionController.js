@@ -10,17 +10,19 @@ function sendJson(res, statusCode, payload) {
 
 
 export async function createCadi(req, res) {
-  const { codigo, nombre, semestre, esArticulador, docenteId } = req.body || {}
+  const { codigo, nombre, semestre, tipo, esArticulador, docenteId } = req.body || {}
   if (!codigo?.trim() || !nombre?.trim() || !semestre) {
     return sendJson(res, 400, { ok: false, message: 'Código, nombre y semestre son requeridos.' })
   }
 
+  const tipoCampo = tipo === 'CAI' ? 'CAI' : 'CADI'
+
   try {
     const id = crypto.randomUUID()
     await pool.query(
-      `INSERT INTO cadis (id, codigo, nombre, semestre, es_articulador, docente_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [id, codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), Boolean(esArticulador ?? false), docenteId || null]
+      `INSERT INTO cadis (id, codigo, nombre, semestre, tipo, es_articulador, docente_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [id, codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), tipoCampo, Boolean(esArticulador ?? false), docenteId || null]
     )
     sendJson(res, 201, { ok: true, id })
   } catch (error) {
@@ -33,18 +35,19 @@ export async function createCadi(req, res) {
 
 export async function updateCadi(req, res) {
   const { id } = req.params
-  const { codigo, nombre, semestre, docenteId } = req.body || {}
+  const { codigo, nombre, semestre, tipo, docenteId } = req.body || {}
 
   try {
-    if (codigo !== undefined || nombre !== undefined || semestre !== undefined) {
+    if (codigo !== undefined || nombre !== undefined || semestre !== undefined || tipo !== undefined) {
       if (!codigo?.trim() || !nombre?.trim() || !semestre) {
         return sendJson(res, 400, { ok: false, message: 'Código, nombre y semestre son requeridos.' })
       }
+      const tipoCampo = tipo === 'CAI' ? 'CAI' : 'CADI'
       const result = await pool.query(
         `UPDATE cadis
-         SET codigo = $1, nombre = $2, semestre = $3, docente_id = $4
-         WHERE id = $5`,
-        [codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), docenteId || null, id]
+         SET codigo = $1, nombre = $2, semestre = $3, tipo = $4, docente_id = $5
+         WHERE id = $6`,
+        [codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), tipoCampo, docenteId || null, id]
       )
       if (result.rowCount === 0) {
         return sendJson(res, 404, { ok: false, message: 'CADI no encontrado.' })

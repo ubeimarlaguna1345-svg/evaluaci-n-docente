@@ -39,7 +39,7 @@ export async function getBootstrap(_req, res) {
     )
 
     const cadisRes = await pool.query(
-      'SELECT id, codigo, nombre, semestre, COALESCE(es_articulador, false) AS "esArticulador", docente_id AS "docenteId" FROM cadis ORDER BY semestre, nombre'
+      'SELECT id, codigo, nombre, semestre, COALESCE(tipo, \'CADI\') AS tipo, COALESCE(es_articulador, false) AS "esArticulador", docente_id AS "docenteId" FROM cadis ORDER BY semestre, nombre'
     )
 
     const formsRes = await pool.query(

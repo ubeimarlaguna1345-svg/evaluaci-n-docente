@@ -68,13 +68,27 @@ export async function initSchema() {
       const sql = fs.readFileSync(schemaPath, 'utf-8')
       await pool.query(sql)
       await pool.query(`
+        ALTER TABLE cadis ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'CADI';
+        ALTER TABLE cadis DROP CONSTRAINT IF EXISTS cadis_tipo_check;
+        ALTER TABLE cadis ADD CONSTRAINT cadis_tipo_check CHECK (tipo IN ('CADI', 'CAI'));
+        UPDATE cadis SET tipo = 'CADI' WHERE tipo IS NULL OR tipo = '';
+
         ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sede TEXT NOT NULL DEFAULT 'Sede Facatativá';
         ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS carrera TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación';
         UPDATE usuarios SET rol = 'coordinador' WHERE rol = 'directivo' OR nombre ILIKE '%Daniel%Moreno%';
         ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
         ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante'));
+
+        INSERT INTO cadis (id, codigo, nombre, semestre, tipo, es_articulador)
+        VALUES
+          ('cadi-calc-101', 'MAT101', 'Cálculo Diferencial', 1, 'CADI', false),
+          ('cai-lect-101', 'CAI101', 'Lectura Crítica y Competencias Comunicativas', 1, 'CAI', false),
+          ('cadi-prog-301', 'SIS301', 'Programación II', 3, 'CADI', true),
+          ('cadi-elec-302', 'ELC301', 'Electrónica Básica', 3, 'CADI', false)
+        ON CONFLICT (codigo) DO UPDATE
+        SET tipo = EXCLUDED.tipo;
       `)
-      console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente (4 roles principales).')
+      console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente (CADIs / CAIs y roles).')
       return true
     }
   } catch (error) {

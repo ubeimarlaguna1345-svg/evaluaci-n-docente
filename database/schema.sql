@@ -14,12 +14,13 @@ CREATE TABLE IF NOT EXISTS usuarios (
   carrera         TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación'
 );
 
--- 2. CADIs (Campos de Aprendizaje Disciplinares - Lineamientos PGC UdeC)
+-- 2. CADIs y CAIs (Campos de Aprendizaje Disciplinares e Institucionales - Lineamientos MEDIT UdeC)
 CREATE TABLE IF NOT EXISTS cadis (
   id             TEXT PRIMARY KEY,
   codigo         TEXT NOT NULL UNIQUE,
   nombre         TEXT NOT NULL,
   semestre       INTEGER NOT NULL,
+  tipo           TEXT NOT NULL DEFAULT 'CADI' CHECK (tipo IN ('CADI', 'CAI')),
   es_articulador BOOLEAN NOT NULL DEFAULT FALSE,
   docente_id     TEXT REFERENCES usuarios(id) ON DELETE SET NULL
 );
