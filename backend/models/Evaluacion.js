@@ -1,7 +1,3 @@
-/**
- * Clase de Dominio Evaluacion (POO - Encapsulamiento y Reglas de Negocio)
- * Modela la evaluación institucional aplicando las normas y fórmulas del MEDIT.
- */
 export class Evaluacion {
   #id
   #estudianteId
@@ -64,10 +60,6 @@ export class Evaluacion {
     return this.#fecha
   }
 
-  /**
-   * Calcula el promedio aritmético de las respuestas numéricas válidas (escala 1 a 5).
-   * @returns {number} Promedio con 2 decimales, o 0 si no hay respuestas cuantitativas.
-   */
   calcularPromedio() {
     const valores = Object.values(this.#respuestas)
       .map((val) => Number(val))
@@ -78,14 +70,6 @@ export class Evaluacion {
     return Number((suma / valores.length).toFixed(2))
   }
 
-  /**
-   * Determina el nivel de desempeño institucional:
-   * - 'Sobresaliente' (promedio >= 4.6)
-   * - 'Destacado'     (promedio >= 4.0)
-   * - 'Aceptable'     (promedio >= 3.5)
-   * - 'En Seguimiento' (promedio < 3.5)
-   * @returns {'Sobresaliente' | 'Destacado' | 'Aceptable' | 'En Seguimiento'}
-   */
   obtenerDesempeno() {
     const promedio = this.calcularPromedio()
     if (promedio >= 4.6) return 'Sobresaliente'
@@ -94,19 +78,12 @@ export class Evaluacion {
     return 'En Seguimiento'
   }
 
-  /**
-   * Regla MEDIT: Determina si se requiere formular un Plan de Mejora Pedagógica.
-   * Aplica cuando el promedio obtenido es menor o igual a 3.90.
-   * @returns {boolean}
-   */
+  // Regla MEDIT: Plan de mejora pedagógica si promedio <= 3.90
   requierePlanMejora() {
     const promedio = this.calcularPromedio()
     return promedio > 0 && promedio <= 3.9
   }
 
-  /**
-   * Serializa la evaluación con sus métricas calculadas.
-   */
   toJSON() {
     const promedio = this.calcularPromedio()
     return {

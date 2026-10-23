@@ -1,8 +1,5 @@
 import { Usuario } from './Usuario.js'
 
-/**
- * Subclase Coordinador (POO - Herencia y Polimorfismo)
- */
 export class Coordinador extends Usuario {
   #sede
 
@@ -15,10 +12,6 @@ export class Coordinador extends Usuario {
     return this.#sede
   }
 
-  /**
-   * Sobreescritura polimórfica de permisos para coordinadores
-   * @returns {string[]}
-   */
   obtenerPermisos() {
     return ['reportes_medit', 'planes_mejora', 'gestion_docentes']
   }

@@ -1,8 +1,5 @@
 import { Usuario } from './Usuario.js'
 
-/**
- * Subclase Estudiante (POO - Herencia y Polimorfismo)
- */
 export class Estudiante extends Usuario {
   #sede
 
@@ -15,10 +12,6 @@ export class Estudiante extends Usuario {
     return this.#sede
   }
 
-  /**
-   * Sobreescritura polimórfica de permisos para estudiantes
-   * @returns {string[]}
-   */
   obtenerPermisos() {
     return ['evaluar_docente', 'ver_mis_respuestas']
   }

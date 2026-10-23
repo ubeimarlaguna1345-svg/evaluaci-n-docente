@@ -1,7 +1,3 @@
-/**
- * Clase Base Usuario (POO - Abstracción y Encapsulamiento)
- * Representa a un usuario institucional en la plataforma SIARD-UdeC.
- */
 export class Usuario {
   #id
   #nombre
@@ -58,18 +54,10 @@ export class Usuario {
     return this.#carrera
   }
 
-  /**
-   * Método polimórfico base de permisos del sistema.
-   * Las subclases sobreescriben este método según su rol.
-   * @returns {string[]}
-   */
   obtenerPermisos() {
     return ['perfil']
   }
 
-  /**
-   * Serialización limpia para la API, sin exponer datos sensibles.
-   */
   toJSON() {
     return {
       id: this.#id,
