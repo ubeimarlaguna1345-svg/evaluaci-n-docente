@@ -24,8 +24,6 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(u.getCorreo()).toBe('carlos@udec.edu.co')
       expect(u.getRol()).toBe('usuario')
       expect(u.isActivo()).toBe(true)
-
-      // Verificar que los atributos privados no son accesibles directamente
       expect(u.id).toBeUndefined()
     })
 
@@ -141,7 +139,6 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(ev.getEstudianteId()).toBe('est-1')
       expect(ev.getDocenteId()).toBe('doc-1')
       expect(ev.getObservacion()).toBe('Excelente profesor')
-      // (5 + 4 + 5) / 3 = 4.67
       expect(ev.calcularPromedio()).toBe(4.67)
     })
 

@@ -531,13 +531,11 @@ describe('Validación individual de badges de evaluación docente por estudiante
   })
 
   it('aislamiento por sesión: una evaluación de estudiante-2 NO debe alterar el estado de estudiante-1 ni precargar datos', () => {
-    // estudiante-1 evalúa docente-1?
     const yaEvaluadoE1 = baseDb.formResponses.some(
       (ev) => ev.formId === form.id && ev.teacherId === 'docente-1' && ev.userId === 'estudiante-1'
     )
     expect(yaEvaluadoE1).toBe(false)
 
-    // estudiante-2 evalúa docente-1?
     const yaEvaluadoE2 = baseDb.formResponses.some(
       (ev) => ev.formId === form.id && ev.teacherId === 'docente-1' && ev.userId === 'estudiante-2'
     )
