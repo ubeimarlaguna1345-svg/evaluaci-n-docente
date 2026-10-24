@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, AlertTriangle } from 'lucide-react'
+import { Check, AlertTriangle, Eye } from 'lucide-react'
 import {
   useDB,
   stats,
@@ -8,6 +8,7 @@ import {
   type FormKind,
 } from '../../store'
 import { Header, Card, Field, Empty, Bar, input } from '../common'
+import { Report } from './Report'
 
 export function Filters({
   formId,
@@ -75,6 +76,7 @@ export function Results() {
   const db = useDB()
   const [formId, setFormId] = useState(db.forms[0]?.id ?? '')
   const [teacherId, setTeacherId] = useState('')
+  const [selectedReportTeacherId, setSelectedReportTeacherId] = useState<string | null>(null)
   const s = stats(db, formId, teacherId)
   const selectedForm = db.forms.find((f) => f.id === formId)
   const teacher = db.users.find((u) => u.id === teacherId)
@@ -201,6 +203,7 @@ export function Results() {
                   <th className="p-3">Definitiva Consolidada</th>
                   <th className="p-3">Estado</th>
                   <th className="p-3">Desempeño Institucional</th>
+                  <th className="p-3 text-right">Diagnóstico</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -279,6 +282,17 @@ export function Results() {
                           <span className="text-ink/40 text-[10px]">Sin evaluar</span>
                         )}
                       </td>
+                      <td className="p-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedReportTeacherId(t.id)}
+                          className="inline-flex items-center gap-1 rounded-md bg-pine/10 hover:bg-pine hover:text-white px-2.5 py-1 text-[11px] font-semibold text-pine transition"
+                          title="Ver Reporte Detallado MEDIT"
+                        >
+                          <Eye size={12} />
+                          <span>Ver Reporte</span>
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -286,6 +300,13 @@ export function Results() {
             </table>
           </div>
         </Card>
+      )}
+
+      {selectedReportTeacherId && (
+        <Report
+          initialTeacherId={selectedReportTeacherId}
+          onClose={() => setSelectedReportTeacherId(null)}
+        />
       )}
 
       {!s || !s.responses.length ? (

@@ -17,3 +17,23 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #14231b !important;
+  }
+  aside, nav, .no-print {
+    display: none !important;
+  }
+  .print-clean {
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

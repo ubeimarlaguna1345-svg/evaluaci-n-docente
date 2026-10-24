@@ -42,6 +42,7 @@ export const VIEWS: Record<Role, View[]> = (() => {
     admin: mgmt,
     coordinador: mgmt,
     docente: [
+      { id: 'reporte-docente', label: 'Mi Reporte MEDIT', icon: FileText, render: (me) => <Report me={me} initialTeacherId={me.id} isTeacherView /> },
       { id: 'retro', label: 'Retroalimentación', icon: MessageSquare, render: (me) => <TeacherFeedback me={me} /> },
       { id: 'auto', label: 'Autoevaluación', icon: ClipboardList, render: (me) => <SelfEvaluation me={me} /> },
       normativaView,
