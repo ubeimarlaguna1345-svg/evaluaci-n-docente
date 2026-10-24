@@ -79,9 +79,21 @@ export async function initSchema() {
         ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
         ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante'));
 
+        -- 1. Eliminar Administrador General duplicado y antiguo
+        DELETE FROM usuarios WHERE LOWER(correo) = 'admin@ucundinamarca.edu.co' OR nombre ILIKE '%Administrador General%';
+
+        -- 2. Eliminar docentes repetidos conservando únicamente la cuenta canónica
+        DELETE FROM usuarios 
+        WHERE rol = 'docente' 
+          AND id NOT IN ('doc-navarro', 'doc-salazar', 'doc-prieto', 'doc-mendoza', 'doc-cifuentes')
+          AND (
+            LOWER(correo) IN ('andres.navarro@ucundinamarca.edu.co', 'diana.salazar@ucundinamarca.edu.co', 'gabriel.prieto@ucundinamarca.edu.co', 'javier.mendoza@ucundinamarca.edu.co', 'mariana.cifuentes@ucundinamarca.edu.co')
+            OR nombre IN ('Andrés Navarro', 'Diana Salazar', 'Gabriel Prieto', 'Javier Mendoza', 'Mariana Cifuentes')
+          );
+
         INSERT INTO usuarios (id, nombre, correo, contrasena, contrasena_hash, rol, activo, sede, carrera)
         VALUES
-          ('usr-admin-1', 'Administrador General', 'admin@ucundinamarca.edu.co', 'admin123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'admin', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('usr-admin-uber', 'Ubeimar Laguna Cárdenas', 'uberadmin.siard@ucundinamarca.edu.co', 'admin123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'admin', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('usr-coord-1', 'Coordinación Académica', 'coordinador@ucundinamarca.edu.co', 'coord123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'coordinador', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('doc-navarro', 'Andrés Navarro', 'andres.navarro@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('doc-salazar', 'Diana Salazar', 'diana.salazar@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),

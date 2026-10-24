@@ -131,14 +131,14 @@ export function Accounts({ me }: { me: User }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
           <Card className="max-w-sm space-y-4">
             <h3 className="font-serif text-2xl">¿Eliminar la cuenta de {confirm.name}?</h3>
-            <p className="text-sm text-ink/60">La cuenta quedará desactivada en PostgreSQL y no podrá iniciar sesión.</p>
+            <p className="text-sm text-ink/60">La cuenta se eliminará permanentemente de PostgreSQL y de la plataforma.</p>
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setConfirm(null)}>Cancelar</button>
               <button
                 className={`${btn} bg-red-700 hover:bg-red-800`}
                 onClick={async () => {
                   try {
-                    await actions.deactivateUser(confirm.id)
+                    await actions.deleteUser(confirm.id)
                     setConfirm(null)
                   } catch (e) {
                     alert((e as Error).message || 'Error al eliminar usuario.')

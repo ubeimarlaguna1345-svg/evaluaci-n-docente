@@ -82,10 +82,15 @@ export async function authenticateUser(req, res) {
     return sendJson(res, 400, { ok: false, message: 'Correo y contraseña requeridos.' })
   }
 
+  let searchEmail = (email || '').trim().toLowerCase()
+  if (searchEmail === 'uberadmin.siard@ucundinamarac.edu.co') {
+    searchEmail = 'uberadmin.siard@ucundinamarca.edu.co'
+  }
+
   try {
     const result = await pool.query(
-      'SELECT id, nombre AS name, correo AS email, contrasena AS password, contrasena_hash, rol AS role, activo AS active, sede, carrera FROM usuarios WHERE LOWER(correo) = LOWER($1)',
-      [email.trim()]
+      'SELECT id, nombre AS name, correo AS email, contrasena AS password, contrasena_hash, rol AS role, activo AS active, sede, carrera FROM usuarios WHERE LOWER(correo) = $1',
+      [searchEmail]
     )
 
     if (result.rows.length === 0) {
@@ -115,8 +120,15 @@ export async function authenticateUser(req, res) {
 export async function deleteUser(req, res) {
   const { id } = req.params
   try {
-    await pool.query('UPDATE usuarios SET activo = FALSE WHERE id = $1', [id])
-    sendJson(res, 200, { ok: true, message: 'Usuario desactivado correctamente en PostgreSQL.' })
+    await pool.query('UPDATE cadis SET docente_id = NULL WHERE docente_id = $1', [id])
+    await pool.query('DELETE FROM respuestas_formulario WHERE usuario_id = $1 OR docente_id = $1', [id])
+    await pool.query('DELETE FROM respuestas_retroalimentacion WHERE estudiante_id = $1', [id])
+    await pool.query('DELETE FROM retroalimentaciones WHERE docente_id = $1', [id])
+    const delRes = await pool.query('DELETE FROM usuarios WHERE id = $1', [id])
+    if (delRes.rowCount === 0) {
+      await pool.query('UPDATE usuarios SET activo = FALSE WHERE id = $1', [id])
+    }
+    sendJson(res, 200, { ok: true, message: 'Usuario eliminado permanentemente en PostgreSQL.' })
   } catch (error) {
     console.error('Error al dar de baja usuario:', error.message)
     sendJson(res, 500, { ok: false, message: 'Error al desactivar usuario.', detail: error.message })

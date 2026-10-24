@@ -35,7 +35,7 @@ export async function getBootstrap(_req, res) {
     await initSchema()
 
     const usersRes = await pool.query(
-      "SELECT id, nombre AS name, correo AS email, contrasena AS password, rol AS role, activo AS active, COALESCE(sede, 'Sede Facatativá') AS sede, COALESCE(carrera, 'Ingeniería de Sistemas y Computación') AS carrera FROM usuarios ORDER BY rol, nombre"
+      "SELECT id, nombre AS name, correo AS email, contrasena AS password, rol AS role, activo AS active, COALESCE(sede, 'Sede Facatativá') AS sede, COALESCE(carrera, 'Ingeniería de Sistemas y Computación') AS carrera FROM usuarios WHERE activo = TRUE AND LOWER(correo) != 'admin@ucundinamarca.edu.co' ORDER BY rol, nombre"
     )
 
     const cadisRes = await pool.query(

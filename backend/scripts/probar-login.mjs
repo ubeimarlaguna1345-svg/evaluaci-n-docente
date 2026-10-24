@@ -22,7 +22,7 @@ const pool = new pg.Pool({
 })
 
 try {
-  const correo = 'admin@ucundinamarca.edu.co'
+  const correo = 'uberadmin.siard@ucundinamarca.edu.co'
 
   const resultado = await pool.query(
     'SELECT contrasena_hash, activo FROM usuarios WHERE LOWER(correo) = LOWER($1)',

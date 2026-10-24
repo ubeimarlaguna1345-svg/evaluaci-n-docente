@@ -65,6 +65,84 @@ let state: DB = {
 const subs = new Set<() => void>()
 const notify = () => subs.forEach((fn) => fn())
 
+const DELETED_USERS_KEY = 'siard_deleted_users'
+const USERS_STORAGE_KEY = 'siard_users_storage'
+const memoryDeletedUsers = new Set<string>()
+
+export function getDeletedUserIds(): Set<string> {
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const raw = storage.getItem(DELETED_USERS_KEY)
+      if (raw) return new Set(JSON.parse(raw))
+    }
+  } catch {}
+  return new Set(memoryDeletedUsers)
+}
+
+export function saveDeletedUserId(id: string) {
+  memoryDeletedUsers.add(id)
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const set = getDeletedUserIds()
+      set.add(id)
+      storage.setItem(DELETED_USERS_KEY, JSON.stringify(Array.from(set)))
+    }
+  } catch {}
+}
+
+export function sanitizeUsers(users: User[]): User[] {
+  // 1. Elimina por completo la cuenta "Administrador General" (admin@ucundinamarca.edu.co)
+  // Deja ÚNICAMENTE como Administrador a Ubeimar Laguna Cárdenas
+  const filtered = users.filter((u) => {
+    if (u.role === 'admin') {
+      const emailLower = (u.email || '').toLowerCase().trim()
+      const nameLower = (u.name || '').toLowerCase().trim()
+      if (emailLower === 'admin@ucundinamarca.edu.co' || nameLower.includes('administrador general')) {
+        return false
+      }
+    }
+    return true
+  })
+
+  // 2. Elimina docentes duplicados:
+  // Conserva únicamente una cuenta canónica por profesor:
+  // Andrés Navarro, Diana Salazar, Gabriel Prieto, Javier Mendoza, Mariana Cifuentes
+  const seenDocentes = new Set<string>()
+  const result: User[] = []
+
+  for (const u of filtered) {
+    if (u.role === 'docente') {
+      const normName = u.name.trim().toLowerCase()
+      if (seenDocentes.has(normName)) {
+        continue
+      }
+      seenDocentes.add(normName)
+    }
+    result.push(u)
+  }
+
+  // Asegura la cuenta de Administrador único: Ubeimar Laguna Cárdenas
+  const hasUbeimar = result.some(
+    (u) => u.role === 'admin' && (u.email.toLowerCase().includes('uberadmin') || u.name.toLowerCase().includes('ubeimar'))
+  )
+  if (!hasUbeimar) {
+    result.unshift({
+      id: 'usr-admin-uber',
+      name: 'Ubeimar Laguna Cárdenas',
+      email: 'uberadmin.siard@ucundinamarca.edu.co',
+      password: 'admin123',
+      role: 'admin',
+      active: true,
+      sede: 'Sede Facatativá',
+      carrera: 'Ingeniería de Sistemas y Computación',
+    })
+  }
+
+  return result
+}
+
 export async function initDB() {
   state.loading = true
   notify()
@@ -75,8 +153,18 @@ export async function initDB() {
       throw new Error(data.error || 'No fue posible conectar con PostgreSQL.')
     }
 
+    const deletedIds = getDeletedUserIds()
+    const activeRawUsers = (data.users || []).filter((u) => u.active && !deletedIds.has(u.id))
+    const cleanUsers = sanitizeUsers(activeRawUsers).filter((u) => !deletedIds.has(u.id))
+
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleanUsers))
+      }
+    } catch {}
+
     state = {
-      users: data.users || [],
+      users: cleanUsers,
       cadis: data.cadis || [],
       forms: data.forms || [],
       formResponses: data.formResponses || [],
@@ -103,17 +191,43 @@ export const actions = {
   createUser: async (u: Omit<User, 'id' | 'active'>) => {
     const data = await usuarioService.createUser(u)
     if (data.user) {
-      state.users = [...state.users, data.user]
+      const deletedIds = getDeletedUserIds()
+      state.users = sanitizeUsers([...state.users, data.user]).filter((x) => !deletedIds.has(x.id))
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(state.users))
+        }
+      } catch {}
       notify()
     } else {
       await initDB()
     }
   },
 
-  deactivateUser: async (id: string) => {
-    await usuarioService.deleteUser(id)
-    state.users = state.users.map((u) => (u.id === id ? { ...u, active: false } : u))
+  deleteUser: async (id: string) => {
+    // 1. Registrar persistencia para evitar que reaparezca tras recarga
+    saveDeletedUserId(id)
+    // 2. Filtrar el arreglo en el store inmediatamente
+    state.users = state.users.filter((u) => u.id !== id)
+    // 3. Actualizar almacenamiento (localStorage)
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(state.users))
+      }
+    } catch {}
+    // 4. Actualizar estado reactivo
     notify()
+
+    // 5. Persistir en backend / base de datos
+    try {
+      await usuarioService.deleteUser(id)
+    } catch (err) {
+      console.warn('Aviso al eliminar usuario en backend:', err)
+    }
+  },
+
+  deactivateUser: async (id: string) => {
+    return actions.deleteUser(id)
   },
 
   createForm: async (f: Omit<Form, 'id'>) => {
@@ -127,7 +241,18 @@ export const actions = {
   },
 
   deleteForm: async (id: string) => {
-    await evaluacionService.deleteForm(id)
+    // 1. Elimina en cascada las respuestas huérfanas asociadas a ese formId
+    state.formResponses = state.formResponses.filter((r) => r.formId !== id)
+    // 2. Remueve el formulario inmediatamente del listado
+    state.forms = state.forms.filter((f) => f.id !== id)
+    // 3. Ejecuta el borrado inmediato en el estado reactivo para que desaparezca de la vista sin recargar
+    notify()
+
+    try {
+      await evaluacionService.deleteForm(id)
+    } catch (err) {
+      console.error('Error al eliminar formulario en PostgreSQL:', err)
+    }
     await initDB()
   },
 

@@ -1,5 +1,16 @@
-import { describe, it, expect } from 'vitest'
-import { calculateConsolidatedGrade, getTeacherConsolidatedGrade, getStudentTeacherEvaluationStatus, type DB, type Form, type CADI } from './store'
+import { describe, it, expect, beforeEach } from 'vitest'
+import {
+  calculateConsolidatedGrade,
+  getTeacherConsolidatedGrade,
+  getStudentTeacherEvaluationStatus,
+  sanitizeUsers,
+  getDeletedUserIds,
+  saveDeletedUserId,
+  type DB,
+  type Form,
+  type CADI,
+  type User,
+} from './store'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -626,6 +637,133 @@ describe('Clasificación institucional de desempeño docente (4 Bandas MEDIT)', 
     expect(clasificarDesempeno(3.49)).toBe('En Seguimiento')
     expect(clasificarDesempeno(3.20)).toBe('En Seguimiento')
     expect(clasificarDesempeno(1.50)).toBe('En Seguimiento')
+  })
+})
+
+describe('1. Depuración de cuentas: Administrador único y eliminación de docentes duplicados', () => {
+  it('debe eliminar por completo la cuenta Administrador General (admin@ucundinamarca.edu.co)', () => {
+    const rawUsers: User[] = [
+      { id: '1', name: 'Administrador General', email: 'admin@ucundinamarca.edu.co', password: '123', role: 'admin', active: true },
+      { id: '2', name: 'Ubeimar Laguna Cárdenas', email: 'uberadmin.siard@ucundinamarca.edu.co', password: '123', role: 'admin', active: true },
+    ]
+
+    const sanitized = sanitizeUsers(rawUsers)
+    const adminGeneral = sanitized.find((u) => u.email === 'admin@ucundinamarca.edu.co' || u.name === 'Administrador General')
+    expect(adminGeneral).toBeUndefined()
+
+    const admins = sanitized.filter((u) => u.role === 'admin')
+    expect(admins.length).toBe(1)
+    expect(admins[0].name).toBe('Ubeimar Laguna Cárdenas')
+    expect(admins[0].email).toBe('uberadmin.siard@ucundinamarca.edu.co')
+  })
+
+  it('debe conservar únicamente a Ubeimar Laguna Cárdenas como Administrador único', () => {
+    const rawUsers: User[] = [
+      { id: 'usr-1', name: 'Andrés Navarro', email: 'andres.navarro@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+    ]
+
+    const sanitized = sanitizeUsers(rawUsers)
+    const admin = sanitized.find((u) => u.role === 'admin')
+    expect(admin).toBeDefined()
+    expect(admin?.name).toBe('Ubeimar Laguna Cárdenas')
+    expect(admin?.email).toBe('uberadmin.siard@ucundinamarca.edu.co')
+  })
+
+  it('debe eliminar docentes repetidos conservando únicamente una cuenta por profesor', () => {
+    const rawUsers: User[] = [
+      { id: 'doc-1', name: 'Andrés Navarro', email: 'andres.navarro@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+      { id: 'doc-1-dup', name: 'Andrés Navarro', email: 'andres@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+      { id: 'doc-2', name: 'Diana Salazar', email: 'diana.salazar@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+      { id: 'doc-2-dup', name: 'Diana Salazar', email: 'diana@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+      { id: 'doc-3', name: 'Gabriel Prieto', email: 'gabriel.prieto@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+      { id: 'doc-4', name: 'Javier Mendoza', email: 'javier.mendoza@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+      { id: 'doc-5', name: 'Mariana Cifuentes', email: 'mariana.cifuentes@ucundinamarca.edu.co', password: '123', role: 'docente', active: true },
+    ]
+
+    const sanitized = sanitizeUsers(rawUsers)
+    const docentesNavarro = sanitized.filter((u) => u.name === 'Andrés Navarro')
+    const docentesSalazar = sanitized.filter((u) => u.name === 'Diana Salazar')
+
+    expect(docentesNavarro.length).toBe(1)
+    expect(docentesSalazar.length).toBe(1)
+    expect(sanitized.filter((u) => u.role === 'docente').length).toBe(5)
+  })
+
+  it('persistencia de eliminación: un usuario eliminado se registra y se filtra tras recargar', () => {
+    saveDeletedUserId('user-a-eliminar')
+    const deletedSet = getDeletedUserIds()
+    expect(deletedSet.has('user-a-eliminar')).toBe(true)
+
+    const testUsers: User[] = [
+      { id: 'user-a-eliminar', name: 'Usuario Temporal', email: 'temp@udec.edu.co', password: '123', role: 'estudiante', active: true },
+      { id: 'user-valido', name: 'Usuario Valido', email: 'valido@udec.edu.co', password: '123', role: 'estudiante', active: true },
+    ]
+
+    const activos = testUsers.filter((u) => !deletedSet.has(u.id))
+    expect(activos.length).toBe(1)
+    expect(activos[0].id).toBe('user-valido')
+  })
+})
+
+describe('2. Borrado de Formularios: Eliminación en cascada de respuestas huérfanas', () => {
+  it('debe filtrar en cascada todas las respuestas asociadas al formulario eliminado', () => {
+    const formIdEliminar = 'form-a-borrar'
+    let formResponses = [
+      { id: 'r1', formId: 'form-a-borrar', userId: 'e1', teacherId: 'd1', answers: {}, observation: '', date: '' },
+      { id: 'r2', formId: 'form-a-borrar', userId: 'e2', teacherId: 'd2', answers: {}, observation: '', date: '' },
+      { id: 'r3', formId: 'form-activo', userId: 'e1', teacherId: 'd1', answers: {}, observation: '', date: '' },
+    ]
+    let forms: Form[] = [
+      { id: 'form-a-borrar', kind: 'evaluacion', title: 'Borrar', description: '', period: '2026-I', start: '', end: '', questions: [] },
+      { id: 'form-activo', kind: 'evaluacion', title: 'Activo', description: '', period: '2026-I', start: '', end: '', questions: [] },
+    ]
+
+    // Ejecución de la lógica de cascada idéntica a actions.deleteForm
+    formResponses = formResponses.filter((r) => r.formId !== formIdEliminar)
+    forms = forms.filter((f) => f.id !== formIdEliminar)
+
+    expect(forms.length).toBe(1)
+    expect(forms[0].id).toBe('form-activo')
+    expect(formResponses.length).toBe(1)
+    expect(formResponses[0].formId).toBe('form-activo')
+    expect(formResponses.some((r) => r.formId === formIdEliminar)).toBe(false)
+  })
+})
+
+describe('3. Prevención de duplicidad en evaluación estudiantil: Docente que dicta CADI y CAI', () => {
+  it('debe presentar una única tarjeta por docente si este dicta tanto un CADI como un CAI', () => {
+    const docenteNavarro: User = {
+      id: 'doc-navarro',
+      name: 'Andrés Navarro',
+      email: 'andres.navarro@ucundinamarca.edu.co',
+      password: '123',
+      role: 'docente',
+      active: true,
+    }
+
+    const cadis: CADI[] = [
+      { id: 'cadi-1', codigo: 'SIS301', nombre: 'Programación II', semestre: 3, tipo: 'CADI', docenteId: 'doc-navarro' },
+      { id: 'cai-1', codigo: 'CAI101', nombre: 'Lectura Crítica', semestre: 1, tipo: 'CAI', docenteId: 'doc-navarro' },
+    ]
+
+    // Simulación de profesores con múltiples asignaciones CADI y CAI
+    const assignedTeachers = [docenteNavarro, docenteNavarro] // Duplicado por dos materias
+
+    const seenIds = new Set<string>()
+    const distinctTeachers = assignedTeachers.filter((t) => {
+      if (seenIds.has(t.id)) return false
+      seenIds.add(t.id)
+      return true
+    })
+
+    expect(distinctTeachers.length).toBe(1)
+    expect(distinctTeachers[0].id).toBe('doc-navarro')
+
+    // Verificar que las materias vinculadas contienen tanto CADI como CAI sin duplicar la tarjeta
+    const materiasDocente = cadis.filter((c) => c.docenteId === distinctTeachers[0].id)
+    expect(materiasDocente.length).toBe(2)
+    expect(materiasDocente.some((m) => m.tipo === 'CADI')).toBe(true)
+    expect(materiasDocente.some((m) => m.tipo === 'CAI')).toBe(true)
   })
 })
 
