@@ -69,6 +69,34 @@ const DELETED_USERS_KEY = 'siard_deleted_users'
 const USERS_STORAGE_KEY = 'siard_users_storage'
 const memoryDeletedUsers = new Set<string>()
 
+const DELETED_FORMS_KEY = 'siard_deleted_forms'
+const FORMS_STORAGE_KEY = 'siard_forms_storage'
+const RESPONSES_STORAGE_KEY = 'siard_responses_storage'
+const memoryDeletedForms = new Set<string>()
+
+export function getDeletedFormIds(): Set<string> {
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const raw = storage.getItem(DELETED_FORMS_KEY)
+      if (raw) return new Set(JSON.parse(raw))
+    }
+  } catch {}
+  return new Set(memoryDeletedForms)
+}
+
+export function saveDeletedFormId(id: string) {
+  memoryDeletedForms.add(id)
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const set = getDeletedFormIds()
+      set.add(id)
+      storage.setItem(DELETED_FORMS_KEY, JSON.stringify(Array.from(set)))
+    }
+  } catch {}
+}
+
 export function getDeletedUserIds(): Set<string> {
   try {
     const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
@@ -157,17 +185,23 @@ export async function initDB() {
     const activeRawUsers = (data.users || []).filter((u) => u.active && !deletedIds.has(u.id))
     const cleanUsers = sanitizeUsers(activeRawUsers).filter((u) => !deletedIds.has(u.id))
 
+    const deletedFormIds = getDeletedFormIds()
+    const cleanForms = (data.forms || []).filter((f) => !deletedFormIds.has(f.id))
+    const cleanResponses = (data.formResponses || []).filter((r) => !deletedFormIds.has(r.formId))
+
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleanUsers))
+        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(cleanForms))
+        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(cleanResponses))
       }
     } catch {}
 
     state = {
       users: cleanUsers,
       cadis: data.cadis || [],
-      forms: data.forms || [],
-      formResponses: data.formResponses || [],
+      forms: [...cleanForms],
+      formResponses: [...cleanResponses],
       feedbacks: data.feedbacks || [],
       feedbackResponses: data.feedbackResponses || [],
       connected: true,
@@ -241,19 +275,36 @@ export const actions = {
   },
 
   deleteForm: async (id: string) => {
-    // 1. Elimina en cascada las respuestas huérfanas asociadas a ese formId
-    state.formResponses = state.formResponses.filter((r) => r.formId !== id)
-    // 2. Remueve el formulario inmediatamente del listado
-    state.forms = state.forms.filter((f) => f.id !== id)
-    // 3. Ejecuta el borrado inmediato en el estado reactivo para que desaparezca de la vista sin recargar
+    // 1. Persistir el ID para que no vuelva a recrearse o reaparecer tras recargar
+    saveDeletedFormId(id)
+
+    // 2. Elimina en cascada las respuestas huérfanas asociadas a ese formId con nueva referencia
+    state.formResponses = [...state.formResponses.filter((r) => r.formId !== id)]
+
+    // 3. Filtra el arreglo de formularios para remover el ID con nueva referencia
+    state.forms = [...state.forms.filter((f) => f.id !== id)]
+
+    // 4. Actualiza inmediatamente el almacenamiento local
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
+        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
+      }
+    } catch {}
+
+    // 5. Garantía de reactividad: notifica con nuevas referencias para re-renderizado instantáneo
     notify()
 
+    // 6. Eliminar en PostgreSQL en segundo plano
     try {
       await evaluacionService.deleteForm(id)
     } catch (err) {
-      console.error('Error al eliminar formulario en PostgreSQL:', err)
+      console.warn('Aviso al eliminar formulario en backend:', err)
     }
-    await initDB()
+  },
+
+  eliminarFormulario: async (id: string) => {
+    return actions.deleteForm(id)
   },
 
   setFormDates: async (id: string, start: string, end: string) => {

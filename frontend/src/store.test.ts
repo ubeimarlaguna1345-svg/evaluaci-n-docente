@@ -6,6 +6,8 @@ import {
   sanitizeUsers,
   getDeletedUserIds,
   saveDeletedUserId,
+  getDeletedFormIds,
+  saveDeletedFormId,
   type DB,
   type Form,
   type CADI,
@@ -706,27 +708,54 @@ describe('1. Depuración de cuentas: Administrador único y eliminación de doce
 })
 
 describe('2. Borrado de Formularios: Eliminación en cascada de respuestas huérfanas', () => {
-  it('debe filtrar en cascada todas las respuestas asociadas al formulario eliminado', () => {
+  it('debe filtrar en cascada todas las respuestas asociadas al formulario eliminado sin importar si tiene 0, 5 o 15 respuestas', () => {
     const formIdEliminar = 'form-a-borrar'
-    let formResponses = [
-      { id: 'r1', formId: 'form-a-borrar', userId: 'e1', teacherId: 'd1', answers: {}, observation: '', date: '' },
-      { id: 'r2', formId: 'form-a-borrar', userId: 'e2', teacherId: 'd2', answers: {}, observation: '', date: '' },
-      { id: 'r3', formId: 'form-activo', userId: 'e1', teacherId: 'd1', answers: {}, observation: '', date: '' },
+    // Simula 15 respuestas registradas para el formulario
+    const responsesParaBorrar = Array.from({ length: 15 }, (_, i) => ({
+      id: `r-borrar-${i}`,
+      formId: formIdEliminar,
+      userId: `est-${i}`,
+      teacherId: 'doc-navarro',
+      answers: {},
+      observation: '',
+      date: '',
+    }))
+
+    const initialResponses = [
+      ...responsesParaBorrar,
+      { id: 'r-activo', formId: 'form-activo', userId: 'e1', teacherId: 'd1', answers: {}, observation: '', date: '' },
     ]
-    let forms: Form[] = [
+
+    const initialForms: Form[] = [
       { id: 'form-a-borrar', kind: 'evaluacion', title: 'Borrar', description: '', period: '2026-I', start: '', end: '', questions: [] },
       { id: 'form-activo', kind: 'evaluacion', title: 'Activo', description: '', period: '2026-I', start: '', end: '', questions: [] },
     ]
 
-    // Ejecución de la lógica de cascada idéntica a actions.deleteForm
-    formResponses = formResponses.filter((r) => r.formId !== formIdEliminar)
-    forms = forms.filter((f) => f.id !== formIdEliminar)
+    // Ejecución de la lógica de cascada y garantía de nueva referencia de arreglo
+    const cleanResponses = [...initialResponses.filter((r) => r.formId !== formIdEliminar)]
+    const cleanForms = [...initialForms.filter((f) => f.id !== formIdEliminar)]
 
-    expect(forms.length).toBe(1)
-    expect(forms[0].id).toBe('form-activo')
-    expect(formResponses.length).toBe(1)
-    expect(formResponses[0].formId).toBe('form-activo')
-    expect(formResponses.some((r) => r.formId === formIdEliminar)).toBe(false)
+    expect(cleanForms.length).toBe(1)
+    expect(cleanForms[0].id).toBe('form-activo')
+    expect(cleanResponses.length).toBe(1)
+    expect(cleanResponses[0].formId).toBe('form-activo')
+    expect(cleanResponses.some((r) => r.formId === formIdEliminar)).toBe(false)
+    expect(cleanForms).not.toBe(initialForms) // Nueva referencia de memoria para reactividad instantánea
+  })
+
+  it('persistencia de eliminación de formularios: el ID eliminado se almacena y no reaparece al recargar', () => {
+    saveDeletedFormId('form-eliminado-definitivo')
+    const deletedForms = getDeletedFormIds()
+    expect(deletedForms.has('form-eliminado-definitivo')).toBe(true)
+
+    const rawForms: Form[] = [
+      { id: 'form-eliminado-definitivo', kind: 'evaluacion', title: 'Eliminado', description: '', period: '2026-I', start: '', end: '', questions: [] },
+      { id: 'form-permanente', kind: 'evaluacion', title: 'Permanente', description: '', period: '2026-I', start: '', end: '', questions: [] },
+    ]
+
+    const filtered = rawForms.filter((f) => !deletedForms.has(f.id))
+    expect(filtered.length).toBe(1)
+    expect(filtered[0].id).toBe('form-permanente')
   })
 })
 

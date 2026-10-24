@@ -81,8 +81,12 @@ export function FormRow({
             </button>
             <button
               type="button"
-              onClick={() => onDelete(fm)}
-              className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onDelete(fm)
+              }}
+              className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
               title="Eliminar formulario"
             >
               <Trash2 size={13} />
@@ -173,22 +177,14 @@ export function FormsAdmin() {
   }
 
   const eliminar = async (fm: Form) => {
-    const confirmar = window.confirm(
-      `¿Estás seguro de eliminar la evaluación "${fm.title}" (${fm.period})? Esta acción removerá el formulario y todas sus preguntas asociadas de PostgreSQL.`
-    )
-    if (!confirmar) return
-
-    setLoading(true)
+    if (editingId === fm.id) {
+      cancelar()
+    }
     try {
       await actions.deleteForm(fm.id)
-      if (editingId === fm.id) {
-        cancelar()
-      }
-      setMsg({ kind: 'ok', text: `Evaluación "${fm.title}" eliminada correctamente de PostgreSQL.` })
+      setMsg({ kind: 'ok', text: `Evaluación "${fm.title}" eliminada correctamente.` })
     } catch (e) {
       setMsg({ kind: 'err', text: (e as Error).message || 'Error al eliminar formulario.' })
-    } finally {
-      setLoading(false)
     }
   }
 

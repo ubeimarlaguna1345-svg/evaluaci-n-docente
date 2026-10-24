@@ -118,10 +118,19 @@ export async function initSchema() {
         ON CONFLICT (codigo) DO UPDATE
         SET tipo = EXCLUDED.tipo, docente_id = COALESCE(cadis.docente_id, EXCLUDED.docente_id);
 
+        CREATE TABLE IF NOT EXISTS formularios_eliminados (
+          id TEXT PRIMARY KEY,
+          fecha TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+
         INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-        VALUES
-          ('form-eval-2026', 'evaluacion', 'Evaluación Docente 2026-I', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z'),
-          ('form-auto-2026', 'autoevaluacion', 'Autoevaluación Docente 2026-I', 'Instrumento de reflexión pedagógica y autoevaluación.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z')
+        SELECT 'form-eval-2026', 'evaluacion', 'Evaluación Docente 2026-I', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z'
+        WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-eval-2026')
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
+        SELECT 'form-auto-2026', 'autoevaluacion', 'Autoevaluación Docente 2026-I', 'Instrumento de reflexión pedagógica y autoevaluación.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z'
+        WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-auto-2026')
         ON CONFLICT (id) DO NOTHING;
 
         INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)

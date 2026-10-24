@@ -43,7 +43,10 @@ export async function getBootstrap(_req, res) {
     )
 
     const formsRes = await pool.query(
-      'SELECT id, tipo AS kind, titulo AS title, descripcion AS description, periodo AS period, cadi_id AS "cadiId", fecha_inicio AS start, fecha_cierre AS end FROM formularios ORDER BY fecha_inicio DESC'
+      `SELECT id, tipo AS kind, titulo AS title, descripcion AS description, periodo AS period, cadi_id AS "cadiId", fecha_inicio AS start, fecha_cierre AS end 
+       FROM formularios 
+       WHERE id NOT IN (SELECT id FROM formularios_eliminados) 
+       ORDER BY fecha_inicio DESC`
     )
 
     const questionsRes = await pool.query(

@@ -217,27 +217,29 @@ export async function deleteForm(req, res) {
   const { id } = req.params
   const client = await pool.connect()
   try {
-    await client.query('BEGIN')
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS formularios_eliminados (
+        id TEXT PRIMARY KEY,
+        fecha TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `)
+    await client.query('INSERT INTO formularios_eliminados (id) VALUES ($1) ON CONFLICT DO NOTHING', [id])
 
     const respRes = await client.query('SELECT id FROM respuestas_formulario WHERE formulario_id = $1', [id])
     if (respRes.rows.length > 0) {
       const respIds = respRes.rows.map((r) => r.id)
       await client.query('DELETE FROM detalle_respuesta WHERE respuesta_id = ANY($1::text[])', [respIds])
-      await client.query('DELETE FROM respuestas_formulario WHERE formulario_id = $1', [id])
     }
+    await client.query('DELETE FROM respuestas_formulario WHERE formulario_id = $1', [id])
 
     const qRes = await client.query('SELECT id FROM preguntas WHERE formulario_id = $1', [id])
     if (qRes.rows.length > 0) {
       const qIds = qRes.rows.map((r) => r.id)
       await client.query('DELETE FROM opciones WHERE pregunta_id = ANY($1::text[])', [qIds])
-      await client.query('DELETE FROM preguntas WHERE formulario_id = $1', [id])
     }
+    await client.query('DELETE FROM preguntas WHERE formulario_id = $1', [id])
 
-    const deleteRes = await client.query('DELETE FROM formularios WHERE id = $1', [id])
-    if (deleteRes.rowCount === 0) {
-      await client.query('ROLLBACK')
-      return sendJson(res, 404, { ok: false, message: 'Formulario no encontrado.' })
-    }
+    await client.query('DELETE FROM formularios WHERE id = $1', [id])
 
     await client.query('COMMIT')
     sendJson(res, 200, { ok: true, message: 'Formulario eliminado correctamente.' })
