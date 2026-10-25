@@ -270,7 +270,6 @@ export async function createFormResponse(req, res) {
     return sendJson(res, 400, { ok: false, message: 'Faltan parámetros obligatorios de evaluación.' })
   }
 
-  // Instanciación formal del modelo de dominio Evaluacion
   const evaluacion = new Evaluacion({
     formularioId: formId,
     estudianteId: userId,

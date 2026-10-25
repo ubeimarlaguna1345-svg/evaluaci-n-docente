@@ -1,8 +1,5 @@
 import { Usuario } from './Usuario.js'
 
-/**
- * Subclase Admin (POO - Herencia y Polimorfismo)
- */
 export class Admin extends Usuario {
   constructor(datos = {}) {
     super({ ...datos, rol: 'admin' })

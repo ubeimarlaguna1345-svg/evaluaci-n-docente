@@ -168,16 +168,12 @@ export function Report({
   const selectedForm = db.forms.find((f) => f.id === formId) || evals[0]
   const selectedPeriod = selectedForm?.period || '2026-I'
 
-  // Filtros de búsqueda para vista de coordinador
   const [searchQuery, setSearchQuery] = useState('')
   const [tierFilter, setTierFilter] = useState<'todos' | NivelDesempeno>('todos')
-
-  // Modal de Reporte Detallado activo
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(
     initialTeacherId || (isTeacherView && me?.id ? me.id : null)
   )
 
-  // Consolidación y enriquecimiento de todos los docentes
   const teachersWithGrades = useMemo(() => {
     return allTeachers.map((t) => {
       const grade = getTeacherConsolidatedGrade(db, t.id, selectedPeriod)
@@ -194,7 +190,6 @@ export function Report({
     })
   }, [allTeachers, db, selectedPeriod])
 
-  // Promedio institucional consolidado de la facultad
   const avgInstitucional = useMemo(() => {
     const valid = teachersWithGrades.filter((x) => x.grade.hasEvaluations)
     if (!valid.length) return 4.18
@@ -202,7 +197,6 @@ export function Report({
     return Number((sum / valid.length).toFixed(2))
   }, [teachersWithGrades])
 
-  // Contadores por banda MEDIT
   const countsByTier = useMemo(() => {
     return {
       total: teachersWithGrades.length,
@@ -213,7 +207,6 @@ export function Report({
     }
   }, [teachersWithGrades])
 
-  // Docentes filtrados para la tabla
   const filteredTeachers = useMemo(() => {
     return teachersWithGrades.filter(({ teacher, cadis, desempeno }) => {
       const cadisText = cadis.map((c) => `${c.codigo} ${c.nombre} ${c.tipo || ''}`).join(' ')
@@ -228,19 +221,16 @@ export function Report({
     })
   }, [teachersWithGrades, searchQuery, tierFilter])
 
-  // Docente activo para el Reporte Detallado
   const activeDetail = useMemo(() => {
     if (!selectedTeacherId) return null
     return teachersWithGrades.find((x) => x.teacher.id === selectedTeacherId) || null
   }, [selectedTeacherId, teachersWithGrades])
 
-  // Respuestas y estadísticas específicas para el docente en el modal
   const activeStats = useMemo(() => {
     if (!activeDetail || !selectedForm) return null
     return stats(db, selectedForm.id, activeDetail.teacher.id)
   }, [activeDetail, selectedForm, db])
 
-  // BLOQUE 2: Desglose analítico de las 4 Dimensiones MEDIT
   const dimensionesCalculadas = useMemo(() => {
     if (!activeDetail) return []
     const final = activeDetail.grade.finalScore
@@ -248,7 +238,6 @@ export function Report({
     return DIMENSIONES_MEDIT.map((dim) => {
       let score: number | null = null
 
-      // 1. Buscar en porDimension por clave exacta o aproximada
       if (activeStats?.porDimension) {
         if (activeStats.porDimension[dim.dimensionDb]?.avg > 0) {
           score = activeStats.porDimension[dim.dimensionDb].avg
@@ -257,7 +246,6 @@ export function Report({
         }
       }
 
-      // 2. Buscar por preguntas correspondientes
       if (score === null && activeStats?.perQ) {
         const found = activeStats.perQ.find(
           (p) =>
@@ -267,7 +255,6 @@ export function Report({
         if (found && found.n > 0) score = found.avg
       }
 
-      // 3. Fallback inteligente y determinista basado en su calificación consolidada
       if (score === null) {
         const base = final > 0 ? final : 4.0
         score = Math.min(5.0, Math.max(1.0, Number((base + dim.offset).toFixed(2))))
@@ -285,15 +272,11 @@ export function Report({
     })
   }, [activeDetail, activeStats])
 
-  // BLOQUE 3: Matriz de Diagnóstico y Consejos Pedagógicos Personalizados
   const diagnosticoPedagogico = useMemo(() => {
     if (!activeDetail || !dimensionesCalculadas.length) return null
 
-    // A. Fortalezas (> 4.2)
     const fortalezas = dimensionesCalculadas.filter((d) => d.score > 4.2)
     const mejorDimension = [...dimensionesCalculadas].sort((a, b) => b.score - a.score)[0]
-
-    // B. Dimensión más baja para consejos prioritarios
     const dimensionMasBaja = [...dimensionesCalculadas].sort((a, b) => a.score - b.score)[0]
     const esSobresaliente = activeDetail.grade.finalScore >= 4.6
 
@@ -306,30 +289,25 @@ export function Report({
         'Vincular los proyectos integradores de aula con semilleros de investigación y convocatorias de innovación tecnológica de la Facultad de Ingeniería.'
       )
     } else {
-      // Consejos contextuales según la dimensión más baja
       if (dimensionMasBaja.id === 'dim-4') {
-        // Retroalimentación
         consejosDidacticos.push(
           'Implementar rúbricas analíticas compartidas antes de cada entrega para que el estudiante conozca los criterios de corrección con antelación.',
           'Programar devoluciones formativas en un plazo máximo de 8 días hábiles, retroalimentando aciertos y aspectos concretos de mejora.',
           'Habilitar breves sesiones grupales de retroalimentación en clase tras cada corte evaluativo para resolver dudas frecuentes de los entregables.'
         )
       } else if (dimensionMasBaja.id === 'dim-3') {
-        // Mediaciones tecnológicas y práctica
         consejosDidacticos.push(
           'Incorporar retos de programación en plataformas interactivas o repositorios colaborativos (GitHub Classroom) para articular la teoría con el entorno práctico MEDIT.',
           'Diseñar estudios de casos reales de la industria tecnológica regional que exijan al estudiante aplicar conceptos en problemas abiertos.',
           'Utilizar simuladores virtuales y herramientas digitales de soporte para enriquecer las horas de trabajo autónomo del estudiante.'
         )
       } else if (dimensionMasBaja.id === 'dim-2') {
-        // Organización y planificación
         consejosDidacticos.push(
           'Publicar en la primera semana de clases el cronograma de cortes con fechas inamovibles de evaluaciones y entregas.',
           'Socializar el parcelador académico al inicio de cada unidad temática para mantener sincronía entre las metas de aprendizaje y el avance real.',
           'Destinar los primeros 5 minutos de cada sesión a recapitular el objetivo pedagógico del día y los últimos 5 a fijar conclusiones.'
         )
       } else {
-        // Dominio conceptual / Didáctica
         consejosDidacticos.push(
           'Diversificar las estrategias expositivas integrando mapas conceptuales, analogías aplicadas y preguntas socráticas durante la explicación.',
           'Dividir temas complejos en módulos de aprendizaje progresivos con micro-talleres de verificación inmediata en clase.',
@@ -338,7 +316,7 @@ export function Report({
       }
     }
 
-    // C. Plan de Acción Inmediato (<= 3.9)
+    // Umbral MEDIT: nota <= 3.9
     const requierePlanAccion = activeDetail.grade.finalScore <= 3.9
 
     return {
@@ -351,11 +329,9 @@ export function Report({
     }
   }, [activeDetail, dimensionesCalculadas])
 
-  // BLOQUE 4: Muro Cualitativo de Retroalimentación Abierta
   const comentariosEstudiantes = useMemo<ComentarioAnalizado[]>(() => {
     if (!activeDetail) return []
 
-    // Palabras indicativas de sugerencia / oportunidad de mejora
     const palabrasOportunidad = [
       'podría',
       'sugiere',
@@ -381,7 +357,6 @@ export function Report({
       return tieneOportunidad ? 'oportunidad' : 'fortaleza'
     }
 
-    // Comentarios reales registrados en la base de datos
     const reales = activeStats
       ? activeStats.responses
           .filter((r) => r.observation && r.observation.trim().length > 0)
@@ -518,11 +493,10 @@ export function Report({
   return (
     <>
       <Header
-        title={isTeacherView ? 'Mi Informe Diagnóstico MEDIT' : 'Reportes de Evaluación y Desempeño Docente'}
-        sub="Diagnóstico formativo de alto nivel académico alineado con el modelo institucional MEDIT de la Universidad de Cundinamarca."
+        title={isTeacherView ? 'Reporte de Desempeño Docente' : 'Reportes de Evaluación Docente'}
+        sub="Instrumento de evaluación integral de la práctica docente (MEDIT)."
       />
 
-      {/* Controles de vista y filtros (Solo para Coordinadores/Admin) */}
       {!isTeacherView && (
         <>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
@@ -801,10 +775,6 @@ export function Report({
         </>
       )}
 
-      {/* =========================================================================
-          INSTRUMENTO DE DIAGNÓSTICO FORMATIVO MEDIT (MODAL O VISTA COMPLETA)
-          ESTRUCTURADO RIGUROSAMENTE EN LOS 5 BLOQUES ANALÍTICOS SOLICITADOS
-         ========================================================================= */}
       {activeDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-ink/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
           <div
@@ -828,10 +798,10 @@ export function Report({
                     </span>
                   </div>
                   <h2 className="font-serif text-2xl font-bold leading-tight text-white print:text-pine">
-                    Informe Diagnóstico Formativo de Desempeño Docente MEDIT
+                    Reporte de desempeño docente y retroalimentación académica
                   </h2>
                   <p className="text-xs text-white/70 print:text-ink/60">
-                    SIARD-UdeC · Instrumento Académico de Evaluación Integral y Proyección Pedagógica
+                    Instrumento de evaluación integral de la práctica docente (MEDIT)
                   </p>
                 </div>
               </div>
@@ -862,20 +832,15 @@ export function Report({
               </div>
             </div>
 
-            {/* Contenido con Scroll: 5 Bloques Analíticos MEDIT */}
             <div className="overflow-y-auto p-6 space-y-6 text-sm print:overflow-visible print:p-0 print:space-y-6">
-              {/* =========================================================
-                  BLOQUE 1: Ficha Técnica y Métricas Clave
-                 ========================================================= */}
               <section className="rounded-xl border border-line bg-white p-5 shadow-xs">
                 <div className="flex items-center gap-2 border-b border-line pb-3 mb-4">
                   <Building2 className="text-pine" size={18} />
                   <h3 className="font-serif text-lg font-bold text-pine">
-                    Bloque 1: Ficha Técnica y Métricas Clave
+                    Ficha Técnica y Métricas Clave
                   </h3>
                 </div>
 
-                {/* Sub-bloque: Ficha Técnica Formal */}
                 <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 rounded-lg border border-line bg-paper/40 p-4 mb-4 text-xs">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-ink/50">Profesor Titular</span>
@@ -1014,18 +979,15 @@ export function Report({
                 </div>
               </section>
 
-              {/* =========================================================
-                  BLOQUE 2: Desglose Analítico por las 4 Dimensiones MEDIT
-                 ========================================================= */}
               <section className="rounded-xl border border-line bg-white p-5 shadow-xs">
                 <div className="flex items-center gap-2 border-b border-line pb-3 mb-4">
                   <Layers className="text-pine" size={18} />
                   <div>
                     <h3 className="font-serif text-lg font-bold text-pine">
-                      Bloque 2: Desglose Analítico por las 4 Dimensiones MEDIT
+                      Desglose por Dimensiones MEDIT
                     </h3>
                     <p className="text-xs text-ink/60">
-                      Evaluación cuantitativa y cualitativa sobre los 4 pilares formativos del Modelo Educativo Digital Transmoderno
+                      Evaluación cuantitativa y cualitativa sobre las dimensiones formativas del modelo institucional
                     </p>
                   </div>
                 </div>
@@ -1079,28 +1041,24 @@ export function Report({
                 </div>
               </section>
 
-              {/* =========================================================
-                  BLOQUE 3: Matriz de Diagnóstico y Consejos Pedagógicos Personalizados
-                 ========================================================= */}
               {diagnosticoPedagogico && (
                 <section className="rounded-xl border border-line bg-white p-5 shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-line pb-3">
                     <Sparkles className="text-pine" size={18} />
                     <div>
                       <h3 className="font-serif text-lg font-bold text-pine">
-                        Bloque 3: Matriz de Diagnóstico y Consejos Pedagógicos Personalizados
+                        Diagnóstico Pedagógico y Recomendaciones
                       </h3>
                       <p className="text-xs text-ink/60">
-                        Estrategias didácticas y orientaciones formativas generadas según el perfil pedagógico MEDIT del docente
+                        Estrategias didácticas y orientaciones formativas según el desempeño en cada dimensión
                       </p>
                     </div>
                   </div>
 
-                  {/* A. Caja de Fortalezas Consolidadas (Fondo Verde Suave) */}
                   <div className="rounded-xl border border-emerald-300 bg-emerald-50/80 p-4.5 text-emerald-950">
                     <div className="flex items-center gap-2 font-bold text-sm text-emerald-900 mb-2">
                       <CheckCircle2 size={18} className="text-emerald-700 shrink-0" />
-                      <span>A. Fortalezas Pedagógicas Consolidadas (Dimensiones con Desempeño Superior a 4.2)</span>
+                      <span>Fortalezas Pedagógicas Consolidadas (Dimensiones con Desempeño Superior a 4.2)</span>
                     </div>
 
                     {diagnosticoPedagogico.fortalezas.length > 0 ? (
@@ -1136,11 +1094,10 @@ export function Report({
                     )}
                   </div>
 
-                  {/* B. Caja de Consejos y Buenas Prácticas Didácticas (Fondo Azul / Violeta Suave) */}
                   <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 p-4.5 text-indigo-950">
                     <div className="flex items-center gap-2 font-bold text-sm text-indigo-900 mb-2">
                       <Lightbulb size={18} className="text-indigo-700 shrink-0" />
-                      <span>B. Consejos Prácticos y Buenas Prácticas Didácticas Inmediatas</span>
+                      <span>Recomendaciones y Prácticas Didácticas Sugeridas</span>
                     </div>
 
                     <p className="text-xs text-indigo-900 mb-3 leading-relaxed">
@@ -1162,12 +1119,11 @@ export function Report({
                     </div>
                   </div>
 
-                  {/* C. Plan de Acción Inmediato (Para notas <= 3.9 - Fondo Rojo / Naranja Suave) */}
                   {diagnosticoPedagogico.requierePlanAccion && (
                     <div className="rounded-xl border border-red-300 bg-red-50/80 p-4.5 text-red-950 space-y-3">
                       <div className="flex items-center gap-2 font-bold text-sm text-red-900">
                         <AlertTriangle size={18} className="text-red-700 shrink-0" />
-                        <span>C. Plan de Acción Inmediato y Compromisos con la Coordinación (Umbral ≤ 3.90)</span>
+                        <span>Plan de Acción Inmediato (Compromisos Institucionales)</span>
                       </div>
 
                       <div className="rounded-lg bg-white/80 p-3 border border-red-200 text-xs text-red-950 leading-relaxed">
@@ -1226,18 +1182,15 @@ export function Report({
                 </section>
               )}
 
-              {/* =========================================================
-                  BLOQUE 4: Muro Cualitativo de Retroalimentación Abierta
-                 ========================================================= */}
               <section className="rounded-xl border border-line bg-white p-5 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 border-b border-line pb-3">
                   <MessageSquare className="text-pine" size={18} />
                   <div>
                     <h3 className="font-serif text-lg font-bold text-pine">
-                      Bloque 4: Muro Cualitativo de Retroalimentación Abierta
+                      Retroalimentación y Comentarios de Estudiantes
                     </h3>
                     <p className="text-xs text-ink/60">
-                      Comentarios textuales aportados por los estudiantes bajo estricto anonimato institucional
+                      Comentarios aportados por los estudiantes bajo confidencialidad institucional
                     </p>
                   </div>
                 </div>
@@ -1275,14 +1228,11 @@ export function Report({
                 </div>
               </section>
 
-              {/* =========================================================
-                  BLOQUE 5: Acciones de Cierre y Soporte Formal
-                 ========================================================= */}
               <section className="rounded-xl border border-line bg-paper/70 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-xs text-ink/70">
-                  <p className="font-bold text-pine text-sm">Soporte Formal de Evaluación Docente MEDIT</p>
+                  <p className="font-bold text-pine text-sm">Soporte de Evaluación Docente MEDIT</p>
                   <p className="text-ink/60">
-                    Generado para archivo de acreditación de alta calidad del programa de Ingeniería de Sistemas y Computación.
+                    Documento formal para el proceso de autoevaluación y aseguramiento de la calidad académica.
                   </p>
                 </div>
 

@@ -61,13 +61,16 @@ export class Evaluacion {
   }
 
   calcularPromedio() {
-    const valores = Object.values(this.#respuestas)
-      .map((val) => Number(val))
-      .filter((num) => !isNaN(num) && num > 0)
-
-    if (valores.length === 0) return 0
-    const suma = valores.reduce((acc, curr) => acc + curr, 0)
-    return Number((suma / valores.length).toFixed(2))
+    let suma = 0
+    let total = 0
+    for (const val of Object.values(this.#respuestas)) {
+      const num = Number(val)
+      if (!isNaN(num) && num > 0) {
+        suma += num
+        total++
+      }
+    }
+    return total === 0 ? 0 : Number((suma / total).toFixed(2))
   }
 
   obtenerDesempeno() {

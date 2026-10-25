@@ -18,8 +18,6 @@ export async function createUser(req, res) {
   try {
     const id = crypto.randomUUID()
     const passwordHash = await bcrypt.hash(password, 10)
-
-    // Instanciación formal de la entidad de dominio con POO y Factory Method
     const usuarioDominio = UsuarioFactory.crearUsuario({
       id,
       nombre: name.trim(),
