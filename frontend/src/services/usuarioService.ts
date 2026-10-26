@@ -23,4 +23,16 @@ export const usuarioService = {
       method: 'DELETE',
     })
   },
+
+  cambiarContrasena: async (
+    usuarioId: string,
+    contrasenaActual: string,
+    nuevaContrasena: string
+  ): Promise<{ ok: boolean; message: string }> => {
+    return apiFetch<{ ok: boolean; message: string }>('/api/cambiar-contrasena', {
+      method: 'POST',
+      body: JSON.stringify({ usuarioId, contrasenaActual, nuevaContrasena }),
+    })
+  },
 }
+

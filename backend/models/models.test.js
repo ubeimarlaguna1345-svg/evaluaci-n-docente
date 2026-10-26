@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import bcrypt from 'bcryptjs'
 import {
   Usuario,
   Estudiante,
@@ -8,6 +9,8 @@ import {
   UsuarioFactory,
   Evaluacion,
 } from './index.js'
+import { cambiarContrasena } from '../controllers/usuarioController.js'
+import { pool } from '../config/db.js'
 
 describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () => {
   describe('Clase Base Usuario (Abstracción y Encapsulamiento)', () => {
@@ -197,4 +200,106 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(evVacia.requierePlanMejora()).toBe(false)
     })
   })
+
+  describe('Controlador Backend: cambiarContrasena', () => {
+    function createMockRes() {
+      return {
+        statusCode: 200,
+        headers: {},
+        body: null,
+        status(code) {
+          this.statusCode = code
+          return this
+        },
+        json(data) {
+          this.body = data
+          return this
+        },
+        setHeader(k, v) {
+          this.headers[k] = v
+        },
+        end(str) {
+          if (str) this.body = JSON.parse(str)
+        },
+      }
+    }
+
+    it('debe rechazar con 400 si faltan campos obligatorios', async () => {
+      const req = { body: { usuarioId: '', contrasenaActual: '', nuevaContrasena: '' } }
+      const res = createMockRes()
+
+      await cambiarContrasena(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res.body.ok).toBe(false)
+      expect(res.body.message).toBe('Todos los campos son obligatorios.')
+    })
+
+    it('debe rechazar con 400 si la nueva contraseña tiene menos de 6 caracteres', async () => {
+      const req = { body: { usuarioId: 'usr-1', contrasenaActual: 'actual123', nuevaContrasena: '123' } }
+      const res = createMockRes()
+
+      await cambiarContrasena(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res.body.ok).toBe(false)
+      expect(res.body.message).toBe('La nueva contraseña debe tener al menos 6 caracteres.')
+    })
+
+    it('debe rechazar con 404 si el usuario no existe', async () => {
+      const req = { body: { usuarioId: 'usr-inexistente', contrasenaActual: 'actual123', nuevaContrasena: 'nueva123' } }
+      const res = createMockRes()
+
+      vi.spyOn(pool, 'query').mockResolvedValueOnce({ rows: [] })
+
+      await cambiarContrasena(req, res)
+
+      expect(res.statusCode).toBe(404)
+      expect(res.body.ok).toBe(false)
+      expect(res.body.message).toBe('Usuario no encontrado.')
+    })
+
+    it('debe rechazar con 400 si la contraseña actual no coincide', async () => {
+      const hash = await bcrypt.hash('claveCorrecta', 10)
+      const req = { body: { usuarioId: 'usr-1', contrasenaActual: 'claveEquivocada', nuevaContrasena: 'nuevaClave123' } }
+      const res = createMockRes()
+
+      vi.spyOn(pool, 'query').mockResolvedValueOnce({
+        rows: [{ id: 'usr-1', contrasena: 'claveCorrecta', contrasena_hash: hash }],
+      })
+
+      await cambiarContrasena(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res.body.ok).toBe(false)
+      expect(res.body.message).toBe('La contraseña actual es incorrecta')
+    })
+
+    it('debe actualizar la contraseña y retornar 200 cuando las credenciales son válidas', async () => {
+      const hash = await bcrypt.hash('claveActual123', 10)
+      const req = { body: { usuarioId: 'usr-1', contrasenaActual: 'claveActual123', nuevaContrasena: 'miNuevaClaveSegura' } }
+      const res = createMockRes()
+
+      const querySpy = vi.spyOn(pool, 'query')
+        .mockResolvedValueOnce({
+          rows: [{ id: 'usr-1', contrasena: 'claveActual123', contrasena_hash: hash }],
+        })
+        .mockResolvedValueOnce({ rowCount: 1 })
+
+      await cambiarContrasena(req, res)
+
+      expect(res.statusCode).toBe(200)
+      expect(res.body.ok).toBe(true)
+      expect(res.body.message).toBe('Contraseña actualizada con éxito')
+
+      // Verificar que se invocó UPDATE en PostgreSQL con nuevaContrasena y hash
+      expect(querySpy).toHaveBeenCalledTimes(2)
+      const updateCall = querySpy.mock.calls[1]
+      expect(updateCall[0]).toContain('UPDATE usuarios SET contrasena = $1, contrasena_hash = $2 WHERE id = $3')
+      expect(updateCall[1][0]).toBe('miNuevaClaveSegura')
+      expect(await bcrypt.compare('miNuevaClaveSegura', updateCall[1][1])).toBe(true)
+      expect(updateCall[1][2]).toBe('usr-1')
+    })
+  })
 })
+

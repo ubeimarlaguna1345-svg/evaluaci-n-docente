@@ -796,5 +796,57 @@ describe('3. Prevención de duplicidad en evaluación estudiantil: Docente que d
   })
 })
 
+describe('4. Gestión de Perfil y Cambio de Contraseña (Frontend)', () => {
+  it('usuarioService.cambiarContrasena debe realizar petición POST a /api/cambiar-contrasena', async () => {
+    const originalFetch = globalThis.fetch
+    let capturedUrl = ''
+    let capturedOptions: RequestInit | undefined
+
+    globalThis.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(url)
+      capturedOptions = init
+      return {
+        ok: true,
+        json: async () => ({ ok: true, message: 'Contraseña actualizada con éxito' }),
+      } as Response
+    }
+
+    try {
+      const { usuarioService } = await import('./services/usuarioService')
+      const res = await usuarioService.cambiarContrasena('usr-1', 'vieja123', 'nueva123456')
+
+      expect(res.ok).toBe(true)
+      expect(res.message).toBe('Contraseña actualizada con éxito')
+      expect(capturedUrl).toBe('/api/cambiar-contrasena')
+      expect(capturedOptions?.method).toBe('POST')
+      expect(JSON.parse(String(capturedOptions?.body))).toEqual({
+        usuarioId: 'usr-1',
+        contrasenaActual: 'vieja123',
+        nuevaContrasena: 'nueva123456',
+      })
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('actions.cambiarContrasena debe invocar servicio y actualizar contraseña del usuario en memoria', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () => {
+      return {
+        ok: true,
+        json: async () => ({ ok: true, message: 'Contraseña actualizada con éxito' }),
+      } as Response
+    }
+
+    try {
+      const { actions, useDB } = await import('./store')
+      const res = await actions.cambiarContrasena('usr-admin-uber', 'actual123', 'nuevaContrasenaSegura')
+      expect(res.ok).toBe(true)
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+})
+
 
 

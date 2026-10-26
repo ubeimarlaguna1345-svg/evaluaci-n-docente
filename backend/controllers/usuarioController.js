@@ -4,6 +4,9 @@ import { pool } from '../config/db.js'
 import { UsuarioFactory } from '../models/index.js'
 
 function sendJson(res, statusCode, payload) {
+  if (typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(statusCode).json(payload)
+  }
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(payload))
@@ -130,5 +133,48 @@ export async function deleteUser(req, res) {
   } catch (error) {
     console.error('Error al dar de baja usuario:', error.message)
     sendJson(res, 500, { ok: false, message: 'Error al desactivar usuario.', detail: error.message })
+  }
+}
+
+export async function cambiarContrasena(req, res) {
+  const { usuarioId, contrasenaActual, nuevaContrasena } = req.body || {}
+
+  if (!usuarioId || !contrasenaActual || !nuevaContrasena) {
+    return sendJson(res, 400, { ok: false, message: 'Todos los campos son obligatorios.' })
+  }
+
+  if (typeof nuevaContrasena !== 'string' || nuevaContrasena.length < 6) {
+    return sendJson(res, 400, { ok: false, message: 'La nueva contraseña debe tener al menos 6 caracteres.' })
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, contrasena, contrasena_hash FROM usuarios WHERE id = $1',
+      [usuarioId]
+    )
+
+    if (result.rows.length === 0) {
+      return sendJson(res, 404, { ok: false, message: 'Usuario no encontrado.' })
+    }
+
+    const row = result.rows[0]
+    const passwordMatch = row.contrasena_hash
+      ? await bcrypt.compare(contrasenaActual, row.contrasena_hash)
+      : row.contrasena === contrasenaActual
+
+    if (!passwordMatch) {
+      return sendJson(res, 400, { ok: false, message: 'La contraseña actual es incorrecta' })
+    }
+
+    const nuevoHash = await bcrypt.hash(nuevaContrasena, 10)
+    await pool.query(
+      'UPDATE usuarios SET contrasena = $1, contrasena_hash = $2 WHERE id = $3',
+      [nuevaContrasena, nuevoHash, usuarioId]
+    )
+
+    return sendJson(res, 200, { ok: true, message: 'Contraseña actualizada con éxito' })
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error.message)
+    return sendJson(res, 500, { ok: false, message: 'Error interno al cambiar la contraseña.', detail: error.message })
   }
 }

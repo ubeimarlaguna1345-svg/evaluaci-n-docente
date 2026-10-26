@@ -264,6 +264,13 @@ export const actions = {
     return actions.deleteUser(id)
   },
 
+  cambiarContrasena: async (usuarioId: string, contrasenaActual: string, nuevaContrasena: string) => {
+    const res = await usuarioService.cambiarContrasena(usuarioId, contrasenaActual, nuevaContrasena)
+    state.users = state.users.map((u) => (u.id === usuarioId ? { ...u, password: nuevaContrasena } : u))
+    notify()
+    return res
+  },
+
   createForm: async (f: Omit<Form, 'id'>) => {
     await evaluacionService.createForm(f)
     await initDB()

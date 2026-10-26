@@ -8,7 +8,9 @@ import {
   Award,
   BookOpen,
   LogOut,
+  UserCog,
 } from 'lucide-react'
+import { ModalPerfil } from '../../components/ModalPerfil'
 import { useDB, ROLE_LABEL, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
@@ -60,6 +62,7 @@ export function Shell() {
   const [meId, setMeId] = useState<string | null>(() => sessionStorage.getItem('siard-me'))
   const me = db.users.find((u) => u.id === meId && u.active)
   const [view, setView] = useState('')
+  const [showProfile, setShowProfile] = useState(false)
 
   if (!me) {
     return (
@@ -98,36 +101,79 @@ export function Shell() {
           ))}
         </nav>
         <div className="mt-auto hidden space-y-3 border-t border-paper/15 p-4 md:block">
-          <div>
-            <p className="text-sm font-semibold">{me.name}</p>
+          <div
+            onClick={() => setShowProfile(true)}
+            className="group cursor-pointer rounded-lg p-2 -m-2 transition hover:bg-paper/10"
+            title="Ver mi perfil institucional y cambiar contraseña"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setShowProfile(true)
+              }
+            }}
+          >
+            <p className="text-sm font-semibold group-hover:text-ochre transition">{me.name}</p>
             <p className="text-xs text-paper/60">{ROLE_LABEL[me.role]}</p>
             {me.sede && <p className="text-[11px] text-paper/40 font-mono">{me.sede}</p>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-1.5 pt-1">
             <button
-              className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper"
+              type="button"
+              className="flex items-center gap-2 text-xs font-medium text-ochre hover:text-paper transition text-left"
+              onClick={() => setShowProfile(true)}
+              title="Mi Perfil / Contraseña"
+            >
+              <UserCog size={14} />
+              <span>Mi Perfil / Contraseña</span>
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper transition text-left"
               onClick={() => {
                 sessionStorage.removeItem('siard-me')
                 setMeId(null)
               }}
             >
-              <LogOut size={14} />Salir
+              <LogOut size={14} />
+              <span>Salir</span>
             </button>
           </div>
         </div>
-        <button
-          className="m-3 flex items-center gap-2 text-xs md:hidden"
-          onClick={() => {
-            sessionStorage.removeItem('siard-me')
-            setMeId(null)
-          }}
-        >
-          <LogOut size={14} />Salir ({me.name})
-        </button>
+        <div className="m-3 flex items-center justify-between gap-2 md:hidden">
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-xs text-ochre hover:text-paper"
+            onClick={() => setShowProfile(true)}
+            title="Mi Perfil / Contraseña"
+          >
+            <UserCog size={14} />
+            <span>Mi Perfil / Contraseña</span>
+          </button>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-xs text-paper/75 hover:text-paper"
+            onClick={() => {
+              sessionStorage.removeItem('siard-me')
+              setMeId(null)
+            }}
+          >
+            <LogOut size={14} />
+            <span>Salir ({me.name})</span>
+          </button>
+        </div>
       </aside>
       <main className="mx-auto w-full max-w-6xl flex-1 p-6 md:p-10">
         {current.render(me)}
       </main>
+
+      {showProfile && (
+        <ModalPerfil
+          user={me}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
   )
 }
