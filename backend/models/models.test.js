@@ -147,53 +147,34 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(ev.calcularPromedio()).toBe(4.67)
     })
 
-    it('debe clasificar desempeño Sobresaliente (promedio >= 4.6)', () => {
+    it('caso prueba con promedio 4.3 -> retorna "Satisfactorio" y requierePlanMejora() === false', () => {
       const ev = new Evaluacion({
-        respuestas: { q1: '5', q2: '5', q3: '4.8' },
+        respuestas: { q1: '4.3', q2: '4.3' },
       })
-      expect(ev.calcularPromedio()).toBeGreaterThanOrEqual(4.6)
-      expect(ev.obtenerDesempeno()).toBe('Sobresaliente')
+      expect(ev.calcularPromedio()).toBe(4.3)
+      expect(ev.obtenerClasificacion()).toBe('Satisfactorio')
+      expect(ev.obtenerDesempeno()).toBe('Satisfactorio')
       expect(ev.requierePlanMejora()).toBe(false)
     })
 
-    it('debe clasificar desempeño Destacado (promedio >= 4.0 y < 4.6)', () => {
-      const ev = new Evaluacion({
-        respuestas: { q1: '4', q2: '4.2' },
-      })
-      expect(ev.calcularPromedio()).toBe(4.1)
-      expect(ev.obtenerDesempeno()).toBe('Destacado')
-      expect(ev.requierePlanMejora()).toBe(false)
-    })
-
-    it('debe clasificar desempeño Aceptable (promedio >= 3.5 y < 4.0)', () => {
+    it('caso prueba con promedio 3.7 -> retorna "Aceptable" y requierePlanMejora() === true', () => {
       const ev = new Evaluacion({
         respuestas: { q1: '3.6', q2: '3.8' },
       })
       expect(ev.calcularPromedio()).toBe(3.7)
+      expect(ev.obtenerClasificacion()).toBe('Aceptable')
       expect(ev.obtenerDesempeno()).toBe('Aceptable')
+      expect(ev.requierePlanMejora()).toBe(true)
     })
 
-    it('regla MEDIT: requierePlanMejora() debe retornar true si promedio <= 3.9', () => {
-      const evMejora = new Evaluacion({
-        respuestas: { q1: '3.5', q2: '3.9' },
+    it('caso prueba con promedio 3.2 -> retorna "En Seguimiento" y requierePlanMejora() === true', () => {
+      const ev = new Evaluacion({
+        respuestas: { q1: '3.2', q2: '3.2' },
       })
-      expect(evMejora.calcularPromedio()).toBe(3.7)
-      expect(evMejora.requierePlanMejora()).toBe(true)
-
-      const evExcelente = new Evaluacion({
-        respuestas: { q1: '4.5', q2: '4.5' },
-      })
-      expect(evExcelente.calcularPromedio()).toBe(4.5)
-      expect(evExcelente.requierePlanMejora()).toBe(false)
-    })
-
-    it('debe clasificar desempeño En Seguimiento cuando promedio < 3.5', () => {
-      const evBajo = new Evaluacion({
-        respuestas: { q1: '2', q2: '3' },
-      })
-      expect(evBajo.calcularPromedio()).toBe(2.5)
-      expect(evBajo.obtenerDesempeno()).toBe('En Seguimiento')
-      expect(evBajo.requierePlanMejora()).toBe(true)
+      expect(ev.calcularPromedio()).toBe(3.2)
+      expect(ev.obtenerClasificacion()).toBe('En Seguimiento')
+      expect(ev.obtenerDesempeno()).toBe('En Seguimiento')
+      expect(ev.requierePlanMejora()).toBe(true)
     })
 
     it('debe manejar respuestas vacías o no numéricas retornando promedio 0', () => {

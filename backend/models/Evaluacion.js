@@ -73,17 +73,24 @@ export class Evaluacion {
     return total === 0 ? 0 : Number((suma / total).toFixed(2))
   }
 
-  obtenerDesempeno() {
+  obtenerClasificacion() {
     const promedio = this.calcularPromedio()
-    if (promedio >= 4.6) return 'Sobresaliente'
-    if (promedio >= 4.0) return 'Destacado'
+    if (promedio >= 4.0) return 'Satisfactorio'
     if (promedio >= 3.5) return 'Aceptable'
     return 'En Seguimiento'
   }
 
+  obtenerDesempeno() {
+    return this.obtenerClasificacion()
+  }
+
+  getNivelDesempeno() {
+    return this.obtenerClasificacion()
+  }
+
   requierePlanMejora() {
     const promedio = this.calcularPromedio()
-    return promedio > 0 && promedio <= 3.9
+    return promedio > 0 && promedio < 4.0
   }
 
   toJSON() {
@@ -103,6 +110,7 @@ export class Evaluacion {
       fecha: this.#fecha,
       date: this.#fecha,
       promedio,
+      clasificacion: this.obtenerClasificacion(),
       desempeno: this.obtenerDesempeno(),
       requierePlanMejora: this.requierePlanMejora(),
     }

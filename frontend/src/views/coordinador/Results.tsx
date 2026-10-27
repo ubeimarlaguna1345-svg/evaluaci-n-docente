@@ -272,21 +272,17 @@ export function Results() {
                       </td>
                       <td className="p-3">
                         {grade.hasEvaluations ? (
-                          grade.finalScore >= 4.6 ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-300">
-                              <Check size={10} /> Sobresaliente (4.6–5.0)
-                            </span>
-                          ) : grade.finalScore >= 4.0 ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 border border-sky-300">
-                              <Check size={10} /> Destacado (4.0–4.5)
-                            </span>
-                          ) : grade.finalScore >= 3.5 ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-300">
-                              <AlertTriangle size={10} /> Atención Preventiva (3.5–3.9)
-                            </span>
-                          ) : (
+                          grade.finalScore < 3.5 ? (
                             <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-300">
                               <AlertTriangle size={10} /> En Seguimiento (&lt; 3.5)
+                            </span>
+                          ) : grade.finalScore <= 3.9 ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-300">
+                              <AlertTriangle size={10} /> Aceptable (3.5–3.9)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-300">
+                              <Check size={10} /> Satisfactorio (≥ 4.0)
                             </span>
                           )
                         ) : (

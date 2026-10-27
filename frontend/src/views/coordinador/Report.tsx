@@ -41,10 +41,12 @@ import {
 import { Header, Card, Field, input, btn, btnGhost } from '../common'
 
 export type NivelDesempeno =
+  | 'Satisfactorio'
+  | 'Aceptable'
+  | 'En Seguimiento'
   | 'Sobresaliente'
   | 'Destacado'
   | 'Aceptable / Atención Preventiva'
-  | 'En Seguimiento'
 
 export interface DesempenoBadge {
   nivel: NivelDesempeno
@@ -57,37 +59,26 @@ export interface DesempenoBadge {
 }
 
 export function getNivelDesempeno(score: number): DesempenoBadge {
-  if (score >= 4.6) {
+  if (score >= 4.0) {
     return {
-      nivel: 'Sobresaliente',
-      label: 'Sobresaliente (4.6 – 5.0)',
+      nivel: 'Satisfactorio',
+      label: 'Satisfactorio (≥ 4.0)',
       badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       borderClass: 'border-emerald-300',
       bgSoft: 'bg-emerald-50/70',
       textColor: 'text-emerald-800',
-      tag: 'Sobresaliente',
-    }
-  }
-  if (score >= 4.0) {
-    return {
-      nivel: 'Destacado',
-      label: 'Destacado (4.0 – 4.5)',
-      badgeClass: 'bg-sky-100 text-sky-800 border-sky-300',
-      borderClass: 'border-sky-300',
-      bgSoft: 'bg-sky-50/70',
-      textColor: 'text-sky-800',
-      tag: 'Destacado',
+      tag: 'Satisfactorio',
     }
   }
   if (score >= 3.5) {
     return {
-      nivel: 'Aceptable / Atención Preventiva',
-      label: 'Aceptable / Alerta Preventiva (3.5 – 3.9)',
+      nivel: 'Aceptable',
+      label: 'Aceptable (3.5 – 3.9)',
       badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
       borderClass: 'border-amber-300',
       bgSoft: 'bg-amber-50/70',
       textColor: 'text-amber-800',
-      tag: 'Aceptable / Alerta Preventiva',
+      tag: 'Aceptable',
     }
   }
   return {
@@ -221,9 +212,17 @@ export function Report({
   const countsByTier = useMemo(() => {
     return {
       total: teachersWithGrades.length,
-      sobresaliente: teachersWithGrades.filter((x) => x.desempeno.nivel === 'Sobresaliente').length,
-      destacado: teachersWithGrades.filter((x) => x.desempeno.nivel === 'Destacado').length,
-      aceptable: teachersWithGrades.filter((x) => x.desempeno.nivel === 'Aceptable / Atención Preventiva').length,
+      satisfactorio: teachersWithGrades.filter(
+        (x) =>
+          x.desempeno.nivel === 'Satisfactorio' ||
+          x.desempeno.nivel === 'Destacado' ||
+          x.desempeno.nivel === 'Sobresaliente'
+      ).length,
+      aceptable: teachersWithGrades.filter(
+        (x) =>
+          x.desempeno.nivel === 'Aceptable' ||
+          x.desempeno.nivel === 'Aceptable / Atención Preventiva'
+      ).length,
       seguimiento: teachersWithGrades.filter((x) => x.desempeno.nivel === 'En Seguimiento').length,
     }
   }, [teachersWithGrades])
@@ -299,7 +298,7 @@ export function Report({
     const fortalezas = dimensionesCalculadas.filter((d) => d.score > 4.2)
     const mejorDimension = [...dimensionesCalculadas].sort((a, b) => b.score - a.score)[0]
     const dimensionMasBaja = [...dimensionesCalculadas].sort((a, b) => a.score - b.score)[0]
-    const esSobresaliente = activeDetail.grade.finalScore >= 4.6
+    const esSobresaliente = activeDetail.grade.finalScore >= 4.0
 
     const consejosDidacticos: string[] = []
 
@@ -337,7 +336,7 @@ export function Report({
       }
     }
 
-    const requierePlanAccion = activeDetail.grade.finalScore <= 3.9
+    const requierePlanAccion = activeDetail.grade.finalScore < 4.0
 
     return {
       fortalezas,
@@ -391,7 +390,7 @@ export function Report({
     if (reales.length > 0) return reales
 
     const nivel = activeDetail.desempeno.nivel
-    if (nivel === 'Sobresaliente') {
+    if (nivel === 'Satisfactorio' || nivel === 'Sobresaliente' || nivel === 'Destacado') {
       return [
         {
           texto:
@@ -416,32 +415,7 @@ export function Report({
         },
       ]
     }
-    if (nivel === 'Destacado') {
-      return [
-        {
-          texto:
-            'Muy buen profesor en programación, explica conceptos abstractos con ejemplos reales del sector tecnológico.',
-          tipo: 'fortaleza',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-        {
-          texto:
-            'Excelente dinamismo en clase. Podría otorgar más margen de tiempo en los laboratorios prácticos de código.',
-          tipo: 'oportunidad',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-        {
-          texto:
-            'Gran apoyo durante el desarrollo de los proyectos de aula integradores y asesorías fuera de clase.',
-          tipo: 'fortaleza',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-      ]
-    }
-    if (nivel === 'Aceptable / Atención Preventiva') {
+    if (nivel === 'Aceptable' || nivel === 'Aceptable / Atención Preventiva') {
       return [
         {
           texto:
@@ -561,44 +535,44 @@ export function Report({
 
             <Card className="flex items-center justify-between p-4 border-l-4 border-emerald-500">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Sobresaliente</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Satisfactorio</p>
                 <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="font-serif text-3xl font-bold text-emerald-700">{countsByTier.sobresaliente}</span>
+                  <span className="font-serif text-3xl font-bold text-emerald-700">{countsByTier.satisfactorio}</span>
                   <span className="text-xs text-ink/40">de {countsByTier.total}</span>
                 </div>
-                <span className="mt-1 inline-flex text-[11px] text-emerald-700 font-medium">Excelencia didáctica</span>
+                <span className="mt-1 inline-flex text-[11px] text-emerald-700 font-medium">≥ 4.0 · Sin plan de mejora</span>
               </div>
               <div className="rounded-full bg-emerald-100 p-3 text-emerald-700">
-                <Award size={24} />
-              </div>
-            </Card>
-
-            <Card className="flex items-center justify-between p-4 border-l-4 border-sky-500">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Destacado</p>
-                <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="font-serif text-3xl font-bold text-sky-700">{countsByTier.destacado}</span>
-                  <span className="text-xs text-ink/40">de {countsByTier.total}</span>
-                </div>
-                <span className="mt-1 inline-flex text-[11px] text-sky-700 font-medium">Buen desempeño</span>
-              </div>
-              <div className="rounded-full bg-sky-100 p-3 text-sky-700">
                 <CheckCircle2 size={24} />
               </div>
             </Card>
 
             <Card className="flex items-center justify-between p-4 border-l-4 border-amber-500">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Planes de Mejora</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Aceptable</p>
                 <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="font-serif text-3xl font-bold text-amber-700">
-                    {countsByTier.aceptable + countsByTier.seguimiento}
-                  </span>
-                  <span className="text-xs text-ink/40">≤ 3.90</span>
+                  <span className="font-serif text-3xl font-bold text-amber-700">{countsByTier.aceptable}</span>
+                  <span className="text-xs text-ink/40">de {countsByTier.total}</span>
                 </div>
-                <span className="mt-1 inline-flex text-[11px] text-amber-800 font-medium">Seguimiento pedagógico</span>
+                <span className="mt-1 inline-flex text-[11px] text-amber-800 font-medium">3.5 – 3.9 · Alerta preventiva</span>
               </div>
               <div className="rounded-full bg-amber-100 p-3 text-amber-700">
+                <AlertTriangle size={24} />
+              </div>
+            </Card>
+
+            <Card className="flex items-center justify-between p-4 border-l-4 border-red-500">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">En Seguimiento</p>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="font-serif text-3xl font-bold text-red-700">
+                    {countsByTier.seguimiento}
+                  </span>
+                  <span className="text-xs text-ink/40">&lt; 3.50</span>
+                </div>
+                <span className="mt-1 inline-flex text-[11px] text-red-700 font-medium">Alerta crítica · Seguimiento</span>
+              </div>
+              <div className="rounded-full bg-red-100 p-3 text-red-700">
                 <AlertTriangle size={24} />
               </div>
             </Card>
@@ -626,7 +600,7 @@ export function Report({
 
                 <div className="flex items-center gap-1 rounded-lg border border-line bg-white p-1 text-xs">
                   <Filter size={12} className="text-ink/40 ml-1.5 mr-0.5" />
-                  {(['todos', 'Sobresaliente', 'Destacado', 'Aceptable / Atención Preventiva', 'En Seguimiento'] as const).map(
+                  {(['todos', 'Satisfactorio', 'Aceptable', 'En Seguimiento'] as const).map(
                     (tier) => (
                       <button
                         key={tier}
@@ -638,11 +612,7 @@ export function Report({
                             : 'text-ink/70 hover:bg-paper'
                         }`}
                       >
-                        {tier === 'todos'
-                          ? 'Todos'
-                          : tier === 'Aceptable / Atención Preventiva'
-                          ? 'Alerta'
-                          : tier}
+                        {tier === 'todos' ? 'Todos' : tier}
                       </button>
                     )
                   )}
@@ -1025,17 +995,20 @@ export function Report({
                       </div>
 
                       <div className="mt-3.5">
-                        <div className="flex justify-between text-[11px] font-semibold mb-1">
+                        <div className="flex justify-between items-center text-[11px] font-semibold mb-1">
                           <span className="text-ink/60">Nivel de Cumplimiento:</span>
-                          <span className={dim.desempeno.textColor}>{dim.desempeno.label}</span>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border ${dim.desempeno.badgeClass}`}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            {dim.desempeno.tag}
+                          </span>
                         </div>
                         <div className="h-2.5 w-full rounded-full bg-line/80 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              dim.score >= 4.6
+                              dim.score >= 4.0
                                 ? 'bg-emerald-500'
-                                : dim.score >= 4.0
-                                ? 'bg-sky-500'
                                 : dim.score >= 3.5
                                 ? 'bg-amber-500'
                                 : 'bg-red-500'
@@ -1138,7 +1111,7 @@ export function Report({
                         <p className="font-semibold text-red-900 mb-1">
                           ⚠️ Alerta de Umbral Institucional MEDIT Activada
                         </p>
-                        La calificación consolidada ({activeDetail.grade.finalScore.toFixed(2)} / 5.00) se sitúa por debajo del límite de satisfacción institucional (3.90). Se establecen con carácter obligatorio los siguientes tres compromisos con la Coordinación del Programa de Ingeniería de Sistemas:
+                        La calificación consolidada ({activeDetail.grade.finalScore.toFixed(2)} / 5.00) se sitúa por debajo del límite de satisfacción institucional (4.00). Se establecen con carácter obligatorio los siguientes tres compromisos con la Coordinación del Programa de Ingeniería de Sistemas:
                       </div>
 
                       <div className="overflow-x-auto rounded-lg border border-red-200 bg-white">

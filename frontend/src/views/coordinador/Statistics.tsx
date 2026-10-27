@@ -64,7 +64,7 @@ export function Statistics() {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line p-4">
           <div>
             <h3 className="font-semibold text-pine">Consolidado por Docente (70% - 30%)</h3>
-            <p className="text-xs text-ink/50">Desglose de calificaciones y clasificación frente al umbral de mejora (≤ 3.9)</p>
+            <p className="text-xs text-ink/50">Desglose de calificaciones y clasificación frente al umbral de mejora (&lt; 4.0)</p>
           </div>
           <select className={`${input} w-auto`} value={formId} onChange={(e) => setFormId(e.target.value)}>
             {evals.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
@@ -111,14 +111,20 @@ export function Statistics() {
                     {grade.hasEvaluations ? `${grade.finalScore.toFixed(2)} / 5.00` : '—'}
                   </td>
                   <td className="p-3">
-                    {grade.requierePlanMejora ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700">
-                        <AlertTriangle size={11} /> Requiere Plan de Mejora (≤ 3.9)
-                      </span>
-                    ) : grade.hasEvaluations ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-moss/20 px-2.5 py-1 text-[11px] font-medium text-pine">
-                        <Check size={11} /> Satisfactorio (≥ 4.0)
-                      </span>
+                    {grade.hasEvaluations ? (
+                      grade.finalScore < 3.5 ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700 border border-red-300">
+                          <AlertTriangle size={11} /> En Seguimiento (&lt; 3.5)
+                        </span>
+                      ) : grade.finalScore <= 3.9 ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 border border-amber-300">
+                          <AlertTriangle size={11} /> Aceptable (3.5 – 3.9)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 border border-emerald-300">
+                          <Check size={11} /> Satisfactorio (≥ 4.0)
+                        </span>
+                      )
                     ) : (
                       <span className="text-ink/40">Sin evaluar</span>
                     )}
@@ -144,16 +150,22 @@ export function Statistics() {
         <Card className="space-y-4">
           <h3 className="font-semibold text-pine">Distribución de Cumplimiento</h3>
           <div className="space-y-3 text-xs">
-            <div className="flex items-center justify-between rounded-lg bg-moss/10 p-3 text-pine">
+            <div className="flex items-center justify-between rounded-lg bg-emerald-50 p-3 text-emerald-800 border border-emerald-200">
               <span className="font-semibold">Docentes con Desempeño Satisfactorio (≥ 4.0)</span>
               <span className="font-serif text-lg font-bold">
                 {docentesConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore >= 4.0).length}
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-lg bg-red-50 p-3 text-red-700">
-              <span className="font-semibold">Docentes con Requerimiento de Mejora (≤ 3.9)</span>
+            <div className="flex items-center justify-between rounded-lg bg-amber-50 p-3 text-amber-800 border border-amber-200">
+              <span className="font-semibold">Docentes con Desempeño Aceptable (3.5 – 3.9)</span>
               <span className="font-serif text-lg font-bold">
-                {docentesConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore <= 3.9).length}
+                {docentesConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore >= 3.5 && tc.grade.finalScore <= 3.9).length}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-red-50 p-3 text-red-700 border border-red-200">
+              <span className="font-semibold">Docentes En Seguimiento (&lt; 3.5)</span>
+              <span className="font-serif text-lg font-bold">
+                {docentesConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore < 3.5).length}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-paper p-3 text-ink/70">
