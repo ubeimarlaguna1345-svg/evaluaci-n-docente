@@ -121,8 +121,6 @@ export function saveDeletedUserId(id: string) {
 }
 
 export function sanitizeUsers(users: User[]): User[] {
-  // 1. Elimina por completo la cuenta "Administrador General" (admin@ucundinamarca.edu.co)
-  // Deja ÚNICAMENTE como Administrador a Ubeimar Laguna Cárdenas
   const filtered = users.filter((u) => {
     if (u.role === 'admin') {
       const emailLower = (u.email || '').toLowerCase().trim()
@@ -134,9 +132,6 @@ export function sanitizeUsers(users: User[]): User[] {
     return true
   })
 
-  // 2. Elimina docentes duplicados:
-  // Conserva únicamente una cuenta canónica por profesor:
-  // Andrés Navarro, Diana Salazar, Gabriel Prieto, Javier Mendoza, Mariana Cifuentes
   const seenDocentes = new Set<string>()
   const result: User[] = []
 
@@ -151,7 +146,6 @@ export function sanitizeUsers(users: User[]): User[] {
     result.push(u)
   }
 
-  // Asegura la cuenta de Administrador único: Ubeimar Laguna Cárdenas
   const hasUbeimar = result.some(
     (u) => u.role === 'admin' && (u.email.toLowerCase().includes('uberadmin') || u.name.toLowerCase().includes('ubeimar'))
   )
@@ -251,20 +245,15 @@ export const actions = {
   },
 
   deleteUser: async (id: string) => {
-    // 1. Registrar persistencia para evitar que reaparezca tras recarga
     saveDeletedUserId(id)
-    // 2. Filtrar el arreglo en el store inmediatamente
     state.users = state.users.filter((u) => u.id !== id)
-    // 3. Actualizar almacenamiento (localStorage)
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(state.users))
       }
     } catch {}
-    // 4. Actualizar estado reactivo
     notify()
 
-    // 5. Persistir en backend / base de datos
     try {
       await usuarioService.deleteUser(id)
     } catch (err) {
@@ -294,16 +283,12 @@ export const actions = {
   },
 
   deleteForm: async (id: string) => {
-    // 1. Persistir el ID para que no vuelva a recrearse o reaparecer tras recargar
     saveDeletedFormId(id)
 
-    // 2. Elimina en cascada las respuestas huérfanas asociadas a ese formId con nueva referencia
     state.formResponses = [...state.formResponses.filter((r) => r.formId !== id)]
 
-    // 3. Filtra el arreglo de formularios para remover el ID con nueva referencia
     state.forms = [...state.forms.filter((f) => f.id !== id)]
 
-    // 4. Actualiza inmediatamente el almacenamiento local
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
@@ -311,10 +296,8 @@ export const actions = {
       }
     } catch {}
 
-    // 5. Garantía de reactividad: notifica con nuevas referencias para re-renderizado instantáneo
     notify()
 
-    // 6. Eliminar en PostgreSQL en segundo plano
     try {
       await evaluacionService.deleteForm(id)
     } catch (err) {

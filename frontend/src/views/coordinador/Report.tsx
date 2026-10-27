@@ -337,7 +337,6 @@ export function Report({
       }
     }
 
-    // Umbral MEDIT: nota <= 3.9
     const requierePlanAccion = activeDetail.grade.finalScore <= 3.9
 
     return {
@@ -391,7 +390,6 @@ export function Report({
 
     if (reales.length > 0) return reales
 
-    // Retroalimentación cualitativa estructurada según perfil pedagógico
     const nivel = activeDetail.desempeno.nivel
     if (nivel === 'Sobresaliente') {
       return [
@@ -468,7 +466,6 @@ export function Report({
         },
       ]
     }
-    // En Seguimiento
     return [
       {
         texto:
@@ -494,7 +491,6 @@ export function Report({
     ]
   }, [activeDetail, activeStats, selectedPeriod])
 
-  // Datos de participación estudiantil estimada y representativa
   const metricasParticipacion = useMemo(() => {
     if (!activeDetail) return { respondieron: 28, total: 32, porcentaje: 87.5 }
     const cantResp = activeDetail.grade.studentResponsesCount
@@ -504,7 +500,6 @@ export function Report({
     return { respondieron, total, porcentaje }
   }, [activeDetail])
 
-  // Brecha frente a la media institucional
   const brechaMedia = useMemo(() => {
     if (!activeDetail) return { dif: 0, positivo: true }
     const dif = Number((activeDetail.grade.finalScore - avgInstitucional).toFixed(2))
@@ -547,7 +542,6 @@ export function Report({
             </div>
           </div>
 
-          {/* Tarjetas KPI de Resumen General de la Facultad */}
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="flex items-center justify-between p-4 border-l-4 border-pine">
               <div>
@@ -610,7 +604,6 @@ export function Report({
             </Card>
           </div>
 
-          {/* Tabla General de Docentes */}
           <Card className="p-0 overflow-hidden mb-6">
             <div className="flex flex-col gap-3 border-b border-line bg-paper/60 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -803,7 +796,6 @@ export function Report({
             role="dialog"
             aria-modal="true"
           >
-            {/* Cabecera Institucional del Informe */}
             <div className="flex items-center justify-between border-b border-line bg-pine text-white px-6 py-4 print:bg-white print:text-ink print:border-b-2 print:border-pine">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-white/10 p-2 text-ochre print:bg-paper print:text-pine">
@@ -907,9 +899,7 @@ export function Report({
                   </div>
                 </div>
 
-                {/* Sub-bloque: Métricas Analíticas Clave */}
                 <div className="grid gap-4 sm:grid-cols-3">
-                  {/* Tarjeta de Calificación Consolidada */}
                   <div
                     className={`rounded-xl border p-4.5 ${activeDetail.desempeno.bgSoft} ${activeDetail.desempeno.borderClass}`}
                   >
@@ -939,7 +929,6 @@ export function Report({
                     </p>
                   </div>
 
-                  {/* Tasa de Participación Estudiantil */}
                   <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Participación Estudiantil</p>
@@ -958,7 +947,6 @@ export function Report({
                     </div>
                   </div>
 
-                  {/* Indicador de Brecha frente a la Media de Facultad */}
                   <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Brecha Institucional</p>
@@ -1036,7 +1024,6 @@ export function Report({
                         </div>
                       </div>
 
-                      {/* Barra de Porcentaje Coloreada */}
                       <div className="mt-3.5">
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
                           <span className="text-ink/60">Nivel de Cumplimiento:</span>

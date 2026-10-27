@@ -714,7 +714,6 @@ describe('1. Depuración de cuentas: Administrador único y eliminación de doce
 describe('2. Borrado de Formularios: Eliminación en cascada de respuestas huérfanas', () => {
   it('debe filtrar en cascada todas las respuestas asociadas al formulario eliminado sin importar si tiene 0, 5 o 15 respuestas', () => {
     const formIdEliminar = 'form-a-borrar'
-    // Simula 15 respuestas registradas para el formulario
     const responsesParaBorrar = Array.from({ length: 15 }, (_, i) => ({
       id: `r-borrar-${i}`,
       formId: formIdEliminar,
@@ -735,7 +734,6 @@ describe('2. Borrado de Formularios: Eliminación en cascada de respuestas huér
       { id: 'form-activo', kind: 'evaluacion', title: 'Activo', description: '', period: '2026-I', start: '', end: '', questions: [] },
     ]
 
-    // Ejecución de la lógica de cascada y garantía de nueva referencia de arreglo
     const cleanResponses = [...initialResponses.filter((r) => r.formId !== formIdEliminar)]
     const cleanForms = [...initialForms.filter((f) => f.id !== formIdEliminar)]
 
@@ -744,7 +742,7 @@ describe('2. Borrado de Formularios: Eliminación en cascada de respuestas huér
     expect(cleanResponses.length).toBe(1)
     expect(cleanResponses[0].formId).toBe('form-activo')
     expect(cleanResponses.some((r) => r.formId === formIdEliminar)).toBe(false)
-    expect(cleanForms).not.toBe(initialForms) // Nueva referencia de memoria para reactividad instantánea
+    expect(cleanForms).not.toBe(initialForms)
   })
 
   it('persistencia de eliminación de formularios: el ID eliminado se almacena y no reaparece al recargar', () => {
@@ -779,8 +777,7 @@ describe('3. Prevención de duplicidad en evaluación estudiantil: Docente que d
       { id: 'cai-1', codigo: 'CAI101', nombre: 'Lectura Crítica', semestre: 1, tipo: 'CAI', docenteId: 'doc-navarro' },
     ]
 
-    // Simulación de profesores con múltiples asignaciones CADI y CAI
-    const assignedTeachers = [docenteNavarro, docenteNavarro] // Duplicado por dos materias
+    const assignedTeachers = [docenteNavarro, docenteNavarro]
 
     const seenIds = new Set<string>()
     const distinctTeachers = assignedTeachers.filter((t) => {
@@ -792,7 +789,6 @@ describe('3. Prevención de duplicidad en evaluación estudiantil: Docente que d
     expect(distinctTeachers.length).toBe(1)
     expect(distinctTeachers[0].id).toBe('doc-navarro')
 
-    // Verificar que las materias vinculadas contienen tanto CADI como CAI sin duplicar la tarjeta
     const materiasDocente = cadis.filter((c) => c.docenteId === distinctTeachers[0].id)
     expect(materiasDocente.length).toBe(2)
     expect(materiasDocente.some((m) => m.tipo === 'CADI')).toBe(true)

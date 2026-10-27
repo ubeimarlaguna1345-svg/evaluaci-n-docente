@@ -34,7 +34,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
-  // Cerrar con tecla Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !loading) {
@@ -49,7 +48,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
     e.preventDefault()
     setMsg(null)
 
-    // Validaciones en cliente
     if (!contrasenaActual.trim()) {
       return setMsg({ kind: 'err', text: 'Por favor ingresa tu contraseña actual.' })
     }
@@ -75,7 +73,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
         kind: 'ok',
         text: res.message || 'Contraseña actualizada con éxito.',
       })
-      // Limpiar campos del formulario
       setContrasenaActual('')
       setNuevaContrasena('')
       setConfirmarContrasena('')
@@ -104,7 +101,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
       aria-labelledby="modal-perfil-title"
     >
       <div className="relative w-full max-w-xl rounded-2xl border border-line bg-white shadow-2xl overflow-hidden my-6">
-        {/* Encabezado */}
         <div className="flex items-center justify-between border-b border-line bg-paper/60 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pine text-paper shadow-sm">
@@ -130,7 +126,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
         </div>
 
         <div className="p-6 space-y-6 max-h-[calc(85vh-80px)] overflow-y-auto">
-          {/* Sección 1: Información Institucional (Tarjetas de solo lectura) */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink/70">
@@ -143,7 +138,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Tarjeta Nombre */}
               <div className="rounded-xl border border-line/80 bg-paper/40 p-3.5 space-y-1">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink/50">
                   <UserIcon size={12} className="text-moss" /> Nombre Completo
@@ -151,7 +145,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
                 <p className="text-sm font-semibold text-ink break-words">{user.name}</p>
               </div>
 
-              {/* Tarjeta Correo */}
               <div className="rounded-xl border border-line/80 bg-paper/40 p-3.5 space-y-1">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink/50">
                   <Mail size={12} className="text-moss" /> Correo Institucional
@@ -159,7 +152,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
                 <p className="text-sm font-medium text-ink break-words font-mono text-[13px]">{user.email}</p>
               </div>
 
-              {/* Tarjeta Rol */}
               <div className="rounded-xl border border-line/80 bg-paper/40 p-3.5 space-y-1">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink/50">
                   <Shield size={12} className="text-moss" /> Rol en SIARD-UdeC
@@ -169,7 +161,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
                 </p>
               </div>
 
-              {/* Tarjeta Sede */}
               <div className="rounded-xl border border-line/80 bg-paper/40 p-3.5 space-y-1">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink/50">
                   <Building2 size={12} className="text-moss" /> Sede Institucional
@@ -177,7 +168,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
                 <p className="text-sm font-medium text-ink">{sedeInstitucional}</p>
               </div>
 
-              {/* Tarjeta Carrera (ocupa todo el ancho) */}
               <div className="sm:col-span-2 rounded-xl border border-line/80 bg-paper/40 p-3.5 space-y-1">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink/50">
                   <GraduationCap size={12} className="text-moss" /> Carrera / Programa Académico
@@ -189,7 +179,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
 
           <hr className="border-line" />
 
-          {/* Sección 2: Actualizar Contraseña (Formulario) */}
           <section className="space-y-4">
             <div className="space-y-1">
               <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink/70">
@@ -201,7 +190,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
               </p>
             </div>
 
-            {/* Mensaje de retroalimentación */}
             {msg && (
               <div
                 className={`flex items-start gap-2.5 rounded-lg border p-3 text-sm transition-all ${
@@ -221,7 +209,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
-              {/* Contraseña actual */}
               <div>
                 <label className="block text-xs font-semibold text-ink/70 mb-1" htmlFor="contrasenaActual">
                   Contraseña actual *
@@ -251,7 +238,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
                 </div>
               </div>
 
-              {/* Nueva contraseña */}
               <div>
                 <label className="block text-xs font-semibold text-ink/70 mb-1" htmlFor="nuevaContrasena">
                   Nueva contraseña * (mínimo 6 caracteres)
@@ -281,7 +267,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
                 </div>
               </div>
 
-              {/* Confirmar nueva contraseña */}
               <div>
                 <label className="block text-xs font-semibold text-ink/70 mb-1" htmlFor="confirmarContrasena">
                   Confirmar nueva contraseña *
@@ -311,7 +296,6 @@ export function ModalPerfil({ user, onClose }: ModalPerfilProps) {
                 </div>
               </div>
 
-              {/* Botón de acción */}
               <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"

@@ -76,10 +76,8 @@ export async function initSchema() {
         ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
         ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'coordinador', 'docente', 'estudiante'));
 
-        -- 1. Eliminar Administrador General duplicado y antiguo
         DELETE FROM usuarios WHERE LOWER(correo) = 'admin@ucundinamarca.edu.co' OR nombre ILIKE '%Administrador General%';
 
-        -- 2. Eliminar docentes repetidos conservando únicamente la cuenta canónica
         DELETE FROM usuarios 
         WHERE rol = 'docente' 
           AND id NOT IN ('doc-navarro', 'doc-salazar', 'doc-prieto', 'doc-mendoza', 'doc-cifuentes')
@@ -143,7 +141,6 @@ export async function initSchema() {
         ON CONFLICT (id) DO UPDATE
         SET enunciado = EXCLUDED.enunciado, dimension = EXCLUDED.dimension;
 
-        -- Respuestas para Diana Salazar (Sobresaliente ~4.85)
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-sal-1', 'form-eval-2026', 'est-1', 'doc-salazar', 'Excelente docente, su dominio de los temas de cálculo y paciencia para resolver dudas complejas es insuperable.', NOW() - INTERVAL '5 days'),
@@ -152,7 +149,6 @@ export async function initSchema() {
           ('rf-sal-auto', 'form-auto-2026', 'doc-salazar', 'doc-salazar', 'Compromiso riguroso con la formación matemática y diseño de guías paso a paso.', NOW() - INTERVAL '2 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
-        -- Respuestas para Andrés Navarro (Destacado ~4.35)
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-nav-1', 'form-eval-2026', 'est-1', 'doc-navarro', 'Muy buen profesor en programación, explica conceptos abstractos con ejemplos reales.', NOW() - INTERVAL '5 days'),
@@ -161,7 +157,6 @@ export async function initSchema() {
           ('rf-nav-auto', 'form-auto-2026', 'doc-navarro', 'doc-navarro', 'Fomento continuo del aprendizaje basado en problemas de desarrollo de software.', NOW() - INTERVAL '1 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
-        -- Respuestas para Mariana Cifuentes (Destacado ~4.15)
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-cif-1', 'form-eval-2026', 'est-2', 'doc-cifuentes', 'Propicia debates éticos muy constructivos y analiza dilemas profesionales de ingeniería.', NOW() - INTERVAL '6 days'),
@@ -170,7 +165,6 @@ export async function initSchema() {
           ('rf-cif-auto', 'form-auto-2026', 'doc-cifuentes', 'doc-cifuentes', 'Promoción constante de la responsabilidad social universitaria bajo el MEDIT.', NOW() - INTERVAL '1 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
-        -- Respuestas para Gabriel Prieto (Aceptable / Atención Preventiva ~3.75)
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-prie-1', 'form-eval-2026', 'est-1', 'doc-prieto', 'Tiene sólido conocimiento lingüístico, pero los tiempos de devolución de ensayos son algo extensos.', NOW() - INTERVAL '7 days'),
@@ -179,7 +173,6 @@ export async function initSchema() {
           ('rf-prie-auto', 'form-auto-2026', 'doc-prieto', 'doc-prieto', 'Reflexión pedagógica orientada a optimizar tiempos de corrección escrita.', NOW() - INTERVAL '2 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
-        -- Respuestas para Javier Mendoza (En Seguimiento ~3.25)
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-men-1', 'form-eval-2026', 'est-2', 'doc-mendoza', 'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas.', NOW() - INTERVAL '6 days'),
@@ -188,8 +181,6 @@ export async function initSchema() {
           ('rf-men-auto', 'form-auto-2026', 'doc-mendoza', 'doc-mendoza', 'Reconozco la necesidad de incorporar simulaciones virtuales para fortalecer el componente práctico.', NOW() - INTERVAL '1 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
-        -- Detalle de respuestas numéricas por pregunta
-        -- Diana Salazar (5, 5, 5, 4 => Promedio ~4.85)
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-sal-1', 'q-claridad', '5'), ('rf-sal-1', 'q-organizacion', '5'), ('rf-sal-1', 'q-retro', '5'), ('rf-sal-1', 'q-metodologia', '5'),
@@ -198,7 +189,6 @@ export async function initSchema() {
           ('rf-sal-auto', 'q-auto-1', '5'), ('rf-sal-auto', 'q-auto-2', '5'), ('rf-sal-auto', 'q-auto-3', '4'), ('rf-sal-auto', 'q-auto-4', '5')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
-        -- Andrés Navarro (4, 5, 4, 4 => Promedio ~4.35)
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-nav-1', 'q-claridad', '5'), ('rf-nav-1', 'q-organizacion', '4'), ('rf-nav-1', 'q-retro', '4'), ('rf-nav-1', 'q-metodologia', '5'),
@@ -207,7 +197,6 @@ export async function initSchema() {
           ('rf-nav-auto', 'q-auto-1', '4'), ('rf-nav-auto', 'q-auto-2', '5'), ('rf-nav-auto', 'q-auto-3', '4'), ('rf-nav-auto', 'q-auto-4', '5')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
-        -- Mariana Cifuentes (4, 4, 4, 5 => Promedio ~4.15)
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-cif-1', 'q-claridad', '4'), ('rf-cif-1', 'q-organizacion', '5'), ('rf-cif-1', 'q-retro', '4'), ('rf-cif-1', 'q-metodologia', '4'),
@@ -216,7 +205,6 @@ export async function initSchema() {
           ('rf-cif-auto', 'q-auto-1', '4'), ('rf-cif-auto', 'q-auto-2', '4'), ('rf-cif-auto', 'q-auto-3', '4'), ('rf-cif-auto', 'q-auto-4', '5')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
-        -- Gabriel Prieto (4, 4, 3, 3 => Promedio ~3.75)
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-prie-1', 'q-claridad', '4'), ('rf-prie-1', 'q-organizacion', '4'), ('rf-prie-1', 'q-retro', '3'), ('rf-prie-1', 'q-metodologia', '4'),
@@ -225,7 +213,6 @@ export async function initSchema() {
           ('rf-prie-auto', 'q-auto-1', '4'), ('rf-prie-auto', 'q-auto-2', '4'), ('rf-prie-auto', 'q-auto-3', '4'), ('rf-prie-auto', 'q-auto-4', '4')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
-        -- Javier Mendoza (3, 3, 3, 4 => Promedio ~3.25)
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-men-1', 'q-claridad', '3'), ('rf-men-1', 'q-organizacion', '3'), ('rf-men-1', 'q-retro', '3'), ('rf-men-1', 'q-metodologia', '4'),

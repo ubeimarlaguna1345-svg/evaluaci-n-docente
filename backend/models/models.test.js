@@ -294,7 +294,6 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(res.body.ok).toBe(true)
       expect(res.body.message).toBe('Contraseña actualizada con éxito')
 
-      // Verificar que se invocó UPDATE en PostgreSQL con nuevaContrasena y hash
       expect(querySpy).toHaveBeenCalledTimes(2)
       const updateCall = querySpy.mock.calls[1]
       expect(updateCall[0]).toContain('UPDATE usuarios SET contrasena = $1, contrasena_hash = $2 WHERE id = $3')

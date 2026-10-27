@@ -13,7 +13,6 @@ import { Header, Card, Msg, Empty, btnGhost, Respond } from '../common'
 export function StudentEvaluation({ me }: { me: User }) {
   const db = useDB()
   
-  // Agrupar o filtrar los docentes por su id único para garantizar unicidad
   const uniqueDocentesMap = new Map<string, User>()
   db.users
     .filter((u) => u.role === 'docente' && u.active)
@@ -52,7 +51,6 @@ export function StudentEvaluation({ me }: { me: User }) {
           />
         </>
       ) : evals.length ? evals.map((f) => {
-        // Filtrar docentes para el formulario: si tiene CADI/CAI específico o evaluación general
         let relevantDocentes = docentes
         if (f.cadiId) {
           const cadi = db.cadis.find((c) => c.id === f.cadiId)
@@ -61,8 +59,6 @@ export function StudentEvaluation({ me }: { me: User }) {
           }
         }
 
-        // Deduplicación estricta por id único para que un profesor que dicte CADI y CAI
-        // aparezca en una sola tarjeta por evaluación/periodo
         const seenDocenteIds = new Set<string>()
         const distinctDocentes = relevantDocentes.filter((t) => {
           if (seenDocenteIds.has(t.id)) return false
@@ -84,7 +80,6 @@ export function StudentEvaluation({ me }: { me: User }) {
                   (ev) => ev.formId === f.id && (ev.docenteId === t.id || ev.teacherId === t.id) && ev.userId === me.id
                 )
                 const status = getStudentDocenteEvaluationStatus(db, f, me?.id || '', t.id)
-                // Obtener asignaturas (CADIs y CAIs) que dicta el docente para contextualizar la tarjeta
                 const docenteCadis = db.cadis.filter((c) => c.docenteId === t.id)
 
                 return (

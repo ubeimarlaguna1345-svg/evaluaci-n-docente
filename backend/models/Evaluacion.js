@@ -81,7 +81,6 @@ export class Evaluacion {
     return 'En Seguimiento'
   }
 
-  // Regla MEDIT: Plan de mejora pedagógica si promedio <= 3.90
   requierePlanMejora() {
     const promedio = this.calcularPromedio()
     return promedio > 0 && promedio <= 3.9
