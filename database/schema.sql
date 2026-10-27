@@ -1,7 +1,7 @@
 -- SIARD-UdeC · Esquema Relacional PostgreSQL
--- Compatible con PostgreSQL 14+, administrado vía pgAdmin
+-- Compatible con PostgreSQL 14+
 
--- 1. Tabla de Usuarios (con roles institucionales UdeC y control de baja lógica)
+-- Usuarios
 CREATE TABLE IF NOT EXISTS usuarios (
   id              TEXT PRIMARY KEY,
   nombre          TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   carrera         TEXT NOT NULL DEFAULT 'Ingeniería de Sistemas y Computación'
 );
 
--- 2. CADIs y CAIs (Campos de Aprendizaje Disciplinares e Institucionales - Lineamientos MEDIT UdeC)
+-- CADIs y CAIs (Campos de Aprendizaje MEDIT UdeC)
 CREATE TABLE IF NOT EXISTS cadis (
   id             TEXT PRIMARY KEY,
   codigo         TEXT NOT NULL UNIQUE,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS cadis (
   docente_id     TEXT REFERENCES usuarios(id) ON DELETE SET NULL
 );
 
--- 3. Formularios de Evaluación y Autoevaluación
+-- Formularios de Evaluación y Autoevaluación
 CREATE TABLE IF NOT EXISTS formularios (
   id            TEXT PRIMARY KEY,
   tipo          TEXT NOT NULL CHECK (tipo IN ('evaluacion', 'autoevaluacion')),
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS formularios (
   CHECK (fecha_cierre > fecha_inicio)
 );
 
--- 4. Preguntas asociadas a formularios o retroalimentaciones
+-- Preguntas
 CREATE TABLE IF NOT EXISTS preguntas (
   id              TEXT PRIMARY KEY,
   formulario_id   TEXT REFERENCES formularios(id) ON DELETE CASCADE,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS preguntas (
   orden           INTEGER NOT NULL DEFAULT 0
 );
 
--- 5. Opciones para preguntas de selección múltiple
+-- Opciones de Selección Múltiple
 CREATE TABLE IF NOT EXISTS opciones (
   pregunta_id  TEXT NOT NULL REFERENCES preguntas(id) ON DELETE CASCADE,
   orden        INTEGER NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS opciones (
   PRIMARY KEY (pregunta_id, orden)
 );
 
--- 6. Retroalimentaciones rápidas de clase (Docente a estudiantes)
+-- Retroalimentaciones
 CREATE TABLE IF NOT EXISTS retroalimentaciones (
   id            TEXT PRIMARY KEY,
   docente_id    TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS retroalimentaciones (
   CHECK (fecha_cierre > fecha_inicio)
 );
 
--- 7. Respuestas de estudiantes a retroalimentaciones de clase (voto único por sesión)
+-- Respuestas a Retroalimentaciones
 CREATE TABLE IF NOT EXISTS respuestas_retroalimentacion (
   id                   TEXT PRIMARY KEY,
   retroalimentacion_id TEXT NOT NULL REFERENCES retroalimentaciones(id) ON DELETE CASCADE,
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS respuestas_retroalimentacion (
   UNIQUE (retroalimentacion_id, estudiante_id)
 );
 
--- 8. Respuestas a formularios institucionales (control de anonimato y bloqueo de doble voto)
+-- Respuestas de Formulario
 CREATE TABLE IF NOT EXISTS respuestas_formulario (
   id             TEXT PRIMARY KEY,
   formulario_id  TEXT NOT NULL REFERENCES formularios(id) ON DELETE CASCADE,
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS respuestas_formulario (
   UNIQUE (formulario_id, usuario_id, docente_id)
 );
 
--- 9. Detalle de respuestas individuales por pregunta
+-- Detalle de Respuestas
 CREATE TABLE IF NOT EXISTS detalle_respuesta (
   respuesta_id  TEXT NOT NULL REFERENCES respuestas_formulario(id) ON DELETE CASCADE,
   pregunta_id   TEXT NOT NULL REFERENCES preguntas(id) ON DELETE CASCADE,
@@ -98,13 +98,29 @@ CREATE TABLE IF NOT EXISTS detalle_respuesta (
   PRIMARY KEY (respuesta_id, pregunta_id)
 );
 
--- Índices de optimización para consultas frecuentes
+-- Metadatos de Evaluación
+CREATE TABLE IF NOT EXISTS metadatos_evaluacion (
+  id             TEXT PRIMARY KEY,
+  formulario_id  TEXT REFERENCES formularios(id) ON DELETE CASCADE,
+  docente_id     TEXT REFERENCES usuarios(id) ON DELETE SET NULL,
+  periodo        TEXT NOT NULL,
+  estado         TEXT NOT NULL DEFAULT 'activo',
+  creado_en      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Formularios Eliminados
+CREATE TABLE IF NOT EXISTS formularios_eliminados (
+  id    TEXT PRIMARY KEY,
+  fecha TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Índices
 CREATE INDEX IF NOT EXISTS idx_formularios_periodo ON formularios(periodo);
 CREATE INDEX IF NOT EXISTS idx_preguntas_formulario ON preguntas(formulario_id);
 CREATE INDEX IF NOT EXISTS idx_respuestas_formulario_form ON respuestas_formulario(formulario_id);
 CREATE INDEX IF NOT EXISTS idx_respuestas_formulario_doc ON respuestas_formulario(docente_id);
 
--- 10. Vista analítica para cálculo de promedios de escala
+-- Vista de Promedios por Pregunta de Escala
 CREATE OR REPLACE VIEW v_promedios AS
 SELECT
   rf.formulario_id,
@@ -123,8 +139,7 @@ GROUP BY
   p.id,
   p.enunciado;
 
--- 11. Vista de calificaciones consolidadas (70% Evaluación Estudiantes + 30% Autoevaluación Docente)
--- Umbral de Plan de Mejora Pedagógica: nota_final_consolidada <= 3.9
+-- Vista de Calificaciones Consolidadas (70% Evaluación Estudiantes + 30% Autoevaluación Docente)
 CREATE OR REPLACE VIEW v_calificaciones_consolidadas AS
 WITH promedios_estudiantes AS (
   SELECT

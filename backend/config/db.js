@@ -59,9 +59,6 @@ export async function initSchema() {
       path.resolve(__dirname, '..', '..', 'database', 'schema.sql'),
       path.resolve(process.cwd(), 'database', 'schema.sql'),
       path.resolve(process.cwd(), '..', 'database', 'schema.sql'),
-      path.resolve(__dirname, '..', '..', 'database', 'schema.postgres.sql'),
-      path.resolve(process.cwd(), 'database', 'schema.postgres.sql'),
-      path.resolve(process.cwd(), '..', 'database', 'schema.postgres.sql'),
     ]
     const schemaPath = candidatePaths.find((p) => fs.existsSync(p))
     if (schemaPath) {
