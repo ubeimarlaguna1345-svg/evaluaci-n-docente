@@ -16,6 +16,7 @@ import {
   type User,
 } from './store'
 import { VIEWS } from './views/common/Shell'
+import { formatDocenteId } from './views/coordinador/Report'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -908,3 +909,21 @@ describe('6. Restricción Normativa del Menú y Accesos para el Rol Docente', ()
     expect(ids.some((id) => id === 'formularios' || id === 'retro' || id === 'crear')).toBe(false)
   })
 })
+
+describe('7. Formato de ID Institucional Docente en Reportes', () => {
+  it('debe transformar UUIDs largos a formato institucional DOC-XXXXXXXX en mayúsculas', () => {
+    const uuid = 'f4f9f608-24da-4166-8d5c-95627a69620b'
+    expect(formatDocenteId(uuid)).toBe('DOC-F4F9F608')
+
+    const uuid2 = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    expect(formatDocenteId(uuid2)).toBe('DOC-A1B2C3D4')
+  })
+
+  it('debe mantener intactos los códigos y cédulas cortas no-UUID', () => {
+    expect(formatDocenteId('doc-navarro')).toBe('doc-navarro')
+    expect(formatDocenteId('1023456789')).toBe('1023456789')
+    expect(formatDocenteId('DOC-802')).toBe('DOC-802')
+    expect(formatDocenteId('')).toBe('')
+  })
+})
+

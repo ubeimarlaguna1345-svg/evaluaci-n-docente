@@ -1,7 +1,4 @@
--- SIARD-UdeC · Esquema Relacional PostgreSQL
--- Compatible con PostgreSQL 14+, administrado vía pgAdmin
-
--- 1. Tabla de Usuarios (con roles institucionales UdeC y control de baja lógica)
+-
 CREATE TABLE IF NOT EXISTS usuarios (
   id              TEXT PRIMARY KEY,
   nombre          TEXT NOT NULL,

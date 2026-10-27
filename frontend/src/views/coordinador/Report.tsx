@@ -101,6 +101,14 @@ export function getNivelDesempeno(score: number): DesempenoBadge {
   }
 }
 
+export function formatDocenteId(id: string): string {
+  if (!id) return ''
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ||
+    (id.length >= 32 && id.includes('-'))
+  return isUuid ? `DOC-${id.slice(0, 8).toUpperCase()}` : id
+}
+
 export interface DimensionMeditInfo {
   id: string
   numero: number
@@ -856,15 +864,15 @@ export function Report({
 
                 <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 rounded-lg border border-line bg-paper/40 p-4 mb-4 text-xs">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink/50">Profesor Titular</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink/50">Docente Titular</span>
                     <p className="font-semibold text-sm text-pine">{activeDetail.teacher.name}</p>
                     <p className="font-mono text-[11px] text-ink/60">{activeDetail.teacher.email}</p>
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink/50">Identificación / ID</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink/50">ID Institucional</span>
                     <p className="font-semibold text-xs text-ink/80 font-mono">
-                      C.C. / ID: {activeDetail.teacher.id.replace('doc-', 'DOC-802')}
+                      {formatDocenteId(activeDetail.teacher.id)}
                     </p>
                     <p className="text-[11px] text-ink/60">Programa: {activeDetail.teacher.carrera || 'Ing. de Sistemas'}</p>
                   </div>
