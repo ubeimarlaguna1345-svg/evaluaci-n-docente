@@ -1,23 +1,22 @@
 import { useState } from 'react'
-import { BookOpen, Layers, Award, Scale as ScaleIcon, CheckCircle2 } from 'lucide-react'
+import { BookOpen, Layers, Scale as ScaleIcon, CheckCircle2 } from 'lucide-react'
 import { Card, Header } from './Components'
 
 export function NormativaView() {
-  const [tab, setTab] = useState<'lineamientos' | 'medit' | 'calificacion' | 'limitaciones'>('lineamientos')
+  const [tab, setTab] = useState<'lineamientos' | 'medit' | 'limitaciones'>('lineamientos')
 
   return (
     <div className="space-y-6">
       <Header
-        title="Normativa, Lineamientos PGC y MEDIT"
-        sub="Marco institucional de la Universidad de Cundinamarca, dimensiones formativas del MEDIT, ponderación del 20% y superación de limitaciones del método tradicional."
+        title="Normativa y Lineamientos Institucionales MEDIT"
+        sub="Marco institucional de la Universidad de Cundinamarca, dimensiones formativas del MEDIT y modelo de evaluación docente integral."
       />
 
       <div className="flex flex-wrap gap-2 border-b border-line pb-3">
         {[
           { id: 'lineamientos', label: 'Marco Normativo UdeC', icon: BookOpen },
           { id: 'medit', label: 'Dimensiones MEDIT', icon: Layers },
-          { id: 'calificacion', label: 'CADI Articulador y 20%', icon: Award },
-          { id: 'limitaciones', label: 'Limitaciones vs. SIARD', icon: ScaleIcon },
+          { id: 'limitaciones', label: 'Sistema Tradicional vs. SIARD', icon: ScaleIcon },
         ].map((t) => (
           <button
             key={t.id}
@@ -147,83 +146,6 @@ export function NormativaView() {
                 </div>
               </Card>
             ))}
-          </div>
-        </div>
-      )}
-
-      {tab === 'calificacion' && (
-        <div className="space-y-6">
-          <Card className="border-l-4 border-l-ochre">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span className="font-mono text-xs uppercase tracking-wider text-ochre">Numeral 13 de los Lineamientos Oficiales</span>
-                <h3 className="font-serif text-2xl text-pine">Ponderación del 20% en el CADI Articulador</h3>
-                <p className="mt-1 text-sm text-ink/80">
-                  "La calificación del PGC corresponderá al <b>20% de la nota final</b> del CADI o Núcleo temático Articulador que esté cursando el constructor del conocimiento."
-                </p>
-              </div>
-              <div className="rounded-lg bg-pine p-4 text-center text-paper">
-                <p className="font-serif text-4xl font-bold">20%</p>
-                <p className="text-xs text-paper/70">Aporte a nota final</p>
-              </div>
-            </div>
-          </Card>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="space-y-4">
-              <h4 className="font-serif text-xl">CADIs Articuladores Oficiales (Pág. 7 del Documento)</h4>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-line text-left text-ink/50">
-                    <th className="pb-2">Semestre</th>
-                    <th className="pb-2">Ing. Sistemas y Computación</th>
-                    <th className="pb-2">Ing. Software / Industrial</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  <tr className="bg-moss/10 font-medium">
-                    <td className="py-2.5">Semestre III (Ciclo I)</td>
-                    <td className="py-2.5 text-pine font-semibold">Programación II ★</td>
-                    <td className="py-2.5">Programación II</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5">Semestre VI (Ciclo II)</td>
-                    <td className="py-2.5">Ingeniería del Software II</td>
-                    <td className="py-2.5">Profundización</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5">Semestre IX (Ciclo III)</td>
-                    <td className="py-2.5">Línea de Profundización</td>
-                    <td className="py-2.5">Profundización</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p className="text-xs text-ink/60">
-                ★ <b>Numeral 5:</b> En la propuesta se deben relacionar mínimo <b>2 CADIs de diferentes líneas de saberes</b> (ej. Programación II + Bases de Datos).
-              </p>
-            </Card>
-
-            <Card className="space-y-3">
-              <h4 className="font-serif text-xl">Cronograma Oficial de Evaluación PGC</h4>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-3 rounded border border-line p-2">
-                  <span className="font-mono font-bold text-ochre">Semana 5</span>
-                  <div><b>Radicación de Propuesta (Ciclo I)</b><br />Entrega formal ante el CADI Articulador y Comité Evaluador.</div>
-                </div>
-                <div className="flex items-center gap-3 rounded border border-line p-2">
-                  <span className="font-mono font-bold text-ochre">Semana 10</span>
-                  <div><b>Segundo Informe de Avance</b><br />Evidencia de un proceso estricto de ingeniería (CDIO) o investigación.</div>
-                </div>
-                <div className="flex items-center gap-3 rounded border border-line p-2">
-                  <span className="font-mono font-bold text-ochre">Semana 12</span>
-                  <div><b>Sustentaciones del PGC</b><br />Exposición del prototipo ante el Comité Evaluador de Ciclo.</div>
-                </div>
-                <div className="flex items-center gap-3 rounded border border-line p-2">
-                  <span className="font-mono font-bold text-pine">Semana 14</span>
-                  <div><b>Publicación de Calificación Final</b><br />Promedio consolidado del comité, equivalente al 20% de la nota final.</div>
-                </div>
-              </div>
-            </Card>
           </div>
         </div>
       )}
