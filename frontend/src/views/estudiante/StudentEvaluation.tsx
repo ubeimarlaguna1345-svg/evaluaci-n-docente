@@ -5,7 +5,7 @@ import {
   actions,
   isOpen,
   fmt,
-  getStudentTeacherEvaluationStatus,
+  getStudentDocenteEvaluationStatus,
   type User,
 } from '../../store'
 import { Header, Card, Msg, Empty, btnGhost, Respond } from '../common'
@@ -14,17 +14,17 @@ export function StudentEvaluation({ me }: { me: User }) {
   const db = useDB()
   
   // Agrupar o filtrar los docentes por su id único para garantizar unicidad
-  const uniqueTeachersMap = new Map<string, User>()
+  const uniqueDocentesMap = new Map<string, User>()
   db.users
     .filter((u) => u.role === 'docente' && u.active)
     .forEach((t) => {
-      if (!uniqueTeachersMap.has(t.id)) {
-        uniqueTeachersMap.set(t.id, t)
+      if (!uniqueDocentesMap.has(t.id)) {
+        uniqueDocentesMap.set(t.id, t)
       }
     })
-  const teachers = Array.from(uniqueTeachersMap.values())
+  const docentes = Array.from(uniqueDocentesMap.values())
 
-  const [sel, setSel] = useState<{ formId: string; teacherId: string } | null>(null)
+  const [sel, setSel] = useState<{ formId: string; docenteId: string; teacherId?: string } | null>(null)
   const [ok, setOk] = useState(false)
   const evals = db.forms.filter((f) => f.kind === 'evaluacion')
   const form = evals.find((f) => f.id === sel?.formId)
@@ -36,15 +36,16 @@ export function StudentEvaluation({ me }: { me: User }) {
       {form && sel ? (
         <>
           <p className="mb-4 text-sm">
-            Evaluando a <b>{db.users.find((u) => u.id === sel.teacherId)?.name}</b> ·{' '}
+            Evaluando a <b>{db.users.find((u) => u.id === (sel.docenteId || sel.teacherId))?.name}</b> ·{' '}
             <button className="underline" onClick={() => setSel(null)}>volver</button>
           </p>
           <Respond
-            key={`${form.id}-${sel.teacherId}`}
+            key={`${form.id}-${sel.docenteId || sel.teacherId}`}
             form={form}
             withObservation
             onSubmit={(answers, observation) => {
-              actions.respondForm({ formId: form.id, userId: me.id, teacherId: sel.teacherId, answers, observation })
+              const targetDocenteId = sel.docenteId || sel.teacherId || ''
+              actions.respondForm({ formId: form.id, userId: me.id, docenteId: targetDocenteId, teacherId: targetDocenteId, answers, observation })
               setSel(null)
               setOk(true)
             }}
@@ -52,20 +53,20 @@ export function StudentEvaluation({ me }: { me: User }) {
         </>
       ) : evals.length ? evals.map((f) => {
         // Filtrar docentes para el formulario: si tiene CADI/CAI específico o evaluación general
-        let relevantTeachers = teachers
+        let relevantDocentes = docentes
         if (f.cadiId) {
           const cadi = db.cadis.find((c) => c.id === f.cadiId)
           if (cadi && cadi.docenteId) {
-            relevantTeachers = teachers.filter((t) => t.id === cadi.docenteId)
+            relevantDocentes = docentes.filter((t) => t.id === cadi.docenteId)
           }
         }
 
         // Deduplicación estricta por id único para que un profesor que dicte CADI y CAI
         // aparezca en una sola tarjeta por evaluación/periodo
-        const seenTeacherIds = new Set<string>()
-        const distinctTeachers = relevantTeachers.filter((t) => {
-          if (seenTeacherIds.has(t.id)) return false
-          seenTeacherIds.add(t.id)
+        const seenDocenteIds = new Set<string>()
+        const distinctDocentes = relevantDocentes.filter((t) => {
+          if (seenDocenteIds.has(t.id)) return false
+          seenDocenteIds.add(t.id)
           return true
         })
 
@@ -78,21 +79,21 @@ export function StudentEvaluation({ me }: { me: User }) {
               </span>
             </div>
             <div className="divide-y divide-line">
-              {distinctTeachers.map((t) => {
+              {distinctDocentes.map((t) => {
                 const yaRespondio = Boolean(me?.id) && db.formResponses.some(
-                  (ev) => ev.formId === f.id && ev.teacherId === t.id && ev.userId === me.id
+                  (ev) => ev.formId === f.id && (ev.docenteId === t.id || ev.teacherId === t.id) && ev.userId === me.id
                 )
-                const status = getStudentTeacherEvaluationStatus(db, f, me?.id || '', t.id)
+                const status = getStudentDocenteEvaluationStatus(db, f, me?.id || '', t.id)
                 // Obtener asignaturas (CADIs y CAIs) que dicta el docente para contextualizar la tarjeta
-                const teacherCadis = db.cadis.filter((c) => c.docenteId === t.id)
+                const docenteCadis = db.cadis.filter((c) => c.docenteId === t.id)
 
                 return (
                   <div key={t.id} className="flex items-center justify-between py-3">
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
                       <span className="font-medium text-pine">{t.name}</span>
-                      {teacherCadis.length > 0 && (
+                      {docenteCadis.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {teacherCadis.map((asig) => (
+                          {docenteCadis.map((asig) => (
                             <span
                               key={asig.id}
                               className={`rounded px-1.5 py-0.5 text-[11px] font-medium border ${
@@ -124,7 +125,7 @@ export function StudentEvaluation({ me }: { me: User }) {
                       <button
                         className={btnGhost}
                         disabled={!isOpen(f.start, f.end)}
-                        onClick={() => { setOk(false); setSel({ formId: f.id, teacherId: t.id }) }}
+                        onClick={() => { setOk(false); setSel({ formId: f.id, docenteId: t.id, teacherId: t.id }) }}
                       >
                         Evaluar
                       </button>
@@ -133,6 +134,7 @@ export function StudentEvaluation({ me }: { me: User }) {
                 )
               })}
             </div>
+
           </Card>
         )
       }) : <Empty text="No hay evaluaciones asignadas." />}

@@ -56,7 +56,7 @@ export function SelfEvaluation({ me }: { me: User }) {
         <Respond
           form={form}
           onSubmit={(answers, observation) => {
-            actions.respondForm({ formId: form.id, userId: me.id, teacherId: me.id, answers, observation })
+            actions.respondForm({ formId: form.id, userId: me.id, docenteId: me.id, teacherId: me.id, answers, observation })
             setActive(null)
           }}
         />

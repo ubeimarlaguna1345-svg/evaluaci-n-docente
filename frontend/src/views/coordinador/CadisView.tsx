@@ -232,7 +232,7 @@ export function CadisView() {
                         <select
                           className={`${input} py-1 text-xs`}
                           value={c.docenteId || ''}
-                          onChange={(e) => actions.assignCadiTeacher(c.id, e.target.value || null)}
+                          onChange={(e) => actions.assignCadiDocente(c.id, e.target.value || null)}
                         >
                           <option value="">Sin asignar</option>
                           {docentes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}

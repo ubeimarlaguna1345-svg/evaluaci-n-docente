@@ -81,6 +81,8 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(doc.getFacultad()).toBe('Ingeniería')
       expect(doc.getCategoria()).toBe('Titular')
       expect(doc.obtenerPermisos()).toEqual(['autoevaluacion', 'ver_resultados_propios'])
+      expect(doc.obtenerPermisos()).not.toContain('crear_formulario')
+      expect(doc.obtenerPermisos()).not.toContain('gestionar_preguntas')
       expect(doc.toJSON().facultad).toBe('Ingeniería')
     })
 

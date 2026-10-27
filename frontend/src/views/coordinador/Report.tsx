@@ -30,10 +30,12 @@ import {
 import {
   useDB,
   stats,
+  getDocenteConsolidatedGrade,
   getTeacherConsolidatedGrade,
   type DB,
   type User,
   type CADI,
+  type DocenteGradeConsolidated,
   type TeacherGradeConsolidated,
 } from '../../store'
 import { Header, Card, Field, input, btn, btnGhost } from '../common'
@@ -152,17 +154,24 @@ export interface ComentarioAnalizado {
 
 export function Report({
   me,
+  initialDocenteId,
   initialTeacherId,
-  isTeacherView = false,
+  isDocenteView,
+  isTeacherView,
   onClose,
 }: {
   me?: User
+  initialDocenteId?: string
   initialTeacherId?: string
+  isDocenteView?: boolean
   isTeacherView?: boolean
   onClose?: () => void
 } = {}) {
   const db = useDB()
-  const allTeachers = useMemo(() => db.users.filter((u) => u.role === 'docente' && u.active), [db.users])
+  const effectiveInitialDocenteId = initialDocenteId ?? initialTeacherId
+  const effectiveIsDocenteView = isDocenteView ?? isTeacherView ?? false
+
+  const allDocentes = useMemo(() => db.users.filter((u) => u.role === 'docente' && u.active), [db.users])
   const evals = useMemo(() => db.forms.filter((f) => f.kind === 'evaluacion'), [db.forms])
   const [formId, setFormId] = useState(evals[0]?.id ?? '')
   const selectedForm = db.forms.find((f) => f.id === formId) || evals[0]
@@ -170,17 +179,21 @@ export function Report({
 
   const [searchQuery, setSearchQuery] = useState('')
   const [tierFilter, setTierFilter] = useState<'todos' | NivelDesempeno>('todos')
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(
-    initialTeacherId || (isTeacherView && me?.id ? me.id : null)
+  const [selectedDocenteId, setSelectedDocenteId] = useState<string | null>(
+    effectiveInitialDocenteId || (effectiveIsDocenteView && me?.id ? me.id : null)
   )
 
+  const setSelectedTeacherId = setSelectedDocenteId
+  const isTeacherViewFinal = effectiveIsDocenteView
+
   const teachersWithGrades = useMemo(() => {
-    return allTeachers.map((t) => {
-      const grade = getTeacherConsolidatedGrade(db, t.id, selectedPeriod)
+    return allDocentes.map((t) => {
+      const grade = getDocenteConsolidatedGrade(db, t.id, selectedPeriod)
       const cadis = db.cadis.filter((c) => c.docenteId === t.id)
       const primaryCadi = cadis[0] || null
       const desempeno = getNivelDesempeno(grade.finalScore)
       return {
+        docente: t,
         teacher: t,
         grade,
         cadis,
@@ -188,7 +201,7 @@ export function Report({
         desempeno,
       }
     })
-  }, [allTeachers, db, selectedPeriod])
+  }, [allDocentes, db, selectedPeriod])
 
   const avgInstitucional = useMemo(() => {
     const valid = teachersWithGrades.filter((x) => x.grade.hasEvaluations)
@@ -222,9 +235,9 @@ export function Report({
   }, [teachersWithGrades, searchQuery, tierFilter])
 
   const activeDetail = useMemo(() => {
-    if (!selectedTeacherId) return null
-    return teachersWithGrades.find((x) => x.teacher.id === selectedTeacherId) || null
-  }, [selectedTeacherId, teachersWithGrades])
+    if (!selectedDocenteId) return null
+    return teachersWithGrades.find((x) => x.teacher.id === selectedDocenteId) || null
+  }, [selectedDocenteId, teachersWithGrades])
 
   const activeStats = useMemo(() => {
     if (!activeDetail || !selectedForm) return null

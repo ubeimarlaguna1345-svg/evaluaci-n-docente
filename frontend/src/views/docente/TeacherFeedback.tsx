@@ -20,7 +20,7 @@ import {
   btn,
 } from '../common'
 
-export function TeacherFeedback({ me }: { me: User }) {
+export function DocenteFeedback({ me }: { me: User }) {
   const db = useDB()
   const [course, setCourse] = useState('')
   const [questions, setQuestions] = useState<Question[]>([])
@@ -36,7 +36,7 @@ export function TeacherFeedback({ me }: { me: User }) {
   const [sel, setSel] = useState<string | null>(null)
 
   const myCadis = db.cadis.filter((c) => c.docenteId === me.id)
-  const mine = db.feedbacks.filter((f) => f.teacherId === me.id)
+  const mine = db.feedbacks.filter((f) => (f.docenteId || f.teacherId) === me.id)
 
   const save = async () => {
     if (!course.trim()) {
@@ -52,6 +52,7 @@ export function TeacherFeedback({ me }: { me: User }) {
     setLoading(true)
     try {
       await actions.createFeedback({
+        docenteId: me.id,
         teacherId: me.id,
         course,
         questions,
@@ -59,6 +60,7 @@ export function TeacherFeedback({ me }: { me: User }) {
         end,
       })
       setQuestions([])
+
       setCourse('')
       setEnd('')
       setMsg({
@@ -244,3 +246,6 @@ export function TeacherFeedback({ me }: { me: User }) {
     </>
   )
 }
+
+export const TeacherFeedback = DocenteFeedback
+

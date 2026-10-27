@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   calculateConsolidatedGrade,
+  getDocenteConsolidatedGrade,
   getTeacherConsolidatedGrade,
+  getStudentDocenteEvaluationStatus,
   getStudentTeacherEvaluationStatus,
   sanitizeUsers,
   getDeletedUserIds,
@@ -13,6 +15,7 @@ import {
   type CADI,
   type User,
 } from './store'
+import { VIEWS } from './views/common/Shell'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -846,7 +849,62 @@ describe('4. Gestión de Perfil y Cambio de Contraseña (Frontend)', () => {
       globalThis.fetch = originalFetch
     }
   })
+
+  it('unificación de nomenclatura: getDocenteConsolidatedGrade y getStudentDocenteEvaluationStatus operan con docenteId', () => {
+    const form: Form = {
+      id: 'f-doc-1',
+      kind: 'evaluacion',
+      title: 'Eval',
+      description: '',
+      period: '2026-I',
+      start: '2026-01-01',
+      end: '2026-12-31',
+      questions: [{ id: 'q1', text: 'P1', type: 'escala', options: [], required: true }],
+    }
+    const mockDb: DB = {
+      users: [{ id: 'doc-1', name: 'Docente 1', email: 'd1@udec.edu.co', password: '123', role: 'docente', active: true }],
+      cadis: [],
+      feedbacks: [],
+      feedbackResponses: [],
+      forms: [form],
+      formResponses: [
+        { id: 'r1', formId: 'f-doc-1', userId: 'est-1', docenteId: 'doc-1', answers: { q1: '4' }, observation: '', date: '' },
+      ],
+      connected: true,
+      loading: false,
+      error: null,
+    }
+
+    const grade = getDocenteConsolidatedGrade(mockDb, 'doc-1', '2026-I')
+    expect(grade.docenteId).toBe('doc-1')
+    expect(grade.studentAvg).toBe(4)
+
+    const status = getStudentDocenteEvaluationStatus(mockDb, form, 'est-1', 'doc-1')
+    expect(status.hasEvaluated).toBe(true)
+    expect(status.score).toBe(4)
+  })
 })
 
+describe('6. Restricción Normativa del Menú y Accesos para el Rol Docente', () => {
+  it('el menú del docente debe contener estrictamente las 3 opciones normativas institucionales', () => {
+    const docenteViews = VIEWS.docente
+    expect(docenteViews.length).toBe(3)
 
+    const ids = docenteViews.map((v) => v.id)
+    expect(ids).toEqual(['auto', 'reporte-docente', 'normativa'])
 
+    const labels = docenteViews.map((v) => v.label)
+    expect(labels).toContain('Autoevaluación')
+    expect(labels).toContain('Mis Resultados / Reporte')
+    expect(labels).toContain('Normativa y MEDIT')
+  })
+
+  it('el menú del docente no debe contener opciones de creación o gestión de formularios/retroalimentación', () => {
+    const docenteViews = VIEWS.docente
+    const labels = docenteViews.map((v) => v.label.toLowerCase())
+    const ids = docenteViews.map((v) => v.id.toLowerCase())
+
+    expect(labels.some((l) => l.includes('formulario') || l.includes('encuesta') || l.includes('retroalimentación'))).toBe(false)
+    expect(ids.some((id) => id === 'formularios' || id === 'retro' || id === 'crear')).toBe(false)
+  })
+})

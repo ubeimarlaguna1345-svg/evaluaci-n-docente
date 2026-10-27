@@ -15,7 +15,7 @@ import { useDB, ROLE_LABEL, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
 import { StudentEvaluation, StudentFeedback } from '../estudiante'
-import { TeacherFeedback, SelfEvaluation } from '../docente'
+import { SelfEvaluation } from '../docente'
 import { CadisView, FormsAdmin, Results, Statistics, Report } from '../coordinador'
 import { Accounts } from '../admin'
 
@@ -44,9 +44,8 @@ export const VIEWS: Record<Role, View[]> = (() => {
     admin: mgmt,
     coordinador: mgmt,
     docente: [
-      { id: 'reporte-docente', label: 'Mi Reporte MEDIT', icon: FileText, render: (me) => <Report me={me} initialTeacherId={me.id} isTeacherView /> },
-      { id: 'retro', label: 'Retroalimentación', icon: MessageSquare, render: (me) => <TeacherFeedback me={me} /> },
       { id: 'auto', label: 'Autoevaluación', icon: ClipboardList, render: (me) => <SelfEvaluation me={me} /> },
+      { id: 'reporte-docente', label: 'Mis Resultados / Reporte', icon: FileText, render: (me) => <Report me={me} initialDocenteId={me.id} initialTeacherId={me.id} isDocenteView isTeacherView /> },
       normativaView,
     ],
     estudiante: [

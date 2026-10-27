@@ -14,10 +14,10 @@ export type TipoCampo = 'CADI' | 'CAI'
 export interface User { id: string; name: string; email: string; password: string; role: Role; active: boolean; sede?: string; carrera?: string }
 export interface CADI { id: string; codigo: string; nombre: string; semestre: number; tipo?: 'CADI' | 'CAI'; esArticulador?: boolean; docenteId?: string | null }
 export interface Question { id: string; text: string; type: AnswerType; options: string[]; required: boolean; dimension?: string }
-export interface Feedback { id: string; teacherId: string; course: string; question: Question; start: string; end: string; createdAt: string }
+export interface Feedback { id: string; docenteId?: string; teacherId?: string; course: string; question: Question; start: string; end: string; createdAt: string }
 export interface FeedbackResponse { id: string; feedbackId: string; studentId: string; value: string; date: string }
 export interface Form { id: string; kind: FormKind; title: string; description: string; period: string; cadiId?: string; start: string; end: string; questions: Question[] }
-export interface FormResponse { id: string; formId: string; userId: string; teacherId: string; answers: Record<string, string>; observation: string; date: string }
+export interface FormResponse { id: string; formId: string; userId: string; docenteId?: string; teacherId?: string; answers: Record<string, string>; observation: string; date: string }
 
 export interface DB {
   users: User[]
@@ -187,7 +187,19 @@ export async function initDB() {
 
     const deletedFormIds = getDeletedFormIds()
     const cleanForms = (data.forms || []).filter((f) => !deletedFormIds.has(f.id))
-    const cleanResponses = (data.formResponses || []).filter((r) => !deletedFormIds.has(r.formId))
+    const cleanResponses = (data.formResponses || [])
+      .filter((r) => !deletedFormIds.has(r.formId))
+      .map((r) => ({
+        ...r,
+        docenteId: (r as any).docenteId || (r as any).teacherId || '',
+        teacherId: (r as any).docenteId || (r as any).teacherId || '',
+      }))
+
+    const cleanFeedbacks = (data.feedbacks || []).map((fb) => ({
+      ...fb,
+      docenteId: (fb as any).docenteId || (fb as any).teacherId || '',
+      teacherId: (fb as any).docenteId || (fb as any).teacherId || '',
+    }))
 
     try {
       if (typeof window !== 'undefined') {
@@ -202,7 +214,7 @@ export async function initDB() {
       cadis: data.cadis || [],
       forms: [...cleanForms],
       formResponses: [...cleanResponses],
-      feedbacks: data.feedbacks || [],
+      feedbacks: cleanFeedbacks,
       feedbackResponses: data.feedbackResponses || [],
       connected: true,
       loading: false,
@@ -340,16 +352,30 @@ export const actions = {
     await initDB()
   },
 
-  assignCadiTeacher: async (cadiId: string, docenteId: string | null) => {
-    await evaluacionService.assignCadiTeacher(cadiId, docenteId)
+  assignCadiDocente: async (cadiId: string, docenteId: string | null) => {
+    await evaluacionService.assignCadiDocente(cadiId, docenteId)
     state.cadis = state.cadis.map((c) => (c.id === cadiId ? { ...c, docenteId: docenteId || undefined } : c))
     notify()
   },
 
-  createFeedback: async (b: (Omit<Feedback, 'id' | 'createdAt'> & { questions?: Question[] }) | { teacherId: string; course: string; questions: Question[]; start: string; end: string }) => {
-    await evaluacionService.createFeedback(b)
+  assignCadiTeacher: async (cadiId: string, docenteId: string | null) => {
+    return actions.assignCadiDocente(cadiId, docenteId)
+  },
+
+  createFeedback: async (
+    b:
+      | (Omit<Feedback, 'id' | 'createdAt'> & { questions?: Question[] })
+      | { docenteId?: string; teacherId?: string; course: string; questions: Question[]; start: string; end: string }
+  ) => {
+    const payload = {
+      ...b,
+      docenteId: (b as any).docenteId || (b as any).teacherId || '',
+      teacherId: (b as any).docenteId || (b as any).teacherId || '',
+    }
+    await evaluacionService.createFeedback(payload)
     await initDB()
   },
+
 
   respondFeedback: async (feedbackId: string, studentId: string, value: string) => {
     await evaluacionService.respondFeedback(feedbackId, studentId, value)
@@ -380,12 +406,12 @@ export const isOpen = (start: string, end: string) => {
 export const fmt = (s: string) =>
   new Date(s).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
 
-export function stats(db: DB, formId: string, teacherId?: string) {
+export function stats(db: DB, formId: string, docenteId?: string) {
   const form = db.forms.find((f) => f.id === formId)
   if (!form) return null
 
   const rs = db.formResponses.filter(
-    (r) => r.formId === formId && (!teacherId || r.teacherId === teacherId)
+    (r) => r.formId === formId && (!docenteId || r.docenteId === docenteId || r.teacherId === docenteId)
   )
 
   const scaleQuestions = form.questions.filter((x) => x.type === 'escala')
@@ -420,13 +446,15 @@ export function stats(db: DB, formId: string, teacherId?: string) {
     porDimension[dim].count = porDimension[dim].items.length
   })
 
-  const consolidatedGrade = teacherId ? getTeacherConsolidatedGrade(db, teacherId, form.period) : null
+  const consolidatedGrade = docenteId ? getDocenteConsolidatedGrade(db, docenteId, form.period) : null
 
   return { form, responses: rs, perQ, overall, pgcPonderado20, porDimension, consolidatedGrade }
 }
 
 
-export interface TeacherGradeConsolidated {
+
+export interface DocenteGradeConsolidated {
+  docenteId: string
   teacherId: string
   studentAvg: number | null
   studentWeighted: number | null
@@ -441,14 +469,15 @@ export interface TeacherGradeConsolidated {
   studentResponsesCount: number
   autoResponsesCount: number
 }
+export type TeacherGradeConsolidated = DocenteGradeConsolidated
 
 export function calculateConsolidatedGrade(
   studentAvg: number | null,
   autoAvg: number | null,
-  teacherId: string = '',
+  docenteId: string = '',
   studentResponsesCount: number = 0,
   autoResponsesCount: number = 0
-): TeacherGradeConsolidated {
+): DocenteGradeConsolidated {
   const hasStudent = studentAvg !== null && !isNaN(studentAvg) && studentAvg > 0
   const hasAuto = autoAvg !== null && !isNaN(autoAvg) && autoAvg > 0
 
@@ -459,7 +488,8 @@ export function calculateConsolidatedGrade(
     const autoWeighted = Number((aAvg * 0.30).toFixed(2))
     const finalScore = Number(((sAvg * 0.70) + (aAvg * 0.30)).toFixed(2))
     return {
-      teacherId,
+      docenteId,
+      teacherId: docenteId,
       studentAvg: sAvg,
       studentWeighted,
       autoAvg: aAvg,
@@ -480,7 +510,8 @@ export function calculateConsolidatedGrade(
     const studentWeighted = Number((sAvg * 0.70).toFixed(2))
     const finalScore = sAvg
     return {
-      teacherId,
+      docenteId,
+      teacherId: docenteId,
       studentAvg: sAvg,
       studentWeighted,
       autoAvg: null,
@@ -501,7 +532,8 @@ export function calculateConsolidatedGrade(
     const autoWeighted = Number((aAvg * 0.30).toFixed(2))
     const finalScore = aAvg
     return {
-      teacherId,
+      docenteId,
+      teacherId: docenteId,
       studentAvg: null,
       studentWeighted: null,
       autoAvg: aAvg,
@@ -518,7 +550,8 @@ export function calculateConsolidatedGrade(
   }
 
   return {
-    teacherId,
+    docenteId,
+    teacherId: docenteId,
     studentAvg: null,
     studentWeighted: null,
     autoAvg: null,
@@ -534,17 +567,17 @@ export function calculateConsolidatedGrade(
   }
 }
 
-export function getTeacherConsolidatedGrade(
+export function getDocenteConsolidatedGrade(
   db: DB,
-  teacherId: string,
+  docenteId: string,
   period?: string
-): TeacherGradeConsolidated {
+): DocenteGradeConsolidated {
   const evalForms = db.forms.filter(
     (f) => f.kind === 'evaluacion' && (!period || f.period === period)
   )
   const evalFormIds = new Set(evalForms.map((f) => f.id))
   const evalResponses = db.formResponses.filter(
-    (r) => r.teacherId === teacherId && evalFormIds.has(r.formId)
+    (r) => (r.docenteId === docenteId || r.teacherId === docenteId) && evalFormIds.has(r.formId)
   )
 
   const studentValues: number[] = []
@@ -571,7 +604,7 @@ export function getTeacherConsolidatedGrade(
   )
   const autoFormIds = new Set(autoForms.map((f) => f.id))
   const autoResponses = db.formResponses.filter(
-    (r) => (r.teacherId === teacherId || r.userId === teacherId) && autoFormIds.has(r.formId)
+    (r) => (r.docenteId === docenteId || r.teacherId === docenteId || r.userId === docenteId) && autoFormIds.has(r.formId)
   )
 
   const autoValues: number[] = []
@@ -596,23 +629,25 @@ export function getTeacherConsolidatedGrade(
   return calculateConsolidatedGrade(
     studentAvg,
     autoAvg,
-    teacherId,
+    docenteId,
     evalResponses.length,
     autoResponses.length
   )
 }
+export const getTeacherConsolidatedGrade = getDocenteConsolidatedGrade
 
-export interface TeacherReputation {
+export interface DocenteReputation {
   avg: number
   totalResponses: number
   label: string
   badgeClass: string
   isTop: boolean
-  consolidated: TeacherGradeConsolidated
+  consolidated: DocenteGradeConsolidated
 }
+export type TeacherReputation = DocenteReputation
 
-export function getTeacherReputation(db: DB, teacherId: string): TeacherReputation {
-  const consolidated = getTeacherConsolidatedGrade(db, teacherId)
+export function getDocenteReputation(db: DB, docenteId: string): DocenteReputation {
+  const consolidated = getDocenteConsolidatedGrade(db, docenteId)
   const totalResponses = consolidated.studentResponsesCount + consolidated.autoResponsesCount
   const avg = consolidated.finalScore
 
@@ -665,22 +700,24 @@ export function getTeacherReputation(db: DB, teacherId: string): TeacherReputati
     }
   }
 }
+export const getTeacherReputation = getDocenteReputation
 
-export interface StudentTeacherEvaluationStatus {
+export interface StudentDocenteEvaluationStatus {
   hasEvaluated: boolean
   label: string
   badgeClass: string
   score: number | null
   title: string
 }
+export type StudentTeacherEvaluationStatus = StudentDocenteEvaluationStatus
 
-export function getStudentTeacherEvaluationStatus(
+export function getStudentDocenteEvaluationStatus(
   db: DB,
   form: Form,
   studentId: string,
-  teacherId: string
-): StudentTeacherEvaluationStatus {
-  if (!db || !form?.id || !studentId || !teacherId) {
+  docenteId: string
+): StudentDocenteEvaluationStatus {
+  if (!db || !form?.id || !studentId || !docenteId) {
     return {
       hasEvaluated: false,
       label: 'Pendiente por evaluar',
@@ -691,7 +728,7 @@ export function getStudentTeacherEvaluationStatus(
   }
 
   const userResp = db.formResponses.find(
-    (r) => r.formId === form.id && r.userId === studentId && r.teacherId === teacherId
+    (r) => r.formId === form.id && r.userId === studentId && (r.docenteId === docenteId || r.teacherId === docenteId)
   )
 
   if (!userResp) {
@@ -703,6 +740,7 @@ export function getStudentTeacherEvaluationStatus(
       title: 'Aún no ha evaluado a este docente',
     }
   }
+
 
   const scaleQuestionIds = new Set(
     form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
@@ -760,3 +798,5 @@ export function getStudentTeacherEvaluationStatus(
     }
   }
 }
+
+export const getStudentTeacherEvaluationStatus = getStudentDocenteEvaluationStatus

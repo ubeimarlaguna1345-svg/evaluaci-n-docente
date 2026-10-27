@@ -87,7 +87,7 @@ export async function getBootstrap(_req, res) {
     }))
 
     const responsesRes = await pool.query(
-      'SELECT id, formulario_id AS "formId", usuario_id AS "userId", docente_id AS "teacherId", observacion AS observation, fecha AS date FROM respuestas_formulario'
+      'SELECT id, formulario_id AS "formId", usuario_id AS "userId", docente_id AS "docenteId", docente_id AS "teacherId", observacion AS observation, fecha AS date FROM respuestas_formulario'
     )
 
     const detailsRes = await pool.query(
@@ -106,13 +106,15 @@ export async function getBootstrap(_req, res) {
         id: r.id,
         formularioId: r.formId,
         usuarioId: r.userId,
-        docenteId: r.teacherId,
+        docenteId: r.docenteId || r.teacherId,
         observacion: r.observation,
         fecha: r.date,
         respuestas: answers,
       })
       return {
         ...r,
+        docenteId: r.docenteId || r.teacherId,
+        teacherId: r.docenteId || r.teacherId,
         answers,
         promedio: ev.calcularPromedio(),
         desempeno: ev.obtenerDesempeno(),
@@ -121,14 +123,15 @@ export async function getBootstrap(_req, res) {
     })
 
     const feedbacksRes = await pool.query(
-      'SELECT id, docente_id AS "teacherId", pregunta_id AS "questionId", curso AS course, fecha_inicio AS start, fecha_cierre AS end, creada_en AS "createdAt" FROM retroalimentaciones ORDER BY creada_en DESC'
+      'SELECT id, docente_id AS "docenteId", docente_id AS "teacherId", pregunta_id AS "questionId", curso AS course, fecha_inicio AS start, fecha_cierre AS end, creada_en AS "createdAt" FROM retroalimentaciones ORDER BY creada_en DESC'
     )
 
     const feedbacks = feedbacksRes.rows.map((fb) => {
       const q = questionsRes.rows.find((x) => x.id === fb.questionId)
       return {
         id: fb.id,
-        teacherId: fb.teacherId,
+        docenteId: fb.docenteId || fb.teacherId,
+        teacherId: fb.docenteId || fb.teacherId,
         course: fb.course,
         start: fb.start ? new Date(fb.start).toISOString().slice(0, 16) : '',
         end: fb.end ? new Date(fb.end).toISOString().slice(0, 16) : '',
@@ -143,6 +146,7 @@ export async function getBootstrap(_req, res) {
         } : null,
       }
     })
+
 
     const feedbackResponsesRes = await pool.query(
       'SELECT id, retroalimentacion_id AS "feedbackId", estudiante_id AS "studentId", valor AS value, fecha AS date FROM respuestas_retroalimentacion'
@@ -294,7 +298,9 @@ export async function getCalificacionesConsolidadas(req, res) {
       const requierePlanMejora = hasEvaluations && finalScore <= 3.9
 
       return {
+        docenteId: t.id,
         teacherId: t.id,
+        docenteName: t.name,
         teacherName: t.name,
         email: t.email,
         sede: t.sede,
@@ -441,7 +447,9 @@ export async function getReporteMejora(req, res) {
         const dimensionesCriticas = dims.filter((d) => d.esCritica).sort((a, b) => a.avg - b.avg)
 
         return {
+          docenteId: t.id,
           teacherId: t.id,
+          docenteName: t.name,
           teacherName: t.name,
           email: t.email,
           sede: t.sede,

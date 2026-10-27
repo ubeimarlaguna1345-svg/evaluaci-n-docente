@@ -3,7 +3,7 @@ import { Check, AlertTriangle, Eye } from 'lucide-react'
 import {
   useDB,
   stats,
-  getTeacherConsolidatedGrade,
+  getDocenteConsolidatedGrade,
   type Form,
   type FormKind,
 } from '../../store'
@@ -13,17 +13,27 @@ import { Report } from './Report'
 export function Filters({
   formId,
   setFormId,
+  docenteId,
+  setDocenteId,
   teacherId,
   setTeacherId,
   kind,
 }: {
   formId: string
   setFormId: (s: string) => void
-  teacherId: string
-  setTeacherId: (s: string) => void
+  docenteId?: string
+  setDocenteId?: (s: string) => void
+  teacherId?: string
+  setTeacherId?: (s: string) => void
   kind?: FormKind
 }) {
   const db = useDB()
+  const activeDocenteId = docenteId ?? teacherId ?? ''
+  const handleDocenteChange = (val: string) => {
+    if (setDocenteId) setDocenteId(val)
+    if (setTeacherId) setTeacherId(val)
+  }
+
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2">
       <Field label="Evaluación / período">
@@ -34,7 +44,7 @@ export function Filters({
         </select>
       </Field>
       <Field label="Docente">
-        <select className={input} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+        <select className={input} value={activeDocenteId} onChange={(e) => handleDocenteChange(e.target.value)}>
           <option value="">Todos los docentes</option>
           {db.users.filter((u) => u.role === 'docente').map((u) => (
             <option key={u.id} value={u.id}>{u.name}</option>
@@ -75,18 +85,18 @@ export function TextAnswers({
 export function Results() {
   const db = useDB()
   const [formId, setFormId] = useState(db.forms[0]?.id ?? '')
-  const [teacherId, setTeacherId] = useState('')
-  const [selectedReportTeacherId, setSelectedReportTeacherId] = useState<string | null>(null)
-  const s = stats(db, formId, teacherId)
+  const [docenteId, setDocenteId] = useState('')
+  const [selectedReportDocenteId, setSelectedReportDocenteId] = useState<string | null>(null)
+  const s = stats(db, formId, docenteId)
   const selectedForm = db.forms.find((f) => f.id === formId)
-  const teacher = db.users.find((u) => u.id === teacherId)
-  const consolidated = teacherId ? getTeacherConsolidatedGrade(db, teacherId, selectedForm?.period) : null
+  const docente = db.users.find((u) => u.id === docenteId)
+  const consolidated = docenteId ? getDocenteConsolidatedGrade(db, docenteId, selectedForm?.period) : null
 
-  const allTeachersConsolidated = db.users
+  const allDocentesConsolidated = db.users
     .filter((u) => u.role === 'docente' && u.active)
     .map((t) => ({
-      teacher: t,
-      grade: getTeacherConsolidatedGrade(db, t.id, selectedForm?.period),
+      docente: t,
+      grade: getDocenteConsolidatedGrade(db, t.id, selectedForm?.period),
       cadi: db.cadis.find((c) => c.docenteId === t.id),
     }))
 
@@ -96,9 +106,10 @@ export function Results() {
         title="Resultados de evaluación"
         sub="Ponderación institucional: 70% Evaluación Estudiantes + 30% Autoevaluación Docente."
       />
-      <Filters {...{ formId, setFormId, teacherId, setTeacherId }} />
+      <Filters {...{ formId, setFormId, docenteId, setDocenteId, teacherId: docenteId, setTeacherId: setDocenteId }} />
 
-      {teacher && consolidated && (
+
+      {docente && consolidated && (
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border border-line bg-pine/5 p-4">
             <div className="flex items-center justify-between">
@@ -184,7 +195,7 @@ export function Results() {
         </div>
       )}
 
-      {!teacherId && (
+      {!docenteId && (
         <Card className="mb-6 p-0">
           <div className="border-b border-line p-4">
             <h3 className="font-semibold text-pine">Consolidado General de Docentes (70% - 30%)</h3>
@@ -207,7 +218,7 @@ export function Results() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {allTeachersConsolidated.map(({ teacher: t, grade, cadi }) => {
+                {allDocentesConsolidated.map(({ docente: t, grade, cadi }) => {
                   const isCai = cadi?.tipo === 'CAI'
                   return (
                     <tr key={t.id} className="hover:bg-paper/30 transition">
@@ -285,7 +296,7 @@ export function Results() {
                       <td className="p-3 text-right">
                         <button
                           type="button"
-                          onClick={() => setSelectedReportTeacherId(t.id)}
+                          onClick={() => setSelectedReportDocenteId(t.id)}
                           className="inline-flex items-center gap-1 rounded-md bg-pine/10 hover:bg-pine hover:text-white px-2.5 py-1 text-[11px] font-semibold text-pine transition"
                           title="Ver Reporte Detallado MEDIT"
                         >
@@ -302,12 +313,14 @@ export function Results() {
         </Card>
       )}
 
-      {selectedReportTeacherId && (
+      {selectedReportDocenteId && (
         <Report
-          initialTeacherId={selectedReportTeacherId}
-          onClose={() => setSelectedReportTeacherId(null)}
+          initialDocenteId={selectedReportDocenteId}
+          initialTeacherId={selectedReportDocenteId}
+          onClose={() => setSelectedReportDocenteId(null)}
         />
       )}
+
 
       {!s || !s.responses.length ? (
         <Empty text="No hay respuestas registradas para los filtros seleccionados." />

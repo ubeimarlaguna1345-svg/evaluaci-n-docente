@@ -3,13 +3,13 @@ import { Check, AlertTriangle, Layers } from 'lucide-react'
 import {
   useDB,
   stats,
-  getTeacherConsolidatedGrade,
+  getDocenteConsolidatedGrade,
 } from '../../store'
 import { Header, Card, Empty, Bar, input } from '../common'
 
 export function Statistics() {
   const db = useDB()
-  const teachers = db.users.filter((u) => u.role === 'docente')
+  const docentes = db.users.filter((u) => u.role === 'docente')
   const evals = db.forms.filter((f) => f.kind === 'evaluacion')
   const autos = db.forms.filter((f) => f.kind === 'autoevaluacion')
   const [formId, setFormId] = useState(evals[0]?.id ?? '')
@@ -23,9 +23,9 @@ export function Statistics() {
   const formActual = db.forms.find((f) => f.id === formId)
   const globalStats = formActual ? stats(db, formId) : null
 
-  const teachersConsolidated = teachers.map((t) => ({
-    teacher: t,
-    grade: getTeacherConsolidatedGrade(db, t.id, formActual?.period),
+  const docentesConsolidated = docentes.map((t) => ({
+    docente: t,
+    grade: getDocenteConsolidatedGrade(db, t.id, formActual?.period),
     cadi: db.cadis.find((c) => c.docenteId === t.id),
   }))
 
@@ -83,7 +83,7 @@ export function Statistics() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {teachersConsolidated.map(({ teacher: t, grade, cadi }) => (
+              {docentesConsolidated.map(({ docente: t, grade, cadi }) => (
                 <tr key={t.id} className="hover:bg-paper/30 transition">
                   <td className="p-3 font-semibold text-pine">{t.name}</td>
                   <td className="p-3 text-ink/70">{cadi?.nombre || '—'}</td>
@@ -135,7 +135,7 @@ export function Statistics() {
           <h3 className="font-semibold text-pine">Participación en autoevaluación docente</h3>
           {autoDone.length ? (
             autoDone.map(({ a, n }) => (
-              <Bar key={a.id} label={`${a.title} · ${n}/${teachers.length} docentes`} value={n} max={Math.max(teachers.length, 1)} />
+              <Bar key={a.id} label={`${a.title} · ${n}/${docentes.length} docentes`} value={n} max={Math.max(docentes.length, 1)} />
             ))
           ) : (
             <Empty text="No hay autoevaluaciones." />
@@ -147,19 +147,19 @@ export function Statistics() {
             <div className="flex items-center justify-between rounded-lg bg-moss/10 p-3 text-pine">
               <span className="font-semibold">Docentes con Desempeño Satisfactorio (≥ 4.0)</span>
               <span className="font-serif text-lg font-bold">
-                {teachersConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore >= 4.0).length}
+                {docentesConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore >= 4.0).length}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-red-50 p-3 text-red-700">
               <span className="font-semibold">Docentes con Requerimiento de Mejora (≤ 3.9)</span>
               <span className="font-serif text-lg font-bold">
-                {teachersConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore <= 3.9).length}
+                {docentesConsolidated.filter((tc) => tc.grade.hasEvaluations && tc.grade.finalScore <= 3.9).length}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-paper p-3 text-ink/70">
               <span>Docentes sin evaluaciones registradas</span>
               <span className="font-serif text-lg font-bold">
-                {teachersConsolidated.filter((tc) => !tc.grade.hasEvaluations).length}
+                {docentesConsolidated.filter((tc) => !tc.grade.hasEvaluations).length}
               </span>
             </div>
           </div>

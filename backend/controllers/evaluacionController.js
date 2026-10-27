@@ -265,15 +265,16 @@ export async function updateFormDates(req, res) {
 
 
 export async function createFormResponse(req, res) {
-  const { formId, userId, teacherId, answers, observation } = req.body || {}
-  if (!formId || !userId || !teacherId || !answers) {
+  const { formId, userId, docenteId, teacherId, answers, observation } = req.body || {}
+  const targetDocenteId = docenteId || teacherId
+  if (!formId || !userId || !targetDocenteId || !answers) {
     return sendJson(res, 400, { ok: false, message: 'Faltan parámetros obligatorios de evaluación.' })
   }
 
   const evaluacion = new Evaluacion({
     formularioId: formId,
     estudianteId: userId,
-    docenteId: teacherId,
+    docenteId: targetDocenteId,
     respuestas: answers,
     observacion: observation,
   })
@@ -290,7 +291,7 @@ export async function createFormResponse(req, res) {
     await client.query(
       `INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
        VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [respId, formId, userId, teacherId, evaluacion.getObservacion()]
+      [respId, formId, userId, targetDocenteId, evaluacion.getObservacion()]
     )
 
     for (const [pregId, val] of Object.entries(evaluacion.getRespuestas())) {
@@ -321,10 +322,11 @@ export async function createFormResponse(req, res) {
 
 
 export async function createFeedback(req, res) {
-  const { teacherId, course, question, questions, start, end } = req.body || {}
+  const { docenteId, teacherId, course, question, questions, start, end } = req.body || {}
+  const targetDocenteId = docenteId || teacherId
   const list = Array.isArray(questions) && questions.length > 0 ? questions : (question ? [question] : [])
-  if (list.length === 0) {
-    return sendJson(res, 400, { ok: false, message: 'Se requiere al menos una pregunta para registrar la retroalimentación.' })
+  if (!targetDocenteId || list.length === 0) {
+    return sendJson(res, 400, { ok: false, message: 'Se requiere docente y al menos una pregunta para registrar la retroalimentación.' })
   }
 
   const client = await pool.connect()
@@ -353,7 +355,7 @@ export async function createFeedback(req, res) {
       await client.query(
         `INSERT INTO retroalimentaciones (id, docente_id, pregunta_id, curso, fecha_inicio, fecha_cierre, creada_en)
          VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-        [fbId, teacherId, qId, course, start, end]
+        [fbId, targetDocenteId, qId, course, start, end]
       )
       ids.push(fbId)
     }

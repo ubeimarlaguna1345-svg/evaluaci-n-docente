@@ -4,7 +4,9 @@ import type { DB } from '../store'
 export interface ConsolidatedResponse {
   ok: boolean
   data: Array<{
+    docenteId?: string
     teacherId: string
+    docenteName?: string
     teacherName: string
     email: string
     sede?: string
@@ -27,7 +29,9 @@ export interface ConsolidatedResponse {
 export interface ImprovementReportResponse {
   ok: boolean
   data: Array<{
+    docenteId?: string
     teacherId: string
+    docenteName?: string
     teacherName: string
     email: string
     sede?: string

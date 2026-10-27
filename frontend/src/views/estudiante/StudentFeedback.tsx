@@ -16,10 +16,10 @@ export function StudentFeedback({ me }: { me: User }) {
           if (!f.question) return null
           const answered = db.feedbackResponses.some((r) => r.feedbackId === f.id && r.studentId === me.id)
           const open = isOpen(f.start, f.end)
-          const teacher = db.users.find((u) => u.id === f.teacherId)
+          const docente = db.users.find((u) => u.id === (f.docenteId || f.teacherId))
           return (
             <Card key={f.id} className="space-y-3">
-              <p className="text-xs text-ink/50">{f.course} · {teacher?.name}</p>
+              <p className="text-xs text-ink/50">{f.course} · {docente?.name}</p>
               <p className="font-serif text-xl">{f.question.text}</p>
               {answered ? (
                 <Msg kind="ok" text="Respuesta enviada." />

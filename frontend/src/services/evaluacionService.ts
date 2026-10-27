@@ -22,11 +22,15 @@ export const evaluacionService = {
     })
   },
 
-  assignCadiTeacher: async (cadiId: string, docenteId: string | null): Promise<{ ok: boolean }> => {
+  assignCadiDocente: async (cadiId: string, docenteId: string | null): Promise<{ ok: boolean }> => {
     return apiFetch<{ ok: boolean }>(`/api/cadis/${cadiId}`, {
       method: 'PATCH',
       body: JSON.stringify({ docenteId }),
     })
+  },
+
+  assignCadiTeacher: async (cadiId: string, docenteId: string | null): Promise<{ ok: boolean }> => {
+    return evaluacionService.assignCadiDocente(cadiId, docenteId)
   },
 
   createForm: async (f: Omit<Form, 'id'>): Promise<{ ok: boolean; id: string }> => {
@@ -66,13 +70,14 @@ export const evaluacionService = {
   createFeedback: async (
     b:
       | (Omit<Feedback, 'id' | 'createdAt'> & { questions?: Question[] })
-      | { teacherId: string; course: string; questions: Question[]; start: string; end: string }
+      | { docenteId?: string; teacherId?: string; course: string; questions: Question[]; start: string; end: string }
   ): Promise<{ ok: boolean; ids?: string[]; id?: string }> => {
     return apiFetch<{ ok: boolean; ids?: string[]; id?: string }>('/api/feedbacks', {
       method: 'POST',
       body: JSON.stringify(b),
     })
   },
+
 
   respondFeedback: async (feedbackId: string, studentId: string, value: string): Promise<{ ok: boolean; id: string }> => {
     return apiFetch<{ ok: boolean; id: string }>('/api/feedback-responses', {
