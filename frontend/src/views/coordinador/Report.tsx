@@ -26,12 +26,15 @@ import {
   ExternalLink,
   ShieldCheck,
   HelpCircle,
+  AlertCircle,
+  Info,
 } from 'lucide-react'
 import {
   useDB,
   stats,
   getDocenteConsolidatedGrade,
   getTeacherConsolidatedGrade,
+  isEvaluationConsolidated,
   type DB,
   type User,
   type CADI,
@@ -47,6 +50,7 @@ export type NivelDesempeno =
   | 'Sobresaliente'
   | 'Destacado'
   | 'Aceptable / Atención Preventiva'
+  | 'En Curso'
 
 export interface DesempenoBadge {
   nivel: NivelDesempeno
@@ -190,7 +194,18 @@ export function Report({
       const grade = getDocenteConsolidatedGrade(db, t.id, selectedPeriod)
       const cadis = db.cadis.filter((c) => c.docenteId === t.id)
       const primaryCadi = cadis[0] || null
-      const desempeno = getNivelDesempeno(grade.finalScore)
+      const statusInfo = isEvaluationConsolidated(grade, selectedForm)
+      const desempeno = statusInfo.estaConsolidado
+        ? getNivelDesempeno(grade.finalScore)
+        : {
+            nivel: 'En Curso' as NivelDesempeno,
+            label: 'En Curso / Pendiente de Consolidación',
+            badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+            borderClass: 'border-amber-300',
+            bgSoft: 'bg-amber-50/70',
+            textColor: 'text-amber-800',
+            tag: 'Pendiente de Consolidación',
+          }
       return {
         docente: t,
         teacher: t,
@@ -198,12 +213,13 @@ export function Report({
         cadis,
         cadi: primaryCadi,
         desempeno,
+        ...statusInfo,
       }
     })
-  }, [allDocentes, db, selectedPeriod])
+  }, [allDocentes, db, selectedPeriod, selectedForm])
 
   const avgInstitucional = useMemo(() => {
-    const valid = teachersWithGrades.filter((x) => x.grade.hasEvaluations)
+    const valid = teachersWithGrades.filter((x) => x.estaConsolidado && x.grade.hasEvaluations)
     if (!valid.length) return 4.18
     const sum = valid.reduce((acc, curr) => acc + curr.grade.finalScore, 0)
     return Number((sum / valid.length).toFixed(2))
@@ -214,28 +230,35 @@ export function Report({
       total: teachersWithGrades.length,
       satisfactorio: teachersWithGrades.filter(
         (x) =>
-          x.desempeno.nivel === 'Satisfactorio' ||
-          x.desempeno.nivel === 'Destacado' ||
-          x.desempeno.nivel === 'Sobresaliente'
+          x.estaConsolidado &&
+          (x.desempeno.nivel === 'Satisfactorio' ||
+            x.desempeno.nivel === 'Destacado' ||
+            x.desempeno.nivel === 'Sobresaliente')
       ).length,
       aceptable: teachersWithGrades.filter(
         (x) =>
-          x.desempeno.nivel === 'Aceptable' ||
-          x.desempeno.nivel === 'Aceptable / Atención Preventiva'
+          x.estaConsolidado &&
+          (x.desempeno.nivel === 'Aceptable' ||
+            x.desempeno.nivel === 'Aceptable / Atención Preventiva')
       ).length,
-      seguimiento: teachersWithGrades.filter((x) => x.desempeno.nivel === 'En Seguimiento').length,
+      seguimiento: teachersWithGrades.filter(
+        (x) => x.estaConsolidado && x.desempeno.nivel === 'En Seguimiento'
+      ).length,
+      enCurso: teachersWithGrades.filter((x) => x.estaEnCurso).length,
     }
   }, [teachersWithGrades])
 
   const filteredTeachers = useMemo(() => {
-    return teachersWithGrades.filter(({ teacher, cadis, desempeno }) => {
+    return teachersWithGrades.filter(({ teacher, cadis, desempeno, estaConsolidado }) => {
       const cadisText = cadis.map((c) => `${c.codigo} ${c.nombre} ${c.tipo || ''}`).join(' ')
       const matchesSearch =
         teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         cadisText.toLowerCase().includes(searchQuery.toLowerCase())
 
-      const matchesTier = tierFilter === 'todos' || desempeno.nivel === tierFilter
+      const matchesTier =
+        tierFilter === 'todos' ||
+        (tierFilter === 'En Curso' ? !estaConsolidado : (estaConsolidado && desempeno.nivel === tierFilter))
 
       return matchesSearch && matchesTier
     })
@@ -336,7 +359,7 @@ export function Report({
       }
     }
 
-    const requierePlanAccion = activeDetail.grade.finalScore < 4.0
+    const requierePlanAccion = activeDetail.estaConsolidado && activeDetail.grade.finalScore < 4.0
 
     return {
       fortalezas,
@@ -466,16 +489,16 @@ export function Report({
   }, [activeDetail, activeStats, selectedPeriod])
 
   const metricasParticipacion = useMemo(() => {
-    if (!activeDetail) return { respondieron: 28, total: 32, porcentaje: 87.5 }
+    if (!activeDetail) return { respondieron: 26, total: 30, porcentaje: 86.7 }
     const cantResp = activeDetail.grade.studentResponsesCount
+    const total = 30
     const respondieron = cantResp > 0 ? cantResp : 26
-    const total = Math.max(respondieron + 4, 30)
     const porcentaje = Number(((respondieron / total) * 100).toFixed(1))
     return { respondieron, total, porcentaje }
   }, [activeDetail])
 
   const brechaMedia = useMemo(() => {
-    if (!activeDetail) return { dif: 0, positivo: true }
+    if (!activeDetail || !activeDetail.estaConsolidado) return { dif: 0, signo: '+', positivo: true }
     const dif = Number((activeDetail.grade.finalScore - avgInstitucional).toFixed(2))
     return { dif: Math.abs(dif), signo: dif >= 0 ? '+' : '-', positivo: dif >= 0 }
   }, [activeDetail, avgInstitucional])
@@ -600,7 +623,7 @@ export function Report({
 
                 <div className="flex items-center gap-1 rounded-lg border border-line bg-white p-1 text-xs">
                   <Filter size={12} className="text-ink/40 ml-1.5 mr-0.5" />
-                  {(['todos', 'Satisfactorio', 'Aceptable', 'En Seguimiento'] as const).map(
+                  {(['todos', 'Satisfactorio', 'Aceptable', 'En Seguimiento', 'En Curso'] as const).map(
                     (tier) => (
                       <button
                         key={tier}
@@ -642,7 +665,7 @@ export function Report({
                       </td>
                     </tr>
                   ) : (
-                    filteredTeachers.map(({ teacher, cadis, grade, desempeno }) => (
+                    filteredTeachers.map(({ teacher, cadis, grade, desempeno, estaConsolidado }) => (
                       <tr key={teacher.id} className="hover:bg-paper/40 transition">
                         <td className="p-4 pl-6">
                           <div className="font-semibold text-sm text-pine">{teacher.name}</div>
@@ -708,35 +731,50 @@ export function Report({
                         </td>
 
                         <td className="p-4">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-serif text-base font-bold text-pine">
-                              {grade.finalScore.toFixed(2)}
+                          {estaConsolidado ? (
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-serif text-base font-bold text-pine">
+                                  {grade.finalScore.toFixed(2)}
+                                </span>
+                                <span className="text-[10px] text-ink/40">/ 5.0</span>
+                              </div>
+                              <div className="mt-1 h-1.5 w-20 rounded-full bg-paper overflow-hidden border border-line/40">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    grade.finalScore >= 4.6
+                                      ? 'bg-emerald-500'
+                                      : grade.finalScore >= 4.0
+                                      ? 'bg-sky-500'
+                                      : grade.finalScore >= 3.5
+                                      ? 'bg-amber-500'
+                                      : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${(grade.finalScore / 5) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200">
+                              En Curso
                             </span>
-                            <span className="text-[10px] text-ink/40">/ 5.0</span>
-                          </div>
-                          <div className="mt-1 h-1.5 w-20 rounded-full bg-paper overflow-hidden border border-line/40">
-                            <div
-                              className={`h-full rounded-full ${
-                                grade.finalScore >= 4.6
-                                  ? 'bg-emerald-500'
-                                  : grade.finalScore >= 4.0
-                                  ? 'bg-sky-500'
-                                  : grade.finalScore >= 3.5
-                                  ? 'bg-amber-500'
-                                  : 'bg-red-500'
-                              }`}
-                              style={{ width: `${(grade.finalScore / 5) * 100}%` }}
-                            />
-                          </div>
+                          )}
                         </td>
 
                         <td className="p-4">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${desempeno.badgeClass}`}
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                            {desempeno.tag}
-                          </span>
+                          {estaConsolidado ? (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${desempeno.badgeClass}`}
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                              {desempeno.tag}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+                              <Clock size={11} />
+                              Pendiente de Consolidación
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-4 text-right pr-6">
@@ -869,93 +907,221 @@ export function Report({
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div
-                    className={`rounded-xl border p-4.5 ${activeDetail.desempeno.bgSoft} ${activeDetail.desempeno.borderClass}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Calificación Consolidada</p>
-                      <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-mono text-ink/60 border border-line">
-                        MEDIT 100%
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className="font-serif text-5xl font-bold text-pine">
-                        {activeDetail.grade.finalScore.toFixed(2)}
-                      </span>
-                      <span className="text-sm text-ink/50">/ 5.00</span>
-                    </div>
-                    <div className="mt-2.5">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border shadow-2xs ${activeDetail.desempeno.badgeClass}`}
-                      >
-                        <span className="h-2 w-2 rounded-full bg-current" />
-                        {activeDetail.desempeno.nivel}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-[11px] text-ink/70">
-                      <b>70%</b> Estudiantes ({activeDetail.grade.studentWeighted?.toFixed(2) || '0.00'} pts) +{' '}
-                      <b>30%</b> Autoevaluación ({activeDetail.grade.autoWeighted?.toFixed(2) || '0.00'} pts)
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Participación Estudiantil</p>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="font-serif text-4xl font-bold text-pine">
-                          {metricasParticipacion.porcentaje}%
-                        </span>
-                        <span className="text-xs text-ink/50">cobertura</span>
+                {activeDetail.estaEnCurso ? (
+                  <div className="rounded-xl border border-amber-200 bg-linear-to-br from-amber-50/90 via-white to-amber-50/50 p-6 shadow-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/80 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 border border-amber-300 shadow-2xs">
+                          <Clock size={22} className="animate-pulse" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-serif text-xl font-bold text-pine">
+                              Proceso de Evaluación en Curso
+                            </h3>
+                            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-600 animate-ping" />
+                              Pendiente de Consolidación
+                            </span>
+                          </div>
+                          <p className="text-xs text-ink/70 mt-0.5">
+                            Período Académico {selectedPeriod} · Bloqueo preventivo de calificación oficial
+                          </p>
+                        </div>
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-emerald-700 flex items-center gap-1">
-                        <Check size={14} /> Muestra estadísticamente representativa
-                      </p>
+
+                      <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 bg-white/80 px-3 py-1.5 rounded-lg border border-amber-200">
+                        <ShieldCheck size={16} className="text-pine" />
+                        <span>Garantía Institucional de Riesgo Cero</span>
+                      </div>
                     </div>
-                    <div className="mt-3 border-t border-line/60 pt-2 text-[11px] text-ink/60">
-                      <b>{metricasParticipacion.respondieron}</b> de <b>{metricasParticipacion.total}</b> estudiantes convocados evaluaron de forma confidencial.
+
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-xl border border-line bg-white p-4.5 shadow-2xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-ink/60">
+                              Estado de Heteroevaluación
+                            </span>
+                            <span className="rounded-full bg-pine/10 px-2 py-0.5 text-[10px] font-mono text-pine font-bold">
+                              Estudiantes (70%)
+                            </span>
+                          </div>
+                          <div className="mt-2.5 flex items-baseline gap-2">
+                            <span className="font-serif text-3xl font-bold text-pine">
+                              {metricasParticipacion.porcentaje}%
+                            </span>
+                            <span className="text-xs text-ink/50">de participación</span>
+                          </div>
+                          <p className="mt-1.5 text-xs text-ink/80 font-medium">
+                            {metricasParticipacion.respondieron} de {metricasParticipacion.total} estudiantes han evaluado · {metricasParticipacion.porcentaje}% de participación
+                          </p>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-line/60">
+                          <div className="flex justify-between text-[11px] text-ink/60 mb-1">
+                            <span>Progreso de recepción</span>
+                            <span>{metricasParticipacion.respondieron} / {metricasParticipacion.total}</span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-line overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-pine transition-all duration-500"
+                              style={{ width: `${Math.min(100, metricasParticipacion.porcentaje)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-line bg-white p-4.5 shadow-2xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-ink/60">
+                              Estado de Autoevaluación
+                            </span>
+                            <span className="rounded-full bg-ochre/15 px-2 py-0.5 text-[10px] font-mono text-ochre font-bold">
+                              Docente Titular (30%)
+                            </span>
+                          </div>
+                          <div className="mt-2.5">
+                            {activeDetail.tieneAutoevaluacion ? (
+                              <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 border border-emerald-300">
+                                <CheckCircle2 size={16} className="text-emerald-700" />
+                                <span>Completada</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 border border-amber-300">
+                                <AlertCircle size={16} className="text-amber-700" />
+                                <span>Pendiente por el docente titular</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-ink/70">
+                            {activeDetail.tieneAutoevaluacion
+                              ? `Autoevaluación registrada satisfactoriamente con puntaje preliminar de ${activeDetail.grade.autoAvg?.toFixed(2) || '5.00'} / 5.00.`
+                              : 'El docente titular aún no ha diligenciado el formulario de autoevaluación correspondiente al período lectivo.'}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-line/60 text-[11px] text-ink/60 flex items-center justify-between">
+                          <span>Ponderación oficial: <b>30%</b></span>
+                          <span className={activeDetail.tieneAutoevaluacion ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                            {activeDetail.tieneAutoevaluacion ? 'Listo para consolidar' : 'Falta diligenciamiento'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300/80 bg-amber-100/70 p-4 text-xs text-amber-950">
+                      <Info size={18} className="text-amber-800 mt-0.5 shrink-0" />
+                      <div className="space-y-1">
+                        <p className="font-bold text-amber-900">
+                          Información sobre la Emisión del Informe Consolidado:
+                        </p>
+                        <p className="leading-relaxed">
+                          El informe consolidado oficial y la ponderación final (70% heteroevaluación + 30% autoevaluación) se emitirán al completarse la autoevaluación y finalizar el período.
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-4 pt-1 font-medium text-[11px] text-amber-900">
+                          <span className="flex items-center gap-1.5">
+                            {activeDetail.tieneAutoevaluacion ? <CheckCircle2 size={14} className="text-emerald-700" /> : <Clock size={14} className="text-amber-700" />}
+                            Autoevaluación docente (30%): <b>{activeDetail.tieneAutoevaluacion ? 'Completada' : 'Pendiente'}</b>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            {activeDetail.evaluacionCompletada ? <CheckCircle2 size={14} className="text-emerald-700" /> : <Clock size={14} className="text-amber-700" />}
+                            Cierre de heteroevaluación: <b>{activeDetail.evaluacionCompletada ? 'Cerrada / 100%' : 'En recepción abierta'}</b>
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Brecha Institucional</p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div
+                      className={`rounded-xl border p-4.5 ${activeDetail.desempeno.bgSoft} ${activeDetail.desempeno.borderClass}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Calificación Consolidada</p>
+                        <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-mono text-ink/60 border border-line">
+                          MEDIT 100%
+                        </span>
+                      </div>
                       <div className="mt-2 flex items-baseline gap-2">
+                        <span className="font-serif text-5xl font-bold text-pine">
+                          {activeDetail.grade.finalScore.toFixed(2)}
+                        </span>
+                        <span className="text-sm text-ink/50">/ 5.00</span>
+                      </div>
+                      <div className="mt-2.5">
                         <span
-                          className={`font-serif text-4xl font-bold ${
-                            brechaMedia.positivo ? 'text-emerald-700' : 'text-amber-700'
-                          }`}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border shadow-2xs ${activeDetail.desempeno.badgeClass}`}
                         >
-                          {brechaMedia.signo}
-                          {brechaMedia.dif.toFixed(2)}
+                          <span className="h-2 w-2 rounded-full bg-current" />
+                          {activeDetail.desempeno.nivel}
                         </span>
-                        <span className="text-xs text-ink/50">pts vs media</span>
                       </div>
-                      <p className="mt-1 text-xs text-ink/70">
-                        {brechaMedia.positivo ? (
-                          <span className="text-emerald-700 font-medium">Por encima del promedio de la facultad</span>
-                        ) : (
-                          <span className="text-amber-800 font-medium">Por debajo del promedio de la facultad</span>
-                        )}
+                      <p className="mt-2 text-[11px] text-ink/70">
+                        <b>70%</b> Estudiantes ({activeDetail.grade.studentWeighted?.toFixed(2) || '0.00'} pts) +{' '}
+                        <b>30%</b> Autoevaluación ({activeDetail.grade.autoWeighted?.toFixed(2) || '0.00'} pts)
                       </p>
                     </div>
 
-                    <div className="mt-3 border-t border-line/60 pt-2 text-[11px]">
-                      <div className="flex justify-between text-ink/70 mb-1">
-                        <span>Docente: <b>{activeDetail.grade.finalScore.toFixed(2)}</b></span>
-                        <span>Facultad: <b>{avgInstitucional.toFixed(2)}</b></span>
+                    <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Participación Estudiantil</p>
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span className="font-serif text-4xl font-bold text-pine">
+                            {metricasParticipacion.porcentaje}%
+                          </span>
+                          <span className="text-xs text-ink/50">cobertura</span>
+                        </div>
+                        <p className="mt-2 text-xs font-semibold text-emerald-700 flex items-center gap-1">
+                          <Check size={14} /> Muestra representativa
+                        </p>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-line overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            brechaMedia.positivo ? 'bg-emerald-500' : 'bg-amber-500'
-                          }`}
-                          style={{ width: `${Math.min(100, (activeDetail.grade.finalScore / 5) * 100)}%` }}
-                        />
+                      <div className="mt-3 border-t border-line/60 pt-2 text-[11px] text-ink/60">
+                        <b>{metricasParticipacion.respondieron}</b> de <b>{metricasParticipacion.total}</b> estudiantes convocados evaluaron de forma confidencial.
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Brecha Institucional</p>
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span
+                            className={`font-serif text-4xl font-bold ${
+                              brechaMedia.positivo ? 'text-emerald-700' : 'text-amber-700'
+                            }`}
+                          >
+                            {brechaMedia.signo}
+                            {brechaMedia.dif.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-ink/50">pts vs media</span>
+                        </div>
+                        <p className="mt-1 text-xs text-ink/70">
+                          {brechaMedia.positivo ? (
+                            <span className="text-emerald-700 font-medium">Por encima del promedio de la facultad</span>
+                          ) : (
+                            <span className="text-amber-800 font-medium">Por debajo del promedio de la facultad</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 border-t border-line/60 pt-2 text-[11px]">
+                        <div className="flex justify-between text-ink/70 mb-1">
+                          <span>Docente: <b>{activeDetail.grade.finalScore.toFixed(2)}</b></span>
+                          <span>Facultad: <b>{avgInstitucional.toFixed(2)}</b></span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-line overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              brechaMedia.positivo ? 'bg-emerald-500' : 'bg-amber-500'
+                            }`}
+                            style={{ width: `${Math.min(100, (activeDetail.grade.finalScore / 5) * 100)}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </section>
 
               <section className="rounded-xl border border-line bg-white p-5 shadow-xs">
@@ -1100,7 +1266,7 @@ export function Report({
                     </div>
                   </div>
 
-                  {diagnosticoPedagogico.requierePlanAccion && (
+                  {activeDetail.estaConsolidado && diagnosticoPedagogico.requierePlanAccion && (
                     <div className="rounded-xl border border-red-300 bg-red-50/80 p-4.5 text-red-950 space-y-3">
                       <div className="flex items-center gap-2 font-bold text-sm text-red-900">
                         <AlertTriangle size={18} className="text-red-700 shrink-0" />

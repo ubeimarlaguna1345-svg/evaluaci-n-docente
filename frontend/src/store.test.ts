@@ -3,6 +3,7 @@ import {
   calculateConsolidatedGrade,
   getDocenteConsolidatedGrade,
   getTeacherConsolidatedGrade,
+  isEvaluationConsolidated,
   getStudentDocenteEvaluationStatus,
   getStudentTeacherEvaluationStatus,
   sanitizeUsers,
@@ -20,7 +21,7 @@ import {
   type User,
 } from './store'
 import { VIEWS } from './views/common/Shell'
-import { formatDocenteId } from './views/coordinador/Report'
+import { formatDocenteId, getNivelDesempeno } from './views/coordinador/Report'
 import { BLOQUES, categorizarPregunta } from './views/estudiante/StudentEvaluationForm'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -1265,6 +1266,99 @@ describe('Co-creación y gestión colaborativa de evaluaciones (Admin y Coordina
     expect(updated?.questions.length).toBe(consolidatedQuestions.length)
   })
 })
+
+describe('Bloqueo de reporte y estado "En Curso / Pendiente de Consolidación" (Política de Riesgo Cero)', () => {
+  const openForm: Form = {
+    id: 'form-active-1',
+    kind: 'evaluacion',
+    title: 'Evaluación Activa',
+    description: 'En curso',
+    period: '2026-I',
+    start: '2026-01-01T00:00:00Z',
+    end: '2026-12-31T23:59:59Z',
+    questions: [],
+  }
+
+  const closedForm: Form = {
+    id: 'form-closed-1',
+    kind: 'evaluacion',
+    title: 'Evaluación Cerrada',
+    description: 'Vencida',
+    period: '2026-I',
+    start: '2026-01-01T00:00:00Z',
+    end: '2026-01-20T23:59:59Z',
+    questions: [],
+  }
+
+  it('debe marcar "En Curso" si el docente aún NO tiene autoevaluación aunque la fecha haya vencido', () => {
+    const gradeWithoutAuto = calculateConsolidatedGrade(4.20, null, 'doc-1', 30, 0)
+    expect(gradeWithoutAuto.hasAutoEvaluation).toBe(false)
+
+    const status = isEvaluationConsolidated(gradeWithoutAuto, closedForm, 30)
+    expect(status.tieneAutoevaluacion).toBe(false)
+    expect(status.evaluacionCompletada).toBe(true) // cerrada
+    expect(status.estaConsolidado).toBe(false)
+    expect(status.estaEnCurso).toBe(true)
+  })
+
+  it('debe marcar "En Curso" si la evaluación está abierta y la participación es menor al 100% aunque tenga autoevaluación', () => {
+    const gradeWithAuto = calculateConsolidatedGrade(4.50, 4.80, 'doc-2', 26, 1)
+    expect(gradeWithAuto.hasAutoEvaluation).toBe(true)
+
+    const status = isEvaluationConsolidated(gradeWithAuto, openForm, 30)
+    expect(status.tieneAutoevaluacion).toBe(true)
+    expect(status.participacionPorcentaje).toBe(86.7)
+    expect(status.evaluacionCompletada).toBe(false)
+    expect(status.estaConsolidado).toBe(false)
+    expect(status.estaEnCurso).toBe(true)
+  })
+
+  it('debe consolidar exitosamente si tiene autoevaluación Y la evaluación ya venció', () => {
+    const grade = calculateConsolidatedGrade(4.00, 5.00, 'doc-3', 20, 1)
+    const status = isEvaluationConsolidated(grade, closedForm, 30)
+
+    expect(status.tieneAutoevaluacion).toBe(true)
+    expect(status.evaluacionCompletada).toBe(true)
+    expect(status.estaConsolidado).toBe(true)
+    expect(status.estaEnCurso).toBe(false)
+
+    // Cálculo exacto: 4.00 * 0.70 + 5.00 * 0.30 = 2.80 + 1.50 = 4.30
+    expect(grade.finalScore).toBe(4.30)
+  })
+
+  it('debe consolidar exitosamente si tiene autoevaluación Y el 100% de estudiantes evaluó (incluso con formulario abierto)', () => {
+    const grade = calculateConsolidatedGrade(3.80, 4.00, 'doc-4', 30, 1)
+    const status = isEvaluationConsolidated(grade, openForm, 30)
+
+    expect(status.tieneAutoevaluacion).toBe(true)
+    expect(status.participacionPorcentaje).toBeGreaterThanOrEqual(100)
+    expect(status.evaluacionCompletada).toBe(true)
+    expect(status.estaConsolidado).toBe(true)
+    expect(status.estaEnCurso).toBe(false)
+
+    // Cálculo exacto: 3.80 * 0.70 + 4.00 * 0.30 = 2.66 + 1.20 = 3.86
+    expect(grade.finalScore).toBe(3.86)
+  })
+
+  it('clasifica estrictamente las bandas de desempeño institucionales únicamente al consolidar', () => {
+    // < 3.5: En Seguimiento
+    const low = getNivelDesempeno(3.49)
+    expect(low.nivel).toBe('En Seguimiento')
+
+    // 3.5 a 3.9: Aceptable
+    const midMin = getNivelDesempeno(3.50)
+    expect(midMin.nivel).toBe('Aceptable')
+    const midMax = getNivelDesempeno(3.90)
+    expect(midMax.nivel).toBe('Aceptable')
+
+    // >= 4.0: Satisfactorio
+    const satisfactory = getNivelDesempeno(4.00)
+    expect(satisfactory.nivel).toBe('Satisfactorio')
+    const high = getNivelDesempeno(4.85)
+    expect(high.nivel).toBe('Satisfactorio')
+  })
+})
+
 
 
 

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Check, AlertTriangle, Eye } from 'lucide-react'
+import { Check, AlertTriangle, Eye, Clock } from 'lucide-react'
 import {
   useDB,
   stats,
   getDocenteConsolidatedGrade,
+  isEvaluationConsolidated,
   type Form,
   type FormKind,
 } from '../../store'
@@ -91,14 +92,20 @@ export function Results() {
   const selectedForm = db.forms.find((f) => f.id === formId)
   const docente = db.users.find((u) => u.id === docenteId)
   const consolidated = docenteId ? getDocenteConsolidatedGrade(db, docenteId, selectedForm?.period) : null
+  const docenteConsolidation = consolidated ? isEvaluationConsolidated(consolidated, selectedForm) : null
 
   const allDocentesConsolidated = db.users
     .filter((u) => u.role === 'docente' && u.active)
-    .map((t) => ({
-      docente: t,
-      grade: getDocenteConsolidatedGrade(db, t.id, selectedForm?.period),
-      cadi: db.cadis.find((c) => c.docenteId === t.id),
-    }))
+    .map((t) => {
+      const grade = getDocenteConsolidatedGrade(db, t.id, selectedForm?.period)
+      const statusInfo = isEvaluationConsolidated(grade, selectedForm)
+      return {
+        docente: t,
+        grade,
+        cadi: db.cadis.find((c) => c.docenteId === t.id),
+        ...statusInfo,
+      }
+    })
 
   return (
     <>
@@ -156,20 +163,34 @@ export function Results() {
           </div>
 
           <div className={`rounded-lg border p-4 ${
-            consolidated.finalScore <= 3.9 && consolidated.hasEvaluations
+            docenteConsolidation && !docenteConsolidation.estaConsolidado
+              ? 'border-amber-300 bg-amber-50/70'
+              : consolidated.finalScore <= 3.9 && consolidated.hasEvaluations
               ? 'border-red-300 bg-red-50/60'
               : 'border-moss/40 bg-moss/10'
           }`}>
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-pine">Definitiva Consolidada</p>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                consolidated.isProvisional ? 'bg-ochre/20 text-ochre' : 'bg-moss/20 text-pine'
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                docenteConsolidation && !docenteConsolidation.estaConsolidado
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                  : consolidated.isProvisional ? 'bg-ochre/20 text-ochre' : 'bg-moss/20 text-pine'
               }`}>
-                {consolidated.isProvisional ? 'Provisional' : 'Oficial (100%)'}
+                {docenteConsolidation && !docenteConsolidation.estaConsolidado ? (
+                  <>
+                    <Clock size={10} /> En Curso
+                  </>
+                ) : consolidated.isProvisional ? (
+                  'Provisional'
+                ) : (
+                  'Oficial (100%)'
+                )}
               </span>
             </div>
             <p className="mt-2 font-serif text-3xl font-bold text-pine">
-              {consolidated.hasEvaluations ? (
+              {docenteConsolidation && !docenteConsolidation.estaConsolidado ? (
+                <span className="text-xl font-bold text-amber-800">En Curso</span>
+              ) : consolidated.hasEvaluations ? (
                 <>
                   {consolidated.finalScore.toFixed(2)}
                   <span className="text-sm font-normal text-ink/50"> / 5.00</span>
@@ -179,7 +200,11 @@ export function Results() {
               )}
             </p>
             <p className="mt-1 text-xs">
-              {consolidated.requierePlanMejora ? (
+              {docenteConsolidation && !docenteConsolidation.estaConsolidado ? (
+                <span className="text-amber-800 font-medium">
+                  Pendiente de autoevaluación y cierre institucional
+                </span>
+              ) : consolidated.requierePlanMejora ? (
                 <span className="font-semibold text-red-700 flex items-center gap-1">
                   <AlertTriangle size={12} /> Requiere plan de mejora (≤ 3.9)
                 </span>
@@ -218,7 +243,7 @@ export function Results() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {allDocentesConsolidated.map(({ docente: t, grade, cadi }) => {
+                {allDocentesConsolidated.map(({ docente: t, grade, cadi, estaConsolidado }) => {
                   const isCai = cadi?.tipo === 'CAI'
                   return (
                     <tr key={t.id} className="hover:bg-paper/30 transition">
@@ -263,15 +288,15 @@ export function Results() {
                         )}
                       </td>
                       <td className="p-3 font-serif font-bold text-pine text-sm">
-                        {grade.hasEvaluations ? `${grade.finalScore.toFixed(2)} / 5.00` : '—'}
+                        {estaConsolidado ? `${grade.finalScore.toFixed(2)} / 5.00` : <span className="text-xs font-semibold text-amber-800">En Curso</span>}
                       </td>
                       <td className="p-3">
                         <span className="inline-flex rounded-full bg-paper px-2 py-0.5 text-[10px] text-ink/70 border border-line">
-                          {grade.statusLabel}
+                          {estaConsolidado ? grade.statusLabel : 'Pendiente de Consolidación'}
                         </span>
                       </td>
                       <td className="p-3">
-                        {grade.hasEvaluations ? (
+                        {estaConsolidado ? (
                           grade.finalScore < 3.5 ? (
                             <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-300">
                               <AlertTriangle size={10} /> En Seguimiento (&lt; 3.5)
@@ -286,7 +311,9 @@ export function Results() {
                             </span>
                           )
                         ) : (
-                          <span className="text-ink/40 text-[10px]">Sin evaluar</span>
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-300">
+                            <Clock size={10} /> En Curso
+                          </span>
                         )}
                       </td>
                       <td className="p-3 text-right">

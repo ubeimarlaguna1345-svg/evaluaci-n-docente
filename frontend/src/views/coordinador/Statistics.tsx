@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Check, AlertTriangle, Layers } from 'lucide-react'
+import { Check, AlertTriangle, Layers, Clock } from 'lucide-react'
 import {
   useDB,
   stats,
   getDocenteConsolidatedGrade,
+  isEvaluationConsolidated,
 } from '../../store'
 import { Header, Card, Empty, Bar, input } from '../common'
 
@@ -23,11 +24,16 @@ export function Statistics() {
   const formActual = db.forms.find((f) => f.id === formId)
   const globalStats = formActual ? stats(db, formId) : null
 
-  const docentesConsolidated = docentes.map((t) => ({
-    docente: t,
-    grade: getDocenteConsolidatedGrade(db, t.id, formActual?.period),
-    cadi: db.cadis.find((c) => c.docenteId === t.id),
-  }))
+  const docentesConsolidated = docentes.map((t) => {
+    const grade = getDocenteConsolidatedGrade(db, t.id, formActual?.period)
+    const statusInfo = isEvaluationConsolidated(grade, formActual)
+    return {
+      docente: t,
+      grade,
+      cadi: db.cadis.find((c) => c.docenteId === t.id),
+      ...statusInfo,
+    }
+  })
 
   return (
     <>
@@ -83,7 +89,7 @@ export function Statistics() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {docentesConsolidated.map(({ docente: t, grade, cadi }) => (
+              {docentesConsolidated.map(({ docente: t, grade, cadi, estaConsolidado }) => (
                 <tr key={t.id} className="hover:bg-paper/30 transition">
                   <td className="p-3 font-semibold text-pine">{t.name}</td>
                   <td className="p-3 text-ink/70">{cadi?.nombre || '—'}</td>
@@ -108,10 +114,10 @@ export function Statistics() {
                     )}
                   </td>
                   <td className="p-3 font-serif font-bold text-pine text-sm">
-                    {grade.hasEvaluations ? `${grade.finalScore.toFixed(2)} / 5.00` : '—'}
+                    {estaConsolidado ? `${grade.finalScore.toFixed(2)} / 5.00` : <span className="text-xs font-semibold text-amber-800">En Curso</span>}
                   </td>
                   <td className="p-3">
-                    {grade.hasEvaluations ? (
+                    {estaConsolidado ? (
                       grade.finalScore < 3.5 ? (
                         <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700 border border-red-300">
                           <AlertTriangle size={11} /> En Seguimiento (&lt; 3.5)
@@ -126,7 +132,9 @@ export function Statistics() {
                         </span>
                       )
                     ) : (
-                      <span className="text-ink/40">Sin evaluar</span>
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 border border-amber-300">
+                        <Clock size={11} /> En Curso
+                      </span>
                     )}
                   </td>
                 </tr>

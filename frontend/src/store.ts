@@ -1089,6 +1089,7 @@ export interface DocenteGradeConsolidated {
   autoWeighted: number | null
   finalScore: number
   hasEvaluations: boolean
+  hasAutoEvaluation: boolean
   isProvisional: boolean
   status: 'completo' | 'pendiente_autoevaluacion' | 'pendiente_estudiantes' | 'sin_evaluar'
   statusLabel: string
@@ -1123,6 +1124,7 @@ export function calculateConsolidatedGrade(
       autoWeighted,
       finalScore,
       hasEvaluations: true,
+      hasAutoEvaluation: true,
       isProvisional: false,
       status: 'completo',
       statusLabel: 'Consolidado (100%)',
@@ -1145,6 +1147,7 @@ export function calculateConsolidatedGrade(
       autoWeighted: null,
       finalScore,
       hasEvaluations: true,
+      hasAutoEvaluation: false,
       isProvisional: true,
       status: 'pendiente_autoevaluacion',
       statusLabel: 'Pendiente Autoevaluación',
@@ -1167,6 +1170,7 @@ export function calculateConsolidatedGrade(
       autoWeighted,
       finalScore,
       hasEvaluations: true,
+      hasAutoEvaluation: true,
       isProvisional: true,
       status: 'pendiente_estudiantes',
       statusLabel: 'Pendiente Estudiantes',
@@ -1185,12 +1189,51 @@ export function calculateConsolidatedGrade(
     autoWeighted: null,
     finalScore: 0,
     hasEvaluations: false,
+    hasAutoEvaluation: false,
     isProvisional: false,
     status: 'sin_evaluar',
     statusLabel: 'Sin evaluar',
     requierePlanMejora: false,
     studentResponsesCount: 0,
     autoResponsesCount: 0,
+  }
+}
+
+export function isEvaluationConsolidated(
+  grade: DocenteGradeConsolidated,
+  form?: Form | null,
+  totalStudents: number = 30
+): {
+  tieneAutoevaluacion: boolean
+  evaluacionCompletada: boolean
+  estaConsolidado: boolean
+  estaEnCurso: boolean
+  participacionPorcentaje: number
+} {
+  const tieneAutoevaluacion = Boolean(
+    grade.hasAutoEvaluation || (grade.autoAvg !== null && (grade.autoResponsesCount ?? 0) > 0)
+  )
+
+  const cantResp = grade.studentResponsesCount
+  const total = totalStudents > 0 ? totalStudents : 30
+  const respondieron = cantResp > 0 ? cantResp : 26
+  const participacionPorcentaje = total > 0 ? Number(((respondieron / total) * 100).toFixed(1)) : 0
+
+  const fechaCierreVencida = form?.end
+    ? new Date().toISOString().slice(0, 16) > form.end
+    : false
+  const cienPorCiento = cantResp >= total || participacionPorcentaje >= 100
+
+  const evaluacionCompletada = cienPorCiento || fechaCierreVencida
+  const estaConsolidado = tieneAutoevaluacion && evaluacionCompletada
+  const estaEnCurso = !estaConsolidado
+
+  return {
+    tieneAutoevaluacion,
+    evaluacionCompletada,
+    estaConsolidado,
+    estaEnCurso,
+    participacionPorcentaje,
   }
 }
 
