@@ -283,5 +283,120 @@ describe('Capa de Dominio Orientada a Objetos (POO) - Backend SIARD-UdeC', () =>
       expect(updateCall[1][2]).toBe('usr-1')
     })
   })
+
+  describe('Entidades Puras de Dominio POO: Pregunta, Respuesta, Cadi', () => {
+    it('Pregunta: debe encapsular atributos, validar tipo y serializar toJSON', async () => {
+      const { Pregunta } = await import('./index.js')
+      const p = new Pregunta({
+        id: 'p-1',
+        formularioId: 'form-1',
+        text: '¿El docente explica con claridad?',
+        type: 'escala',
+        dimension: 'Claridad conceptual y explicación',
+        bloque: 'docente',
+        options: ['1', '2', '3', '4', '5'],
+      })
+
+      expect(p.getId()).toBe('p-1')
+      expect(p.getFormularioId()).toBe('form-1')
+      expect(p.getEnunciado()).toBe('¿El docente explica con claridad?')
+      expect(p.esEscala()).toBe(true)
+      expect(p.esSeleccion()).toBe(false)
+      expect(p.esValido()).toBe(true)
+      expect(p.getBloque()).toBe('docente')
+      expect(p.toJSON().text).toBe('¿El docente explica con claridad?')
+    })
+
+    it('Respuesta: debe encapsular respuestas de heteroevaluación y validar integridad', async () => {
+      const { Respuesta } = await import('./index.js')
+      const r = new Respuesta({
+        id: 'r-1',
+        formularioId: 'form-1',
+        usuarioId: 'est-1',
+        docenteId: 'doc-1',
+        answers: { p1: '5', p2: '4' },
+        observation: 'Excelente clase',
+      })
+
+      expect(r.getId()).toBe('r-1')
+      expect(r.getUsuarioId()).toBe('est-1')
+      expect(r.getDocenteId()).toBe('doc-1')
+      expect(r.getObservacion()).toBe('Excelente clase')
+      expect(r.esValido()).toBe(true)
+      expect(r.toJSON().docenteId).toBe('doc-1')
+    })
+
+    it('Cadi: debe encapsular asignaturas, validar código/semestre y diferenciar CADI de CAI', async () => {
+      const { Cadi } = await import('./index.js')
+      const cadi = new Cadi({
+        id: 'cadi-1',
+        codigo: 'sis301',
+        nombre: 'Programación II',
+        semestre: 3,
+        tipo: 'CADI',
+        esArticulador: true,
+      })
+
+      expect(cadi.getCodigo()).toBe('SIS301')
+      expect(cadi.getNombre()).toBe('Programación II')
+      expect(cadi.esCadi()).toBe(true)
+      expect(cadi.esCai()).toBe(false)
+      expect(cadi.isArticulador()).toBe(true)
+      expect(cadi.esValido()).toBe(true)
+
+      const cai = new Cadi({
+        id: 'cai-1',
+        codigo: 'cai101',
+        nombre: 'Lectura Crítica',
+        semestre: 1,
+        tipo: 'CAI',
+      })
+      expect(cai.esCai()).toBe(true)
+      expect(cai.esCadi()).toBe(false)
+    })
+
+    it('Usuario: métodos esValido() y tieneRol()', async () => {
+      const { Usuario } = await import('./index.js')
+      const u = new Usuario({
+        id: 'usr-val',
+        nombre: 'Jaime Parra',
+        correo: 'jaimeparra.siard@ucundinamarca.edu.co',
+        rol: 'coordinador',
+      })
+
+      expect(u.esValido()).toBe(true)
+      expect(u.tieneRol('coordinador')).toBe(true)
+      expect(u.tieneRol('admin')).toBe(false)
+    })
+  })
+
+  describe('Capa de Servicios y Controladores POO', () => {
+    it('AuthController y EvaluacionController deben ser clases instanciables con métodos estáticos', async () => {
+      const { AuthController } = await import('../controllers/usuarioController.js')
+      const { EvaluacionController } = await import('../controllers/evaluacionController.js')
+
+      expect(typeof AuthController.createUser).toBe('function')
+      expect(typeof AuthController.authenticateUser).toBe('function')
+      expect(typeof AuthController.cambiarContrasena).toBe('function')
+
+      expect(typeof EvaluacionController.createForm).toBe('function')
+      expect(typeof EvaluacionController.updateForm).toBe('function')
+      expect(typeof EvaluacionController.getForms).toBe('function')
+      expect(typeof EvaluacionController.createCadi).toBe('function')
+    })
+
+    it('AuthService y EvaluacionService deben exponer métodos de negocio desacoplados', async () => {
+      const { authService, evaluacionService } = await import('../services/index.js')
+
+      expect(typeof authService.crearUsuario).toBe('function')
+      expect(typeof authService.autenticar).toBe('function')
+      expect(typeof authService.cambiarContrasena).toBe('function')
+
+      expect(typeof evaluacionService.obtenerFormularios).toBe('function')
+      expect(typeof evaluacionService.crearFormulario).toBe('function')
+      expect(typeof evaluacionService.actualizarFormulario).toBe('function')
+      expect(typeof evaluacionService.registrarRespuesta).toBe('function')
+    })
+  })
 })
 

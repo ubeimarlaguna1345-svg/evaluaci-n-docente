@@ -1,514 +1,164 @@
-import crypto from 'node:crypto'
-import { pool } from '../config/db.js'
-import { Evaluacion } from '../models/index.js'
+import { evaluacionService } from '../services/index.js'
 
 function sendJson(res, statusCode, payload) {
+  if (typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(statusCode).json(payload)
+  }
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(payload))
 }
 
-
-export async function createCadi(req, res) {
-  const { codigo, nombre, semestre, tipo, esArticulador, docenteId } = req.body || {}
-  if (!codigo?.trim() || !nombre?.trim() || !semestre) {
-    return sendJson(res, 400, { ok: false, message: 'Código, nombre y semestre son requeridos.' })
-  }
-
-  const tipoCampo = tipo === 'CAI' ? 'CAI' : 'CADI'
-
-  try {
-    const id = crypto.randomUUID()
-    await pool.query(
-      `INSERT INTO cadis (id, codigo, nombre, semestre, tipo, es_articulador, docente_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), tipoCampo, Boolean(esArticulador ?? false), docenteId || null]
-    )
-    sendJson(res, 201, { ok: true, id })
-  } catch (error) {
-    if (error.code === '23505') {
-      return sendJson(res, 409, { ok: false, message: 'Ya existe un CADI con ese código.' })
-    }
-    sendJson(res, 500, { ok: false, message: 'Error al registrar CADI.', detail: error.message })
-  }
-}
-
-export async function updateCadi(req, res) {
-  const { id } = req.params
-  const { codigo, nombre, semestre, tipo, docenteId } = req.body || {}
-
-  try {
-    if (codigo !== undefined || nombre !== undefined || semestre !== undefined || tipo !== undefined) {
-      if (!codigo?.trim() || !nombre?.trim() || !semestre) {
-        return sendJson(res, 400, { ok: false, message: 'Código, nombre y semestre son requeridos.' })
+export class EvaluacionController {
+  static async createCadi(req, res) {
+    try {
+      const id = await evaluacionService.crearCadi(req.body || {})
+      return sendJson(res, 201, { ok: true, id })
+    } catch (error) {
+      if (error.code === '23505') {
+        return sendJson(res, 409, { ok: false, message: 'Ya existe un CADI con ese código.' })
       }
-      const tipoCampo = tipo === 'CAI' ? 'CAI' : 'CADI'
-      const result = await pool.query(
-        `UPDATE cadis
-         SET codigo = $1, nombre = $2, semestre = $3, tipo = $4, docente_id = $5
-         WHERE id = $6`,
-        [codigo.trim().toUpperCase(), nombre.trim(), Number(semestre), tipoCampo, docenteId || null, id]
-      )
-      if (result.rowCount === 0) {
-        return sendJson(res, 404, { ok: false, message: 'CADI no encontrado.' })
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al registrar CADI.', detail: error.message })
+    }
+  }
+
+  static async updateCadi(req, res) {
+    const { id } = req.params
+    try {
+      const result = await evaluacionService.actualizarCadi(id, req.body || {})
+      return sendJson(res, 200, result)
+    } catch (error) {
+      if (error.code === '23505') {
+        return sendJson(res, 409, { ok: false, message: 'Ya existe otro CADI con ese código.' })
       }
-      return sendJson(res, 200, { ok: true, message: 'CADI actualizado correctamente.' })
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al actualizar CADI.', detail: error.message })
     }
-
-    const result = await pool.query('UPDATE cadis SET docente_id = $1 WHERE id = $2', [docenteId || null, id])
-    if (result.rowCount === 0) {
-      return sendJson(res, 404, { ok: false, message: 'CADI no encontrado.' })
-    }
-    sendJson(res, 200, { ok: true })
-  } catch (error) {
-    if (error.code === '23505') {
-      return sendJson(res, 409, { ok: false, message: 'Ya existe otro CADI con ese código.' })
-    }
-    console.error('Error al actualizar CADI:', error.message)
-    sendJson(res, 500, { ok: false, message: 'Error al actualizar CADI.', detail: error.message })
   }
-}
 
-export async function deleteCadi(req, res) {
-  const { id } = req.params
-  try {
-    const result = await pool.query('DELETE FROM cadis WHERE id = $1', [id])
-    if (result.rowCount === 0) {
-      return sendJson(res, 404, { ok: false, message: 'CADI no encontrado.' })
+  static async deleteCadi(req, res) {
+    const { id } = req.params
+    try {
+      const result = await evaluacionService.eliminarCadi(id)
+      return sendJson(res, 200, result)
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al eliminar CADI.', detail: error.message })
     }
-    sendJson(res, 200, { ok: true, message: 'CADI eliminado correctamente.' })
-  } catch (error) {
-    console.error('Error al eliminar CADI:', error.message)
   }
-}
 
-export async function getForms(req, res) {
-  try {
-    const { cadiId, tipo, periodo, role } = req.query || {}
-    let query = `
-      SELECT f.id, f.tipo AS kind, f.titulo AS title, f.descripcion AS description, 
-             f.periodo AS period, f.cadi_id AS "cadiId", f.fecha_inicio AS start, f.fecha_cierre AS end,
-             c.nombre AS "cadiNombre", c.codigo AS "cadiCodigo"
-      FROM formularios f
-      LEFT JOIN cadis c ON f.cadi_id = c.id
-      WHERE f.id NOT IN (SELECT id FROM formularios_eliminados)
-    `
-    const params = []
-    if (role === 'coordinador' && cadiId) {
-      params.push(cadiId)
-      query += ` AND (f.cadi_id = $${params.length} OR f.cadi_id IS NULL)`
-    } else if (cadiId) {
-      params.push(cadiId)
-      query += ` AND (f.cadi_id = $${params.length} OR f.cadi_id IS NULL)`
+  static async getForms(req, res) {
+    try {
+      const forms = await evaluacionService.obtenerFormularios(req.query || {})
+      return sendJson(res, 200, { ok: true, forms })
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al obtener formularios.', detail: error.message })
     }
+  }
 
-    if (tipo) {
-      params.push(tipo)
-      query += ` AND f.tipo = $${params.length}`
+  static async getFormById(req, res) {
+    const { id } = req.params
+    try {
+      const form = await evaluacionService.obtenerFormularioPorId(id)
+      return sendJson(res, 200, { ok: true, form })
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al obtener formulario.', detail: error.message })
     }
+  }
 
-    if (periodo) {
-      params.push(periodo)
-      query += ` AND f.periodo = $${params.length}`
+  static async createForm(req, res) {
+    try {
+      const id = await evaluacionService.crearFormulario(req.body || {})
+      return sendJson(res, 201, { ok: true, id })
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al crear formulario.', detail: error.message })
     }
+  }
 
-    query += ' ORDER BY f.fecha_inicio DESC'
-
-    const formsRes = await pool.query(query, params)
-    const questionsRes = await pool.query(
-      "SELECT id, formulario_id, enunciado AS text, tipo_respuesta AS type, dimension, COALESCE(bloque, 'docente') AS bloque, obligatoria AS required, orden FROM preguntas ORDER BY orden"
-    )
-    const optionsRes = await pool.query(
-      'SELECT pregunta_id, texto, orden FROM opciones ORDER BY orden'
-    )
-    const optionsByQ = {}
-    for (const opt of optionsRes.rows) {
-      if (!optionsByQ[opt.pregunta_id]) optionsByQ[opt.pregunta_id] = []
-      optionsByQ[opt.pregunta_id].push(opt.texto)
+  static async updateForm(req, res) {
+    const { id } = req.params
+    try {
+      const result = await evaluacionService.actualizarFormulario(id, req.body || {})
+      return sendJson(res, 200, result)
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al actualizar formulario.', detail: error.message })
     }
-    const questionsByForm = {}
-    for (const q of questionsRes.rows) {
-      const qObj = {
-        id: q.id,
-        text: q.text,
-        type: q.type,
-        dimension: q.dimension || 'General',
-        bloque: q.bloque || 'docente',
-        required: Boolean(q.required),
-        options: optionsByQ[q.id] || [],
+  }
+
+  static async deleteForm(req, res) {
+    const { id } = req.params
+    try {
+      const result = await evaluacionService.eliminarFormulario(id)
+      return sendJson(res, 200, result)
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al eliminar formulario.', detail: error.message })
+    }
+  }
+
+  static async updateFormDates(req, res) {
+    const { id } = req.params
+    const { start, end } = req.body || {}
+    try {
+      const result = await evaluacionService.actualizarFechas(id, start, end)
+      return sendJson(res, 200, result)
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al actualizar fechas.', detail: error.message })
+    }
+  }
+
+  static async createFormResponse(req, res) {
+    try {
+      const result = await evaluacionService.registrarRespuesta(req.body || {})
+      return sendJson(res, 201, { ok: true, ...result })
+    } catch (error) {
+      if (error.code === '23505') {
+        return sendJson(res, 409, { ok: false, message: 'Ya has evaluado a este docente en este período.' })
       }
-      if (q.formulario_id) {
-        if (!questionsByForm[q.formulario_id]) questionsByForm[q.formulario_id] = []
-        questionsByForm[q.formulario_id].push(qObj)
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al registrar evaluación.', detail: error.message })
+    }
+  }
+
+  static async createFeedback(req, res) {
+    try {
+      const result = await evaluacionService.crearRetroalimentacion(req.body || {})
+      return sendJson(res, 201, { ok: true, ...result })
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al crear retroalimentación.', detail: error.message })
+    }
+  }
+
+  static async createFeedbackResponse(req, res) {
+    try {
+      const id = await evaluacionService.responderRetroalimentacion(req.body || {})
+      return sendJson(res, 201, { ok: true, id })
+    } catch (error) {
+      if (error.code === '23505') {
+        return sendJson(res, 409, { ok: false, message: 'Ya respondiste a esta retroalimentación.' })
       }
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al registrar respuesta.', detail: error.message })
     }
-
-    const forms = formsRes.rows.map((f) => ({
-      ...f,
-      start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
-      end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
-      questions: questionsByForm[f.id] || [],
-    }))
-
-    sendJson(res, 200, { ok: true, forms })
-  } catch (error) {
-    console.error('Error al obtener formularios:', error.message)
-    sendJson(res, 500, { ok: false, message: 'Error al obtener formularios.', detail: error.message })
   }
 }
 
-export async function getFormById(req, res) {
-  const { id } = req.params
-  try {
-    const formsRes = await pool.query(
-      `SELECT f.id, f.tipo AS kind, f.titulo AS title, f.descripcion AS description, 
-              f.periodo AS period, f.cadi_id AS "cadiId", f.fecha_inicio AS start, f.fecha_cierre AS end,
-              c.nombre AS "cadiNombre", c.codigo AS "cadiCodigo"
-       FROM formularios f
-       LEFT JOIN cadis c ON f.cadi_id = c.id
-       WHERE f.id = $1 AND f.id NOT IN (SELECT id FROM formularios_eliminados)`,
-      [id]
-    )
-    if (formsRes.rows.length === 0) {
-      return sendJson(res, 404, { ok: false, message: 'Formulario no encontrado.' })
-    }
-    const f = formsRes.rows[0]
-    const questionsRes = await pool.query(
-      "SELECT id, formulario_id, enunciado AS text, tipo_respuesta AS type, dimension, COALESCE(bloque, 'docente') AS bloque, obligatoria AS required, orden FROM preguntas WHERE formulario_id = $1 ORDER BY orden",
-      [id]
-    )
-    const optionsRes = await pool.query(
-      'SELECT o.pregunta_id, o.texto, o.orden FROM opciones o JOIN preguntas p ON p.id = o.pregunta_id WHERE p.formulario_id = $1 ORDER BY o.orden',
-      [id]
-    )
-    const optionsByQ = {}
-    for (const opt of optionsRes.rows) {
-      if (!optionsByQ[opt.pregunta_id]) optionsByQ[opt.pregunta_id] = []
-      optionsByQ[opt.pregunta_id].push(opt.texto)
-    }
-    const questions = questionsRes.rows.map((q) => ({
-      id: q.id,
-      text: q.text,
-      type: q.type,
-      dimension: q.dimension || 'General',
-      bloque: q.bloque || 'docente',
-      required: Boolean(q.required),
-      options: optionsByQ[q.id] || [],
-    }))
-
-    const form = {
-      ...f,
-      start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
-      end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
-      questions,
-    }
-    sendJson(res, 200, { ok: true, form })
-  } catch (error) {
-    sendJson(res, 500, { ok: false, message: 'Error al obtener formulario.', detail: error.message })
-  }
-}
-
-export async function createForm(req, res) {
-  const { kind, title, description, period, cadiId, start, end, questions } = req.body || {}
-  if (!kind || !title?.trim() || !period?.trim() || !start || !end) {
-    return sendJson(res, 400, { ok: false, message: 'Datos incompletos para crear el formulario.' })
-  }
-
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-
-    const formId = crypto.randomUUID()
-    await client.query(
-      `INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [formId, kind, title.trim(), description || '', period.trim(), cadiId || null, start, end]
-    )
-
-    if (Array.isArray(questions)) {
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i]
-        const qId = q.id || crypto.randomUUID()
-        await client.query(
-          `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden, bloque)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [qId, formId, q.text, q.type, q.dimension || 'General', q.required !== false, i, q.bloque || 'docente']
-        )
-
-        if (Array.isArray(q.options)) {
-          for (let j = 0; j < q.options.length; j++) {
-            await client.query(
-              'INSERT INTO opciones (pregunta_id, orden, texto) VALUES ($1, $2, $3)',
-              [qId, j, q.options[j]]
-            )
-          }
-        }
-      }
-    }
-
-    await client.query('COMMIT')
-    sendJson(res, 201, { ok: true, id: formId })
-  } catch (error) {
-    await client.query('ROLLBACK')
-    console.error('Error al crear formulario en PostgreSQL:', error.message)
-    sendJson(res, 500, { ok: false, message: 'Error al crear formulario.', detail: error.message })
-  } finally {
-    client.release()
-  }
-}
-
-export async function updateForm(req, res) {
-  const { id } = req.params
-  const { kind, title, description, period, cadiId, start, end, questions } = req.body || {}
-
-  if (!kind || !title?.trim() || !period?.trim() || !start || !end) {
-    return sendJson(res, 400, { ok: false, message: 'Datos incompletos para actualizar el formulario.' })
-  }
-
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-
-    const updateRes = await client.query(
-      `UPDATE formularios
-       SET tipo = $1, titulo = $2, descripcion = $3, periodo = $4, cadi_id = $5, fecha_inicio = $6, fecha_cierre = $7
-       WHERE id = $8`,
-      [kind, title.trim(), description || '', period.trim(), cadiId || null, start, end, id]
-    )
-
-    if (updateRes.rowCount === 0) {
-      await client.query('ROLLBACK')
-      return sendJson(res, 404, { ok: false, message: 'Formulario no encontrado.' })
-    }
-
-    if (Array.isArray(questions)) {
-      const currentQRes = await client.query('SELECT id FROM preguntas WHERE formulario_id = $1', [id])
-      const currentQIds = new Set(currentQRes.rows.map((r) => r.id))
-      const incomingQIds = new Set()
-
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i]
-        const qId = q.id && currentQIds.has(q.id) ? q.id : (q.id || crypto.randomUUID())
-        incomingQIds.add(qId)
-
-        if (currentQIds.has(qId)) {
-          await client.query(
-            `UPDATE preguntas
-             SET enunciado = $1, tipo_respuesta = $2, dimension = $3, obligatoria = $4, orden = $5, bloque = $6
-             WHERE id = $7`,
-            [q.text, q.type, q.dimension || 'General', q.required !== false, i, q.bloque || 'docente', qId]
-          )
-          await client.query('DELETE FROM opciones WHERE pregunta_id = $1', [qId])
-        } else {
-          await client.query(
-            `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden, bloque)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [qId, id, q.text, q.type, q.dimension || 'General', q.required !== false, i, q.bloque || 'docente']
-          )
-        }
-
-        if (Array.isArray(q.options)) {
-          for (let j = 0; j < q.options.length; j++) {
-            await client.query(
-              'INSERT INTO opciones (pregunta_id, orden, texto) VALUES ($1, $2, $3)',
-              [qId, j, q.options[j]]
-            )
-          }
-        }
-      }
-
-      for (const oldId of currentQIds) {
-        if (!incomingQIds.has(oldId)) {
-          await client.query('DELETE FROM opciones WHERE pregunta_id = $1', [oldId])
-          await client.query('DELETE FROM detalle_respuesta WHERE pregunta_id = $1', [oldId])
-          await client.query('DELETE FROM preguntas WHERE id = $1', [oldId])
-        }
-      }
-    }
-
-    await client.query('COMMIT')
-    sendJson(res, 200, { ok: true, message: 'Formulario actualizado correctamente.' })
-  } catch (error) {
-    await client.query('ROLLBACK')
-    console.error('Error al actualizar formulario en PostgreSQL:', error.message)
-    sendJson(res, 500, { ok: false, message: 'Error al actualizar formulario.', detail: error.message })
-  } finally {
-    client.release()
-  }
-}
-
-export async function deleteForm(req, res) {
-  const { id } = req.params
-  const client = await pool.connect()
-  try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS formularios_eliminados (
-        id TEXT PRIMARY KEY,
-        fecha TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `)
-    await client.query('INSERT INTO formularios_eliminados (id) VALUES ($1) ON CONFLICT DO NOTHING', [id])
-
-    const respRes = await client.query('SELECT id FROM respuestas_formulario WHERE formulario_id = $1', [id])
-    if (respRes.rows.length > 0) {
-      const respIds = respRes.rows.map((r) => r.id)
-      await client.query('DELETE FROM detalle_respuesta WHERE respuesta_id = ANY($1::text[])', [respIds])
-    }
-    await client.query('DELETE FROM respuestas_formulario WHERE formulario_id = $1', [id])
-
-    const qRes = await client.query('SELECT id FROM preguntas WHERE formulario_id = $1', [id])
-    if (qRes.rows.length > 0) {
-      const qIds = qRes.rows.map((r) => r.id)
-      await client.query('DELETE FROM opciones WHERE pregunta_id = ANY($1::text[])', [qIds])
-    }
-    await client.query('DELETE FROM preguntas WHERE formulario_id = $1', [id])
-
-    await client.query('DELETE FROM formularios WHERE id = $1', [id])
-
-    await client.query('COMMIT')
-    sendJson(res, 200, { ok: true, message: 'Formulario eliminado correctamente.' })
-  } catch (error) {
-    await client.query('ROLLBACK')
-    console.error('Error al eliminar formulario en PostgreSQL:', error.message)
-    sendJson(res, 500, { ok: false, message: 'Error al eliminar formulario.', detail: error.message })
-  } finally {
-    client.release()
-  }
-}
-
-export async function updateFormDates(req, res) {
-  const { id } = req.params
-  const { start, end } = req.body || {}
-  try {
-    await pool.query('UPDATE formularios SET fecha_inicio = $1, fecha_cierre = $2 WHERE id = $3', [start, end, id])
-    sendJson(res, 200, { ok: true })
-  } catch (error) {
-    sendJson(res, 500, { ok: false, message: 'Error al actualizar fechas.', detail: error.message })
-  }
-}
-
-
-export async function createFormResponse(req, res) {
-  const { formId, userId, docenteId, teacherId, answers, observation } = req.body || {}
-  const targetDocenteId = docenteId || teacherId
-  if (!formId || !userId || !targetDocenteId || !answers) {
-    return sendJson(res, 400, { ok: false, message: 'Faltan parámetros obligatorios de evaluación.' })
-  }
-
-  const evaluacion = new Evaluacion({
-    formularioId: formId,
-    estudianteId: userId,
-    docenteId: targetDocenteId,
-    respuestas: answers,
-    observacion: observation,
-  })
-
-  const promedio = evaluacion.calcularPromedio()
-  const desempeno = evaluacion.obtenerDesempeno()
-  const requierePlanMejora = evaluacion.requierePlanMejora()
-
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-
-    const respId = crypto.randomUUID()
-    await client.query(
-      `INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
-       VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [respId, formId, userId, targetDocenteId, evaluacion.getObservacion()]
-    )
-
-    for (const [pregId, val] of Object.entries(evaluacion.getRespuestas())) {
-      await client.query(
-        'INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor) VALUES ($1, $2, $3)',
-        [respId, pregId, String(val)]
-      )
-    }
-
-    await client.query('COMMIT')
-    sendJson(res, 201, {
-      ok: true,
-      id: respId,
-      promedio,
-      desempeno,
-      requierePlanMejora,
-    })
-  } catch (error) {
-    await client.query('ROLLBACK')
-    if (error.code === '23505') {
-      return sendJson(res, 409, { ok: false, message: 'Ya has evaluado a este docente en este período.' })
-    }
-    sendJson(res, 500, { ok: false, message: 'Error al registrar evaluación.', detail: error.message })
-  } finally {
-    client.release()
-  }
-}
-
-
-export async function createFeedback(req, res) {
-  const { docenteId, teacherId, course, question, questions, start, end } = req.body || {}
-  const targetDocenteId = docenteId || teacherId
-  const list = Array.isArray(questions) && questions.length > 0 ? questions : (question ? [question] : [])
-  if (!targetDocenteId || list.length === 0) {
-    return sendJson(res, 400, { ok: false, message: 'Se requiere docente y al menos una pregunta para registrar la retroalimentación.' })
-  }
-
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-    const ids = []
-
-    for (const q of list) {
-      const qId = crypto.randomUUID()
-      await client.query(
-        `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
-         VALUES ($1, NULL, $2, $3, $4, TRUE, 0)`,
-        [qId, q.text, q.type, q.dimension || 'Retroalimentación de Aula']
-      )
-
-      if (Array.isArray(q.options) && q.options.length > 0) {
-        for (let j = 0; j < q.options.length; j++) {
-          await client.query(
-            'INSERT INTO opciones (pregunta_id, orden, texto) VALUES ($1, $2, $3)',
-            [qId, j, q.options[j]]
-          )
-        }
-      }
-
-      const fbId = crypto.randomUUID()
-      await client.query(
-        `INSERT INTO retroalimentaciones (id, docente_id, pregunta_id, curso, fecha_inicio, fecha_cierre, creada_en)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-        [fbId, targetDocenteId, qId, course, start, end]
-      )
-      ids.push(fbId)
-    }
-
-    await client.query('COMMIT')
-    sendJson(res, 201, { ok: true, ids, id: ids[0] })
-  } catch (error) {
-    await client.query('ROLLBACK')
-    console.error('Error al crear retroalimentación docente:', error.message)
-    sendJson(res, 500, { ok: false, message: 'Error al crear retroalimentación.', detail: error.message })
-  } finally {
-    client.release()
-  }
-}
-
-export async function createFeedbackResponse(req, res) {
-  const { feedbackId, studentId, value } = req.body || {}
-  try {
-    const id = crypto.randomUUID()
-    await pool.query(
-      `INSERT INTO respuestas_retroalimentacion (id, retroalimentacion_id, estudiante_id, valor, fecha)
-       VALUES ($1, $2, $3, $4, NOW())`,
-      [id, feedbackId, studentId, String(value)]
-    )
-    sendJson(res, 201, { ok: true, id })
-  } catch (error) {
-    if (error.code === '23505') {
-      return sendJson(res, 409, { ok: false, message: 'Ya respondiste a esta retroalimentación.' })
-    }
-    sendJson(res, 500, { ok: false, message: 'Error al registrar respuesta.', detail: error.message })
-  }
-}
+export const createCadi = EvaluacionController.createCadi
+export const updateCadi = EvaluacionController.updateCadi
+export const deleteCadi = EvaluacionController.deleteCadi
+export const getForms = EvaluacionController.getForms
+export const getFormById = EvaluacionController.getFormById
+export const createForm = EvaluacionController.createForm
+export const updateForm = EvaluacionController.updateForm
+export const deleteForm = EvaluacionController.deleteForm
+export const updateFormDates = EvaluacionController.updateFormDates
+export const createFormResponse = EvaluacionController.createFormResponse
+export const createFeedback = EvaluacionController.createFeedback
+export const createFeedbackResponse = EvaluacionController.createFeedbackResponse

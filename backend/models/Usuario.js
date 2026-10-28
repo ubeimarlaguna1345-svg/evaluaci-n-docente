@@ -54,6 +54,14 @@ export class Usuario {
     return this.#carrera
   }
 
+  esValido() {
+    return Boolean(this.#nombre && this.#correo && this.#correo.includes('@'))
+  }
+
+  tieneRol(rol) {
+    return this.#rol === rol
+  }
+
   obtenerPermisos() {
     return ['perfil']
   }
