@@ -71,8 +71,8 @@ export interface SqlResult {
 }
 
 export const reporteService = {
-  getBootstrap: async (): Promise<DB> => {
-    return apiFetch<DB>('/api/bootstrap')
+  getBootstrap: async (init?: RequestInit): Promise<DB> => {
+    return apiFetch<DB>('/api/bootstrap', init)
   },
 
   getHealth: async (): Promise<{ ok: boolean; connected: boolean; database?: string; user?: string }> => {

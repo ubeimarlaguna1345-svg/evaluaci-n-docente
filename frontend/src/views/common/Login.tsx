@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { GraduationCap } from 'lucide-react'
-import { useDB, actions, ROLE_LABEL, type User, type Role } from '../../store'
+import { useDB, actions, ROLE_LABEL, CONTINGENCY_USERS, type User, type Role } from '../../store'
 import { usuarioService } from '../../services'
 import { Field, Msg, input, btn } from './Components'
 
@@ -54,7 +54,7 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       return
     }
 
-    let cleanEmail = email.trim().toLowerCase()
+    let cleanEmail = email.trim().toLowerCase().replace('@ucundinamarac.edu.co', '@ucundinamarca.edu.co')
     if (cleanEmail === 'uberadmin.siard@ucundinamarac.edu.co') {
       cleanEmail = 'uberadmin.siard@ucundinamarca.edu.co'
     }
@@ -67,7 +67,10 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
     let authenticatedUser: User | null = null
 
     try {
-      const res = await usuarioService.login(cleanEmail, pass)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 2000)
+      const res = await usuarioService.login(cleanEmail, pass, { signal: controller.signal })
+      clearTimeout(timeoutId)
       if (res?.ok && res?.user) {
         authenticatedUser = res.user
       }
@@ -75,10 +78,12 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
     }
 
     if (!authenticatedUser) {
-      const u = db.users.find((x) => {
+      const candidateUsers = [...db.users, ...CONTINGENCY_USERS]
+      const u = candidateUsers.find((x) => {
         const dbEmail = (x.email || '').trim().toLowerCase()
         if (dbEmail === cleanEmail) return true
         if (cleanEmail.includes('uberadmin') && dbEmail.includes('uberadmin')) return true
+        if (cleanEmail.includes('danidirec') && dbEmail.includes('danidirec')) return true
         return false
       })
 

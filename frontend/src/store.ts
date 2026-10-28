@@ -347,44 +347,58 @@ export function sanitizeUsers(users: User[]): User[] {
     }
 
     const emailLower = (u.email || '').toLowerCase().trim()
+    const nameLower = (u.name || '').toLowerCase().trim()
     const updated = { ...u }
-    if (emailLower.includes('uberadmin')) {
+    if (emailLower.includes('uberadmin') || nameLower.includes('ubeimar')) {
+      updated.email = 'uberadmin.siard@ucundinamarca.edu.co'
       updated.password = 'Uber1019'
       updated.role = 'admin'
-    } else if (emailLower.includes('danidirec')) {
+    } else if (emailLower.includes('danidirec') || nameLower.includes('daniel moreno')) {
+      updated.email = 'danidirec.siard@ucundinamarca.edu.co'
       updated.password = 'siardVd3'
       updated.role = 'admin'
-    } else if (emailLower.includes('jaimeparra')) {
+    } else if (emailLower.includes('jaimeparra') || nameLower.includes('jaime parra')) {
+      updated.email = 'jaimeparra.siard@ucundinamarca.edu.co'
       updated.password = 'CoordParra2026*'
       updated.role = 'coordinador'
-    } else if (emailLower.includes('prof.mendoza') || emailLower.includes('javier.mendoza')) {
+    } else if (emailLower.includes('prof.mendoza') || emailLower.includes('javier.mendoza') || nameLower.includes('javier mendoza')) {
+      updated.email = 'prof.mendoza.siard@ucundinamarca.edu.co'
       updated.password = 'ProfMen2026*'
       updated.role = 'docente'
-    } else if (emailLower.includes('prof.salazar') || emailLower.includes('diana.salazar')) {
+    } else if (emailLower.includes('prof.salazar') || emailLower.includes('diana.salazar') || nameLower.includes('diana salazar')) {
+      updated.email = 'prof.salazar.siard@ucundinamarca.edu.co'
       updated.password = 'ProfSal2026*'
       updated.role = 'docente'
-    } else if (emailLower.includes('prof.navarro') || emailLower.includes('andres.navarro')) {
+    } else if (emailLower.includes('prof.navarro') || emailLower.includes('andres.navarro') || nameLower.includes('andrés navarro') || nameLower.includes('andres navarro')) {
+      updated.email = 'prof.navarro.siard@ucundinamarca.edu.co'
       updated.password = 'ProfNav2026*'
       updated.role = 'docente'
-    } else if (emailLower.includes('prof.prieto') || emailLower.includes('gabriel.prieto')) {
+    } else if (emailLower.includes('prof.prieto') || emailLower.includes('gabriel.prieto') || nameLower.includes('gabriel prieto')) {
+      updated.email = 'prof.prieto.siard@ucundinamarca.edu.co'
       updated.password = 'ProfPri2026*'
       updated.role = 'docente'
-    } else if (emailLower.includes('prof.cifuentes') || emailLower.includes('mariana.cifuentes')) {
+    } else if (emailLower.includes('prof.cifuentes') || emailLower.includes('mariana.cifuentes') || nameLower.includes('mariana cifuentes')) {
+      updated.email = 'prof.cifuentes.siard@ucundinamarca.edu.co'
       updated.password = 'ProfCif2026*'
       updated.role = 'docente'
-    } else if (emailLower.includes('carlospena')) {
+    } else if (emailLower.includes('carlospena') || emailLower.includes('carlos.pena') || nameLower.includes('carlos peña') || nameLower.includes('carlos pena')) {
+      updated.email = 'carlospena.siard@ucundinamarca.edu.co'
       updated.password = 'Carl8742*'
       updated.role = 'estudiante'
-    } else if (emailLower.includes('lauraquintero')) {
+    } else if (emailLower.includes('lauraquintero') || emailLower.includes('laura.quintero') || nameLower.includes('laura quintero')) {
+      updated.email = 'lauraquintero.siard@ucundinamarca.edu.co'
       updated.password = 'Laur5193*'
       updated.role = 'estudiante'
-    } else if (emailLower.includes('mateorincon')) {
+    } else if (emailLower.includes('mateorincon') || emailLower.includes('mateo.rincon') || nameLower.includes('mateo rincón') || nameLower.includes('mateo rincon')) {
+      updated.email = 'mateorincon.siard@ucundinamarca.edu.co'
       updated.password = 'Mate6381*'
       updated.role = 'estudiante'
-    } else if (emailLower.includes('camilatorres')) {
+    } else if (emailLower.includes('camilatorres') || emailLower.includes('camila.torres') || nameLower.includes('camila torres')) {
+      updated.email = 'camilatorres.siard@ucundinamarca.edu.co'
       updated.password = 'Cami9240*'
       updated.role = 'estudiante'
-    } else if (emailLower.includes('julianmorales')) {
+    } else if (emailLower.includes('julianmorales') || emailLower.includes('julian.morales') || nameLower.includes('julián morales') || nameLower.includes('julian morales')) {
+      updated.email = 'julianmorales.siard@ucundinamarca.edu.co'
       updated.password = 'Juli1835*'
       updated.role = 'estudiante'
     }
@@ -410,6 +424,22 @@ export function sanitizeUsers(users: User[]): User[] {
   return result
 }
 
+export function mergeContingencyUsers(users: User[]): User[] {
+  const result = [...users]
+  for (const official of CONTINGENCY_USERS) {
+    const found = result.some(
+      (u) =>
+        u.id === official.id ||
+        (u.email && u.email.toLowerCase().trim() === official.email.toLowerCase().trim()) ||
+        (u.role === official.role && u.name.toLowerCase().trim() === official.name.toLowerCase().trim())
+    )
+    if (!found) {
+      result.push({ ...official })
+    }
+  }
+  return result
+}
+
 function getInitialUsers(): User[] {
   try {
     const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
@@ -419,13 +449,17 @@ function getInitialUsers(): User[] {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
           const deleted = getDeletedUserIds()
-          const sanitized = sanitizeUsers(parsed).filter((u) => !deleted.has(u.id))
+          const merged = mergeContingencyUsers(parsed)
+          const sanitized = sanitizeUsers(merged).filter((u) => !deleted.has(u.id))
           if (sanitized.length > 0) {
+            storage.setItem(USERS_STORAGE_KEY, JSON.stringify(sanitized))
             return sanitized
           }
         }
       }
-      storage.setItem(USERS_STORAGE_KEY, JSON.stringify(CONTINGENCY_USERS))
+      const initial = sanitizeUsers(CONTINGENCY_USERS)
+      storage.setItem(USERS_STORAGE_KEY, JSON.stringify(initial))
+      return initial
     }
   } catch {}
   return sanitizeUsers(CONTINGENCY_USERS)
@@ -521,7 +555,14 @@ export async function initDB() {
   const isRemote = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
 
   try {
-    const data = (await reporteService.getBootstrap()) as DB & { ok?: boolean }
+    let controller: AbortController | undefined
+    let timeoutId: any
+    if (typeof AbortController !== 'undefined') {
+      controller = new AbortController()
+      timeoutId = setTimeout(() => controller?.abort(), 3000)
+    }
+    const data = (await reporteService.getBootstrap(controller ? { signal: controller.signal } : undefined)) as DB & { ok?: boolean }
+    if (timeoutId) clearTimeout(timeoutId)
     if (data.ok === false && data.connected === false) {
       throw new Error(data.error || 'No fue posible conectar con PostgreSQL.')
     }
