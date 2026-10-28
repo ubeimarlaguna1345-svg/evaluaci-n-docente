@@ -113,6 +113,16 @@ export class EvaluacionController {
     }
   }
 
+  static async getFormResponses(req, res) {
+    try {
+      const responses = await evaluacionService.obtenerRespuestas(req.query || {})
+      return sendJson(res, 200, { ok: true, responses, formResponses: responses })
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al obtener respuestas.', detail: error.message })
+    }
+  }
+
   static async createFormResponse(req, res) {
     try {
       const result = await evaluacionService.registrarRespuesta(req.body || {})
@@ -159,6 +169,7 @@ export const createForm = EvaluacionController.createForm
 export const updateForm = EvaluacionController.updateForm
 export const deleteForm = EvaluacionController.deleteForm
 export const updateFormDates = EvaluacionController.updateFormDates
+export const getFormResponses = EvaluacionController.getFormResponses
 export const createFormResponse = EvaluacionController.createFormResponse
 export const createFeedback = EvaluacionController.createFeedback
 export const createFeedbackResponse = EvaluacionController.createFeedbackResponse

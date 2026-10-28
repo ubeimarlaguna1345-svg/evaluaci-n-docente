@@ -50,6 +50,24 @@ export const MEDIT_DIMENSIONES = [
   'Interacción Social y Ética',
   'Gestión y Formación Continua',]
 
+export const MEDIT_15_QUESTIONS: Question[] = [
+  { id: 'q-claridad', text: 'Demuestra dominio actualizado, solidez conceptual y promueve la indagación metódica y fuentes técnicas.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
+  { id: 'q-doc-expositiva', text: 'Estructura sus clases con claridad expositiva y metodología adecuada para facilitar el aprendizaje.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
+  { id: 'q-organizacion', text: 'Cumple con el cronograma académico, los horarios acordados y el seguimiento del CADI.', type: 'escala', dimension: 'Organización y cumplimiento del programa', required: true, bloque: 'docente', options: [] },
+  { id: 'q-retro', text: 'Realiza retroalimentación oportuna y orienta constructivamente sobre los resultados de las evaluaciones.', type: 'escala', dimension: 'Retroalimentación y entrega oportuna de notas', required: true, bloque: 'docente', options: [] },
+  { id: 'q-doc-comunicacion', text: 'Mantiene una comunicación respetuosa, asertiva y disposición para atender inquietudes pedagógicas.', type: 'escala', dimension: 'Retroalimentación y entrega oportuna de notas', required: true, bloque: 'docente', options: [] },
+  { id: 'q-pedag-1', text: 'Aplica estrategias didácticas innovadoras articuladas a los principios del MEDIT.', type: 'escala', dimension: 'Pedagógica y Didáctica', required: true, bloque: 'docente', options: [] },
+  { id: 'q-pedag-2', text: 'Promueve la evaluación formativa continua y la autorregulación del estudiante.', type: 'escala', dimension: 'Pedagógica y Didáctica', required: true, bloque: 'docente', options: [] },
+  { id: 'q-tic', text: 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
+  { id: 'q-metodologia', text: 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', type: 'escala', dimension: 'Metodología y aplicación práctica', required: true, bloque: 'medit', options: [] },
+  { id: 'q-medit-autonomo', text: 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
+  { id: 'q-formativa-1', text: 'Fomenta el diálogo de saberes y la reflexión crítica en las actividades de aprendizaje.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
+  { id: 'q-formativa-2', text: 'Orienta la articulación transdisciplinar entre la teoría y los desafíos del entorno.', type: 'escala', dimension: 'Metodología y aplicación práctica', required: true, bloque: 'medit', options: [] },
+  { id: 'q-infraestructura', text: 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
+  { id: 'q-conectividad', text: 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
+  { id: 'q-facultad-comunicacion', text: '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
+]
+
 const subs = new Set<() => void>()
 const notify = () => subs.forEach((fn) => fn())
 
@@ -310,7 +328,7 @@ export const CONTINGENCY_RESPONSES: FormResponse[] = [
   { id: 'rf-nav-auto', formId: 'form-auto-2026', userId: 'doc-navarro', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-auto-1': '4', 'q-auto-2': '5', 'q-auto-3': '4', 'q-auto-4': '5' }, observation: 'Fomento continuo del aprendizaje basado en problemas de desarrollo de software.', date: '2026-02-14T08:30:00Z' },
   { id: 'rf-cif-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Propicia debates éticos muy constructivos y analiza dilemas profesionales de ingeniería.', date: '2026-02-09T17:00:00Z' },
   { id: 'rf-cif-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Cumplimiento impecable del cronograma y respeto mutuo en todas las sesiones.', date: '2026-02-11T12:00:00Z' },
-  { id: 'rf-cif-3', formId: 'form-eval-2026', userId: 'est-carlos', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', date: '2026-02-13T15:40:00Z' },
+  { id: 'rf-cif-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', date: '2026-02-13T15:40:00Z' },
   { id: 'rf-cif-auto', formId: 'form-auto-2026', userId: 'doc-cifuentes', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-auto-1': '4', 'q-auto-2': '4', 'q-auto-3': '4', 'q-auto-4': '5' }, observation: 'Promoción constante de la responsabilidad social universitaria bajo el MEDIT.', date: '2026-02-14T10:00:00Z' },
   { id: 'rf-prie-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Tiene sólido conocimiento lingüístico, pero los tiempos de devolución de ensayos son algo extensos.', date: '2026-02-08T09:30:00Z' },
   { id: 'rf-prie-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '4' }, observation: 'Las lecturas seleccionadas son buenas. Se sugiere mayor dinamismo y participación oral en clase.', date: '2026-02-10T11:20:00Z' },
@@ -318,7 +336,7 @@ export const CONTINGENCY_RESPONSES: FormResponse[] = [
   { id: 'rf-prie-auto', formId: 'form-auto-2026', userId: 'doc-prieto', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-auto-1': '4', 'q-auto-2': '4', 'q-auto-3': '4', 'q-auto-4': '4' }, observation: 'Reflexión pedagógica orientada a optimizar tiempos de corrección escrita.', date: '2026-02-13T14:00:00Z' },
   { id: 'rf-men-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas.', date: '2026-02-09T18:00:00Z' },
   { id: 'rf-men-2', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '3', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '3' }, observation: 'Las rúbricas de evaluación no son claras y las retroalimentaciones de los circuitos son muy breves.', date: '2026-02-11T13:40:00Z' },
-  { id: 'rf-men-3', formId: 'form-eval-2026', userId: 'est-carlos', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', date: '2026-02-13T16:10:00Z' },
+  { id: 'rf-men-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', date: '2026-02-13T16:10:00Z' },
   { id: 'rf-men-auto', formId: 'form-auto-2026', userId: 'doc-mendoza', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-auto-1': '4', 'q-auto-2': '3', 'q-auto-3': '3', 'q-auto-4': '4' }, observation: 'Reconozco la necesidad de incorporar simulaciones virtuales para fortalecer el componente práctico.', date: '2026-02-14T09:20:00Z' },
 ]
 
@@ -469,6 +487,44 @@ function getInitialCadis(): CADI[] {
   return [...CONTINGENCY_CADIS]
 }
 
+export function isOpen(start: string, end: string): boolean {
+  if (!start || !end) return false
+  const now = new Date()
+  const n = now.toISOString().slice(0, 16)
+  const s = start.length === 10 ? `${start}T00:00` : start.slice(0, 16)
+  const e = end.length === 10 ? `${end}T23:59` : end.slice(0, 16)
+  return n >= s && n <= e
+}
+
+export function sanitizeForms(forms: Form[]): Form[] {
+  const deletedIds = getDeletedFormIds()
+  return (forms || [])
+    .filter((f) => {
+      if (!f || !f.id) return false
+      if (deletedIds.has(f.id)) return false
+      const titleLower = (f.title || '').toLowerCase().trim()
+      if ((titleLower === 'evaluación docente 2026-i' || titleLower === 'evaluacion docente 2026-i') && !isOpen(f.start, f.end)) {
+        return false
+      }
+      return true
+    })
+    .map((f) => {
+      if (f.id === 'form-eval-2026' || f.title?.includes('Evaluación Integral del Desempeño Docente')) {
+        const existingQIds = new Set((f.questions || []).map((q) => q.id))
+        const missingQuestions = MEDIT_15_QUESTIONS.filter((q) => !existingQIds.has(q.id))
+        const allQuestions = [...(f.questions || []), ...missingQuestions]
+        return {
+          ...f,
+          title: 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT',
+          start: f.start || '2026-01-15T00:00:00Z',
+          end: f.end && isOpen(f.start, f.end) ? f.end : '2026-12-31T23:59:59Z',
+          questions: allQuestions.length >= 15 ? allQuestions : f.questions,
+        }
+      }
+      return f
+    })
+}
+
 function getInitialForms(): Form[] {
   try {
     const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
@@ -477,14 +533,19 @@ function getInitialForms(): Form[] {
       if (raw) {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const deleted = getDeletedFormIds()
-          return parsed.filter((f: Form) => !deleted.has(f.id))
+          const sanitized = sanitizeForms(parsed)
+          if (sanitized.length > 0) {
+            storage.setItem(FORMS_STORAGE_KEY, JSON.stringify(sanitized))
+            return sanitized
+          }
         }
       }
-      storage.setItem(FORMS_STORAGE_KEY, JSON.stringify(CONTINGENCY_FORMS))
+      const initial = sanitizeForms(CONTINGENCY_FORMS)
+      storage.setItem(FORMS_STORAGE_KEY, JSON.stringify(initial))
+      return initial
     }
   } catch {}
-  return [...CONTINGENCY_FORMS]
+  return sanitizeForms(CONTINGENCY_FORMS)
 }
 
 function getInitialResponses(): FormResponse[] {
@@ -541,7 +602,7 @@ export function activateDemoMode() {
   for (const f of existingForms) {
     formMap.set(f.id, f)
   }
-  const cleanForms = Array.from(formMap.values()).filter((f) => !deletedFormIds.has(f.id))
+  const cleanForms = sanitizeForms(Array.from(formMap.values()).filter((f) => !deletedFormIds.has(f.id)))
   const cleanResponses = CONTINGENCY_RESPONSES.filter((r) => !deletedFormIds.has(r.formId))
 
   try {
@@ -575,7 +636,7 @@ export async function initDB() {
     let timeoutId: any
     if (typeof AbortController !== 'undefined') {
       controller = new AbortController()
-      timeoutId = setTimeout(() => controller?.abort(), 3000)
+      timeoutId = setTimeout(() => controller?.abort(), 15000)
     }
     const data = (await reporteService.getBootstrap(controller ? { signal: controller.signal } : undefined)) as DB & { ok?: boolean }
     if (timeoutId) clearTimeout(timeoutId)
@@ -589,7 +650,7 @@ export async function initDB() {
     const cleanUsers = sanitizeUsers(activeRawUsers).filter((u) => !deletedIds.has(u.id))
 
     const deletedFormIds = getDeletedFormIds()
-    const cleanForms = (data.forms || []).filter((f) => !deletedFormIds.has(f.id))
+    const cleanForms = sanitizeForms((data.forms || []).filter((f) => !deletedFormIds.has(f.id)))
     const cleanResponses = (data.formResponses || [])
       .filter((r) => !deletedFormIds.has(r.formId))
       .map((r) => ({
@@ -902,6 +963,64 @@ export const actions = {
       console.warn('Aviso al responder feedback en backend:', err)
     }
   },
+
+  syncStudentEvaluationData: async (studentId: string) => {
+    let freshForms: Form[] = state.forms
+    let studentResponses: FormResponse[] = []
+
+    try {
+      const formsRes = await evaluacionService.getEvaluaciones()
+      if (formsRes?.forms && Array.isArray(formsRes.forms) && formsRes.forms.length > 0) {
+        freshForms = sanitizeForms(formsRes.forms)
+        state.forms = freshForms
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(freshForms))
+          }
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Aviso al consultar /api/evaluaciones:', err)
+    }
+
+    try {
+      const respData = await evaluacionService.getRespuestas({ userId: studentId })
+      const rawList = respData?.formResponses || respData?.responses
+      if (Array.isArray(rawList)) {
+        studentResponses = rawList.map((r: any) => ({
+          ...r,
+          docenteId: r.docenteId || r.teacherId || '',
+          teacherId: r.docenteId || r.teacherId || '',
+        }))
+      }
+    } catch (err) {
+      try {
+        const bootstrap = await reporteService.getBootstrap()
+        if (bootstrap?.formResponses && Array.isArray(bootstrap.formResponses)) {
+          studentResponses = bootstrap.formResponses
+            .filter((r) => r.userId === studentId)
+            .map((r: any) => ({
+              ...r,
+              docenteId: r.docenteId || r.teacherId || '',
+              teacherId: r.docenteId || r.teacherId || '',
+            }))
+        }
+      } catch (bootErr) {
+        console.warn('Aviso al consultar respuestas del estudiante:', bootErr)
+      }
+    }
+
+    const otherResponses = state.formResponses.filter((r) => r.userId !== studentId)
+    state.formResponses = [...otherResponses, ...studentResponses]
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
+      }
+    } catch {}
+
+    notify()
+    return { forms: freshForms, studentResponses }
+  },
 }
 
 export async function execRaw(query: string): Promise<{ columns: string[]; values: unknown[][] }> {
@@ -1023,11 +1142,6 @@ export function useAppStore<T = AppStoreState>(selector?: (state: AppStoreState)
     return selector(storeState)
   }
   return storeState as unknown as T
-}
-
-export const isOpen = (start: string, end: string) => {
-  const n = new Date().toISOString().slice(0, 16)
-  return n >= start && n <= end
 }
 
 export const fmt = (s: string) =>

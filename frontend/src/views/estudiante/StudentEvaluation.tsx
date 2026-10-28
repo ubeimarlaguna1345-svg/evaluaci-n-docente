@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import {
   useDB,
@@ -6,6 +6,7 @@ import {
   isOpen,
   fmt,
   getStudentDocenteEvaluationStatus,
+  getDeletedFormIds,
   type User,
 } from '../../store'
 import { Header, Card, Msg, Empty, btnGhost } from '../common'
@@ -13,6 +14,12 @@ import { StudentEvaluationForm } from './StudentEvaluationForm'
 
 export function StudentEvaluation({ me }: { me: User }) {
   const db = useDB()
+
+  useEffect(() => {
+    if (me?.id) {
+      actions.syncStudentEvaluationData(me.id)
+    }
+  }, [me?.id])
   
   const uniqueDocentesMap = new Map<string, User>()
   db.users
@@ -26,8 +33,16 @@ export function StudentEvaluation({ me }: { me: User }) {
 
   const [sel, setSel] = useState<{ formId: string; docenteId: string; teacherId?: string } | null>(null)
   const [ok, setOk] = useState(false)
-  const evals = db.forms.filter((f) => f.kind === 'evaluacion')
-  const form = evals.find((f) => f.id === sel?.formId)
+  const deletedIds = getDeletedFormIds()
+  const rawEvals = db.forms.filter((f) => f.kind === 'evaluacion' && !deletedIds.has(f.id))
+  const cleanEvals = rawEvals.filter((f) => {
+    const titleLower = (f.title || '').toLowerCase().trim()
+    const isStaleMock = (titleLower === 'evaluación docente 2026-i' || titleLower === 'evaluacion docente 2026-i') && !isOpen(f.start, f.end)
+    return !isStaleMock
+  })
+  const activeEvals = cleanEvals.filter((f) => isOpen(f.start, f.end))
+  const evals = activeEvals.length > 0 ? activeEvals : cleanEvals
+  const form = evals.find((f) => f.id === sel?.formId) || db.forms.find((f) => f.id === sel?.formId)
 
   return (
     <>
@@ -42,9 +57,12 @@ export function StudentEvaluation({ me }: { me: User }) {
             form={form}
             docente={docenteObj}
             onCancel={() => setSel(null)}
-            onSubmit={(answers, observation) => {
+            onSubmit={async (answers, observation) => {
               const targetDocenteId = sel.docenteId || sel.teacherId || ''
-              actions.respondForm({ formId: form.id, userId: me.id, docenteId: targetDocenteId, teacherId: targetDocenteId, answers, observation })
+              await actions.respondForm({ formId: form.id, userId: me.id, docenteId: targetDocenteId, teacherId: targetDocenteId, answers, observation })
+              if (me?.id) {
+                await actions.syncStudentEvaluationData(me.id)
+              }
               setSel(null)
               setOk(true)
             }}

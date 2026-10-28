@@ -209,6 +209,55 @@ export class EvaluacionService {
     return { ok: true }
   }
 
+  async obtenerRespuestas({ userId, estudianteId, formId, docenteId, teacherId } = {}) {
+    const targetUserId = userId || estudianteId
+    const targetDocenteId = docenteId || teacherId
+    let query = `
+      SELECT id, formulario_id AS "formId", usuario_id AS "userId", 
+             docente_id AS "docenteId", docente_id AS "teacherId", 
+             observacion AS observation, fecha AS date 
+      FROM respuestas_formulario 
+      WHERE formulario_id NOT IN (SELECT id FROM formularios_eliminados)
+    `
+    const params = []
+    if (targetUserId) {
+      params.push(targetUserId)
+      query += ` AND usuario_id = $${params.length}`
+    }
+    if (targetDocenteId) {
+      params.push(targetDocenteId)
+      query += ` AND docente_id = $${params.length}`
+    }
+    if (formId) {
+      params.push(formId)
+      query += ` AND formulario_id = $${params.length}`
+    }
+    query += ' ORDER BY fecha DESC'
+
+    const responsesRes = await pool.query(query, params)
+    if (responsesRes.rows.length === 0) {
+      return []
+    }
+
+    const respIds = responsesRes.rows.map((r) => r.id)
+    const detailsRes = await pool.query(
+      'SELECT respuesta_id, pregunta_id, valor FROM detalle_respuesta WHERE respuesta_id = ANY($1::text[])',
+      [respIds]
+    )
+
+    const answersByResp = {}
+    for (const d of detailsRes.rows) {
+      if (!answersByResp[d.respuesta_id]) answersByResp[d.respuesta_id] = {}
+      answersByResp[d.respuesta_id][d.pregunta_id] = d.valor
+    }
+
+    return responsesRes.rows.map((r) => ({
+      ...r,
+      date: r.date ? new Date(r.date).toISOString() : '',
+      answers: answersByResp[r.id] || {},
+    }))
+  }
+
   async registrarRespuesta({ formId, userId, docenteId, teacherId, answers, observation }) {
     const targetDocenteId = docenteId || teacherId
     if (!formId || !userId || !targetDocenteId || !answers) {

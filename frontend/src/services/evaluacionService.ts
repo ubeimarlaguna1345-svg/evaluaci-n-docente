@@ -38,6 +38,16 @@ export const evaluacionService = {
     return apiFetch<{ ok: boolean; forms: Form[] }>(`/api/forms${qs}`)
   },
 
+  getEvaluaciones: async (params?: Record<string, string>): Promise<{ ok: boolean; forms: Form[] }> => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+    return apiFetch<{ ok: boolean; forms: Form[] }>(`/api/evaluaciones${qs}`)
+  },
+
+  getRespuestas: async (params?: { userId?: string; formId?: string }): Promise<{ ok: boolean; responses: FormResponse[]; formResponses: FormResponse[] }> => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : ''
+    return apiFetch<{ ok: boolean; responses: FormResponse[]; formResponses: FormResponse[] }>(`/api/evaluaciones/respuestas${qs}`)
+  },
+
   getFormById: async (id: string): Promise<{ ok: boolean; form: Form }> => {
     return apiFetch<{ ok: boolean; form: Form }>(`/api/forms/${id}`)
   },
