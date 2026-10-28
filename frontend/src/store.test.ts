@@ -17,6 +17,7 @@ import {
 } from './store'
 import { VIEWS } from './views/common/Shell'
 import { formatDocenteId } from './views/coordinador/Report'
+import { BLOQUES, categorizarPregunta } from './views/estudiante/StudentEvaluationForm'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -943,6 +944,36 @@ describe('8. Restricción del Menú para el Rol Estudiante', () => {
 
     expect(labels.some((l) => l.includes('retroalimentación'))).toBe(false)
     expect(ids.some((id) => id === 'retro')).toBe(false)
+  })
+})
+
+describe('9. Reestructuración de Heteroevaluación en Tres Bloques Institucionales', () => {
+  it('debe definir exactamente tres bloques con los títulos y descripciones normativas', () => {
+    expect(BLOQUES.length).toBe(3)
+
+    const [bA, bB, bC] = BLOQUES
+
+    expect(bA.id).toBe('A')
+    expect(bA.titulo).toBe('1. Desempeño y Práctica Pedagógica del Docente')
+    expect(bA.descripcion).toBe('Valora la claridad conceptual, puntualidad, retroalimentación y trato del profesor titular.')
+
+    expect(bB.id).toBe('B')
+    expect(bB.titulo).toBe('2. Modelo MEDIT y Mediaciones Tecnológicas')
+    expect(bB.descripcion).toBe('Valora la integración de herramientas digitales, casos de aplicación y fomento del aprendizaje autónomo.')
+
+    expect(bC.id).toBe('C')
+    expect(bC.titulo).toBe('3. Recursos y Gestión Institucional')
+    expect(bC.descripcion).toBe('Valora la infraestructura, conectividad y soporte tecnológico provisto por la sede universitaria.')
+  })
+
+  it('debe categorizar preguntas según dimensiones y palabras clave institucionales', () => {
+    const qDocente = { id: 'q1', text: 'Claridad conceptual y explicación de temas', type: 'escala' as const, options: [], required: true, dimension: 'Claridad conceptual' }
+    const qMedit = { id: 'q2', text: 'Integración de herramientas digitales y metodología MEDIT', type: 'escala' as const, options: [], required: true, dimension: 'Metodología activa' }
+    const qSede = { id: 'q3', text: 'Condiciones de infraestructura y conectividad en la sede', type: 'escala' as const, options: [], required: true, dimension: 'Recursos y Gestión' }
+
+    expect(categorizarPregunta(qDocente, 0, 3)).toBe('A')
+    expect(categorizarPregunta(qMedit, 1, 3)).toBe('B')
+    expect(categorizarPregunta(qSede, 2, 3)).toBe('C')
   })
 })
 

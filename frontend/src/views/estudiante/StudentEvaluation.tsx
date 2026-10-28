@@ -8,7 +8,8 @@ import {
   getStudentDocenteEvaluationStatus,
   type User,
 } from '../../store'
-import { Header, Card, Msg, Empty, btnGhost, Respond } from '../common'
+import { Header, Card, Msg, Empty, btnGhost } from '../common'
+import { StudentEvaluationForm } from './StudentEvaluationForm'
 
 export function StudentEvaluation({ me }: { me: User }) {
   const db = useDB()
@@ -32,16 +33,15 @@ export function StudentEvaluation({ me }: { me: User }) {
     <>
       <Header title="Evaluación docente" sub="Valore el desempeño de sus docentes. Sus respuestas son confidenciales." />
       {ok && <div className="mb-4"><Msg kind="ok" text="Evaluación enviada correctamente." /></div>}
-      {form && sel ? (
-        <>
-          <p className="mb-4 text-sm">
-            Evaluando a <b>{db.users.find((u) => u.id === (sel.docenteId || sel.teacherId))?.name}</b> ·{' '}
-            <button className="underline" onClick={() => setSel(null)}>volver</button>
-          </p>
-          <Respond
+      {form && sel ? (() => {
+        const docenteObj = db.users.find((u) => u.id === (sel.docenteId || sel.teacherId))
+        if (!docenteObj) return null
+        return (
+          <StudentEvaluationForm
             key={`${form.id}-${sel.docenteId || sel.teacherId}`}
             form={form}
-            withObservation
+            docente={docenteObj}
+            onCancel={() => setSel(null)}
             onSubmit={(answers, observation) => {
               const targetDocenteId = sel.docenteId || sel.teacherId || ''
               actions.respondForm({ formId: form.id, userId: me.id, docenteId: targetDocenteId, teacherId: targetDocenteId, answers, observation })
@@ -49,8 +49,8 @@ export function StudentEvaluation({ me }: { me: User }) {
               setOk(true)
             }}
           />
-        </>
-      ) : evals.length ? evals.map((f) => {
+        )
+      })() : evals.length ? evals.map((f) => {
         let relevantDocentes = docentes
         if (f.cadiId) {
           const cadi = db.cadis.find((c) => c.id === f.cadiId)

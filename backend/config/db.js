@@ -130,16 +130,19 @@ export async function initSchema() {
 
         INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
         VALUES
-          ('q-claridad', 'form-eval-2026', 'Claridad conceptual y explicación de los temas en clase', 'escala', 'Claridad conceptual y explicación', true, 1),
-          ('q-organizacion', 'form-eval-2026', 'Organización, puntualidad y cumplimiento del programa académico', 'escala', 'Organización y cumplimiento del programa', true, 2),
-          ('q-retro', 'form-eval-2026', 'Retroalimentación oportuna y claridad en entrega de calificaciones', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3),
+          ('q-claridad', 'form-eval-2026', 'Claridad conceptual, dominio temático y explicación en clase', 'escala', 'Claridad conceptual y explicación', true, 1),
+          ('q-organizacion', 'form-eval-2026', 'Organización, puntualidad y cumplimiento de acuerdos académicos', 'escala', 'Organización y cumplimiento del programa', true, 2),
+          ('q-retro', 'form-eval-2026', 'Retroalimentación oportuna, trato asertivo y resolución de dudas', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3),
           ('q-metodologia', 'form-eval-2026', 'Metodología activa y aplicación práctica orientada al MEDIT', 'escala', 'Metodología y aplicación práctica', true, 4),
+          ('q-tic', 'form-eval-2026', 'Integración de herramientas digitales, casos reales y aprendizaje autónomo', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 5),
+          ('q-infraestructura', 'form-eval-2026', 'Disponibilidad, dotación y estado de aulas y laboratorios en la sede', 'escala', 'Recursos y Gestión Institucional', true, 6),
+          ('q-conectividad', 'form-eval-2026', 'Conectividad a internet, plataformas institucionales y soporte técnico de la sede', 'escala', 'Recursos y Gestión Institucional', true, 7),
           ('q-auto-1', 'form-auto-2026', 'Autoevaluación: Claridad didáctica y mediación pedagógica', 'escala', 'Claridad conceptual y explicación', true, 1),
           ('q-auto-2', 'form-auto-2026', 'Autoevaluación: Cumplimiento de planeación y rúbricas', 'escala', 'Organización y cumplimiento del programa', true, 2),
           ('q-auto-3', 'form-auto-2026', 'Autoevaluación: Oportunidad en retroalimentación formativa', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3),
           ('q-auto-4', 'form-auto-2026', 'Autoevaluación: Innovación en prácticas y proyectos MEDIT', 'escala', 'Metodología y aplicación práctica', true, 4)
         ON CONFLICT (id) DO UPDATE
-        SET enunciado = EXCLUDED.enunciado, dimension = EXCLUDED.dimension;
+        SET enunciado = EXCLUDED.enunciado, dimension = EXCLUDED.dimension, orden = EXCLUDED.orden;
 
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
