@@ -10,6 +10,10 @@ import {
   saveDeletedUserId,
   getDeletedFormIds,
   saveDeletedFormId,
+  CONTINGENCY_USERS,
+  CONTINGENCY_CADIS,
+  CONTINGENCY_FORMS,
+  activateDemoMode,
   type DB,
   type Form,
   type CADI,
@@ -997,6 +1001,62 @@ describe('9. Reestructuración de Heteroevaluación en Tres Bloques Instituciona
     expect(categorizarPregunta(qD, 0, 3)).toBe('A')
     expect(categorizarPregunta(qM, 0, 3)).toBe('B')
     expect(categorizarPregunta(qI, 0, 3)).toBe('C')
+  })
+})
+
+describe('Contingencia y Modo Demostración institucional en store.ts', () => {
+  it('garantiza las credenciales oficiales de contingencia en CONTINGENCY_USERS', () => {
+    const uber = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'uberadmin.siard@ucundinamarca.edu.co'
+    )
+    expect(uber).toBeDefined()
+    expect(uber?.password).toBe('Uber1019')
+    expect(uber?.role).toBe('admin')
+
+    const dani = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'danidirec.siard@ucundinamarca.edu.co'
+    )
+    expect(dani).toBeDefined()
+    expect(dani?.password).toBe('siardVd3')
+    expect(dani?.role).toBe('admin')
+
+    const jaime = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'jaimeparra.siard@ucundinamarca.edu.co'
+    )
+    expect(jaime).toBeDefined()
+    expect(jaime?.password).toBe('CoordParra2026*')
+    expect(jaime?.role).toBe('coordinador')
+
+    const mendoza = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'prof.mendoza.siard@ucundinamarca.edu.co'
+    )
+    expect(mendoza).toBeDefined()
+    expect(mendoza?.password).toBe('ProfMen2026*')
+    expect(mendoza?.role).toBe('docente')
+
+    const carlos = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'carlospena.siard@ucundinamarca.edu.co'
+    )
+    expect(carlos).toBeDefined()
+    expect(carlos?.password).toBe('Carl8742*')
+    expect(carlos?.role).toBe('estudiante')
+  })
+
+  it('asigna correctamente las materias CADI a los docentes en contingencia', () => {
+    expect(CONTINGENCY_CADIS.length).toBeGreaterThanOrEqual(5)
+    const prog = CONTINGENCY_CADIS.find((c) => c.codigo === 'SIS301')
+    expect(prog?.docenteId).toBe('doc-navarro')
+    expect(prog?.esArticulador).toBe(true)
+
+    const calc = CONTINGENCY_CADIS.find((c) => c.codigo === 'MAT101')
+    expect(calc?.docenteId).toBe('doc-salazar')
+
+    const elec = CONTINGENCY_CADIS.find((c) => c.codigo === 'ELC301')
+    expect(elec?.docenteId).toBe('doc-mendoza')
+  })
+
+  it('permite activar el modo demostración sin arrojar errores', () => {
+    expect(() => activateDemoMode()).not.toThrow()
   })
 })
 

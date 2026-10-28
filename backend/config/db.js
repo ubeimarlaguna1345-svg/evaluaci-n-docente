@@ -88,20 +88,23 @@ export async function initSchema() {
 
         INSERT INTO usuarios (id, nombre, correo, contrasena, contrasena_hash, rol, activo, sede, carrera)
         VALUES
-          ('usr-admin-uber', 'Ubeimar Laguna Cárdenas', 'uberadmin.siard@ucundinamarca.edu.co', 'admin123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'admin', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('usr-admin-uber', 'Ubeimar Laguna Cárdenas', 'uberadmin.siard@ucundinamarca.edu.co', 'Uber1019', '$2b$10$hQOVDOpqo.sfgkq3XUf2YOXlZ2xYsthTEDh3m/78OnFw3dox9IXee', 'admin', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('usr-admin-dani', 'Daniel Moreno', 'danidirec.siard@ucundinamarca.edu.co', 'siardVd3', '$2b$10$AiCgdmf6eF42W6T9L.tp/.c0a8fkgl5xEsb49b8T30vH4FKRqS0Zm', 'admin', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('usr-coord-jaime', 'Jaime Parra', 'jaimeparra.siard@ucundinamarca.edu.co', 'CoordParra2026*', '$2b$10$eoycADCQvycShajLWvqmzeD8bCScWV16wxve8JP/0rxmitcs9vWYa', 'coordinador', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('usr-coord-1', 'Coordinación Académica', 'coordinador@ucundinamarca.edu.co', 'coord123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'coordinador', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('doc-navarro', 'Andrés Navarro', 'andres.navarro@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('doc-salazar', 'Diana Salazar', 'diana.salazar@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('doc-prieto', 'Gabriel Prieto', 'gabriel.prieto@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
-          ('doc-mendoza', 'Javier Mendoza', 'javier.mendoza@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('doc-mendoza', 'Javier Mendoza', 'prof.mendoza.siard@ucundinamarca.edu.co', 'ProfMen2026*', '$2b$10$6MG0xd.Lwv33mNN8dvFXOedz8r2iaa2poH6113jf2R/VV2XA5TWZO', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('doc-cifuentes', 'Mariana Cifuentes', 'mariana.cifuentes@ucundinamarca.edu.co', 'doc123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'docente', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
+          ('est-carlos', 'Carlos Peña', 'carlospena.siard@ucundinamarca.edu.co', 'Carl8742*', '$2b$10$XWUNWrJ64lkiC/DalTbR4.gNoXOxjieN9qQfdO2l71bM2IWK95QKu', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('est-1', 'Juan David Romero', 'juan.romero@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('est-2', 'Valentina Ramos', 'valentina.ramos@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('est-3', 'Mateo Vargas', 'mateo.vargas@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('est-4', 'Sofía Morales', 'sofia.morales@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación'),
           ('est-5', 'Camilo Torres', 'camilo.torres@ucundinamarca.edu.co', 'est123', '$2a$10$wT8K4cQZq7N9.ZzX8v1x4u1h.R2Q5iF2N2P7k1b9j2m3n4o5p6q7', 'estudiante', true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación')
         ON CONFLICT (correo) DO UPDATE
-        SET nombre = EXCLUDED.nombre, rol = EXCLUDED.rol, activo = TRUE;
+        SET nombre = EXCLUDED.nombre, contrasena = EXCLUDED.contrasena, contrasena_hash = EXCLUDED.contrasena_hash, rol = EXCLUDED.rol, activo = TRUE;
 
         INSERT INTO cadis (id, codigo, nombre, semestre, tipo, es_articulador, docente_id)
         VALUES

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useDB, initDB } from './store'
+import { useDB, initDB, actions } from './store'
 import { Shell } from './views/common/Shell'
 import { Msg } from './views/common/Components'
 
@@ -26,13 +26,22 @@ export default function App() {
           <p className="text-sm text-ink/70">
             Asegúrate de que el backend esté en ejecución y que la base de datos PostgreSQL esté accesible.
           </p>
-          <button
-            type="button"
-            onClick={() => initDB()}
-            className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-sm font-semibold text-white hover:bg-moss"
-          >
-            Reintentar Conexión
-          </button>
+          <div className="space-y-2 pt-2">
+            <button
+              type="button"
+              onClick={() => initDB()}
+              className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-sm font-semibold text-white hover:bg-moss cursor-pointer"
+            >
+              Reintentar Conexión
+            </button>
+            <button
+              type="button"
+              onClick={() => actions.activateDemoMode()}
+              className="w-full inline-flex justify-center items-center gap-2 rounded-md border border-pine text-pine bg-white hover:bg-pine/5 px-4 py-2.5 text-sm font-semibold transition cursor-pointer"
+            >
+              Continuar en modo demostración (Datos institucionales)
+            </button>
+          </div>
         </div>
       </div>
     )
