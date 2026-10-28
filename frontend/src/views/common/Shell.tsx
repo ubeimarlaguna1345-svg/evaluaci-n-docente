@@ -10,7 +10,7 @@ import {
   UserCog,
 } from 'lucide-react'
 import { ModalPerfil } from '../../components/ModalPerfil'
-import { useDB, ROLE_LABEL, type User, type Role } from '../../store'
+import { useDB, ROLE_LABEL, CONTINGENCY_USERS, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
 import { StudentEvaluation } from '../estudiante'
@@ -63,7 +63,7 @@ export function Shell() {
       return null
     }
   })
-  const me = db.users.find((u) => u.id === meId && u.active)
+  const me = db.users.find((u) => u.id === meId && u.active) || CONTINGENCY_USERS.find((u) => u.id === meId && u.active)
   const [view, setView] = useState('')
   const [showProfile, setShowProfile] = useState(false)
 
