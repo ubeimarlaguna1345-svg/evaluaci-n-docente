@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, CalendarClock, X } from 'lucide-react'
 import {
   useDB,
+  initDB,
+  getCurrentUser,
   actions,
   isOpen,
   fmt,
   type Form,
   type FormKind,
   type Question,
+  type User,
 } from '../../store'
 import {
   Header,
@@ -53,9 +56,13 @@ export function FormRow({
             <span className="text-xs font-semibold uppercase tracking-wider text-ochre">
               {fm.kind === 'evaluacion' ? 'Evaluación docente' : 'Autoevaluación'} · {fm.period}
             </span>
-            {cadi && (
+            {cadi ? (
               <span className="rounded bg-paper px-1.5 py-0.5 text-[11px] font-mono text-pine font-medium border border-line">
                 {cadi.codigo} — {cadi.nombre}
+              </span>
+            ) : (
+              <span className="rounded bg-paper px-1.5 py-0.5 text-[11px] font-mono text-pine font-medium border border-line">
+                Evaluación general (Todos los CADIs / CAIs)
               </span>
             )}
           </div>
@@ -121,14 +128,19 @@ export function FormRow({
   )
 }
 
-export function FormsAdmin() {
+export function FormsAdmin({ me }: { me?: User }) {
   const db = useDB()
+  const activeUser = me || getCurrentUser() || (typeof sessionStorage !== 'undefined' ? db.users.find((u) => u.id === sessionStorage.getItem('siard-me')) : null)
   const blank = { kind: '' as FormKind | '', title: '', description: '', period: '2026-I', cadiId: '', start: '', end: '', questions: [] as Question[] }
   const [f, setF] = useState(blank)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [editingDates, setEditingDates] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    initDB()
+  }, [])
 
   const startEdit = (fm: Form) => {
     setEditingId(fm.id)
@@ -140,7 +152,7 @@ export function FormsAdmin() {
       cadiId: fm.cadiId || '',
       start: fm.start,
       end: fm.end,
-      questions: fm.questions ? [...fm.questions] : [],
+      questions: fm.questions ? fm.questions.map((q) => ({ ...q })) : [],
     })
     setMsg(null)
   }
@@ -188,6 +200,17 @@ export function FormsAdmin() {
     }
   }
 
+  const visibleForms = db.forms.filter((fm) => {
+    if (!activeUser || activeUser.role === 'admin') return true
+    if (activeUser.role === 'coordinador') {
+      if (!fm.cadiId) return true
+      const cadi = db.cadis.find((c) => c.id === fm.cadiId)
+      if (cadi) return true
+      return true
+    }
+    return true
+  })
+
   return ( 
     <>
       <Header title="Evaluaciones y autoevaluaciones" sub="Crear formularios institucionales, asociar a CADIs, definir preguntas con dimensiones MEDIT y fechas de disponibilidad." />
@@ -208,9 +231,14 @@ export function FormsAdmin() {
               )}
             </h3>
             {editingId && (
-              <span className="rounded-full bg-pine/10 px-2.5 py-0.5 text-xs font-semibold text-pine">
-                Modo Edición
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-paper px-2 py-0.5 text-xs font-mono text-ink/70 border border-line" title="ID de la evaluación en PostgreSQL">
+                  ID: {editingId}
+                </span>
+                <span className="rounded-full bg-pine/10 px-2.5 py-0.5 text-xs font-semibold text-pine">
+                  Modo Edición
+                </span>
+              </div>
             )}
           </div>
           <Field label="Tipo de evaluación">
@@ -273,10 +301,10 @@ export function FormsAdmin() {
           </div>
         </Card>
         <div className="space-y-3">
-          {db.forms.length === 0 ? (
+          {visibleForms.length === 0 ? (
             <Empty text="No hay evaluaciones registradas. Crea una nueva desde el formulario superior." />
           ) : (
-            db.forms.map((fm) => (
+            visibleForms.map((fm) => (
               <FormRow
                 key={fm.id}
                 fm={fm}

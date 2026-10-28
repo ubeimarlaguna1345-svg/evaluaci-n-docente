@@ -121,9 +121,9 @@ export async function initSchema() {
         );
 
         INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-        SELECT 'form-eval-2026', 'evaluacion', 'Evaluación Docente 2026-I', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z'
+        SELECT 'form-eval-2026', 'evaluacion', 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-12-31T23:59:59Z'
         WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-eval-2026')
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT (id) DO UPDATE SET titulo = EXCLUDED.titulo, fecha_cierre = EXCLUDED.fecha_cierre;
 
         INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
         SELECT 'form-auto-2026', 'autoevaluacion', 'Autoevaluación Docente 2026-I', 'Instrumento de reflexión pedagógica y autoevaluación.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z'

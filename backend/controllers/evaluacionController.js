@@ -79,10 +79,134 @@ export async function deleteCadi(req, res) {
     sendJson(res, 200, { ok: true, message: 'CADI eliminado correctamente.' })
   } catch (error) {
     console.error('Error al eliminar CADI:', error.message)
-    sendJson(res, 500, { ok: false, message: 'Error al eliminar CADI.', detail: error.message })
   }
 }
 
+export async function getForms(req, res) {
+  try {
+    const { cadiId, tipo, periodo, role } = req.query || {}
+    let query = `
+      SELECT f.id, f.tipo AS kind, f.titulo AS title, f.descripcion AS description, 
+             f.periodo AS period, f.cadi_id AS "cadiId", f.fecha_inicio AS start, f.fecha_cierre AS end,
+             c.nombre AS "cadiNombre", c.codigo AS "cadiCodigo"
+      FROM formularios f
+      LEFT JOIN cadis c ON f.cadi_id = c.id
+      WHERE f.id NOT IN (SELECT id FROM formularios_eliminados)
+    `
+    const params = []
+    if (role === 'coordinador' && cadiId) {
+      params.push(cadiId)
+      query += ` AND (f.cadi_id = $${params.length} OR f.cadi_id IS NULL)`
+    } else if (cadiId) {
+      params.push(cadiId)
+      query += ` AND (f.cadi_id = $${params.length} OR f.cadi_id IS NULL)`
+    }
+
+    if (tipo) {
+      params.push(tipo)
+      query += ` AND f.tipo = $${params.length}`
+    }
+
+    if (periodo) {
+      params.push(periodo)
+      query += ` AND f.periodo = $${params.length}`
+    }
+
+    query += ' ORDER BY f.fecha_inicio DESC'
+
+    const formsRes = await pool.query(query, params)
+    const questionsRes = await pool.query(
+      "SELECT id, formulario_id, enunciado AS text, tipo_respuesta AS type, dimension, COALESCE(bloque, 'docente') AS bloque, obligatoria AS required, orden FROM preguntas ORDER BY orden"
+    )
+    const optionsRes = await pool.query(
+      'SELECT pregunta_id, texto, orden FROM opciones ORDER BY orden'
+    )
+    const optionsByQ = {}
+    for (const opt of optionsRes.rows) {
+      if (!optionsByQ[opt.pregunta_id]) optionsByQ[opt.pregunta_id] = []
+      optionsByQ[opt.pregunta_id].push(opt.texto)
+    }
+    const questionsByForm = {}
+    for (const q of questionsRes.rows) {
+      const qObj = {
+        id: q.id,
+        text: q.text,
+        type: q.type,
+        dimension: q.dimension || 'General',
+        bloque: q.bloque || 'docente',
+        required: Boolean(q.required),
+        options: optionsByQ[q.id] || [],
+      }
+      if (q.formulario_id) {
+        if (!questionsByForm[q.formulario_id]) questionsByForm[q.formulario_id] = []
+        questionsByForm[q.formulario_id].push(qObj)
+      }
+    }
+
+    const forms = formsRes.rows.map((f) => ({
+      ...f,
+      start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
+      end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
+      questions: questionsByForm[f.id] || [],
+    }))
+
+    sendJson(res, 200, { ok: true, forms })
+  } catch (error) {
+    console.error('Error al obtener formularios:', error.message)
+    sendJson(res, 500, { ok: false, message: 'Error al obtener formularios.', detail: error.message })
+  }
+}
+
+export async function getFormById(req, res) {
+  const { id } = req.params
+  try {
+    const formsRes = await pool.query(
+      `SELECT f.id, f.tipo AS kind, f.titulo AS title, f.descripcion AS description, 
+              f.periodo AS period, f.cadi_id AS "cadiId", f.fecha_inicio AS start, f.fecha_cierre AS end,
+              c.nombre AS "cadiNombre", c.codigo AS "cadiCodigo"
+       FROM formularios f
+       LEFT JOIN cadis c ON f.cadi_id = c.id
+       WHERE f.id = $1 AND f.id NOT IN (SELECT id FROM formularios_eliminados)`,
+      [id]
+    )
+    if (formsRes.rows.length === 0) {
+      return sendJson(res, 404, { ok: false, message: 'Formulario no encontrado.' })
+    }
+    const f = formsRes.rows[0]
+    const questionsRes = await pool.query(
+      "SELECT id, formulario_id, enunciado AS text, tipo_respuesta AS type, dimension, COALESCE(bloque, 'docente') AS bloque, obligatoria AS required, orden FROM preguntas WHERE formulario_id = $1 ORDER BY orden",
+      [id]
+    )
+    const optionsRes = await pool.query(
+      'SELECT o.pregunta_id, o.texto, o.orden FROM opciones o JOIN preguntas p ON p.id = o.pregunta_id WHERE p.formulario_id = $1 ORDER BY o.orden',
+      [id]
+    )
+    const optionsByQ = {}
+    for (const opt of optionsRes.rows) {
+      if (!optionsByQ[opt.pregunta_id]) optionsByQ[opt.pregunta_id] = []
+      optionsByQ[opt.pregunta_id].push(opt.texto)
+    }
+    const questions = questionsRes.rows.map((q) => ({
+      id: q.id,
+      text: q.text,
+      type: q.type,
+      dimension: q.dimension || 'General',
+      bloque: q.bloque || 'docente',
+      required: Boolean(q.required),
+      options: optionsByQ[q.id] || [],
+    }))
+
+    const form = {
+      ...f,
+      start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
+      end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
+      questions,
+    }
+    sendJson(res, 200, { ok: true, form })
+  } catch (error) {
+    sendJson(res, 500, { ok: false, message: 'Error al obtener formulario.', detail: error.message })
+  }
+}
 
 export async function createForm(req, res) {
   const { kind, title, description, period, cadiId, start, end, questions } = req.body || {}

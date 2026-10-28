@@ -263,11 +263,11 @@ export const CONTINGENCY_FORMS: Form[] = [
   {
     id: 'form-eval-2026',
     kind: 'evaluacion',
-    title: 'Evaluación Docente 2026-I',
+    title: 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT',
     description: 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.',
     period: '2026-I',
     start: '2026-01-15T00:00:00Z',
-    end: '2026-06-30T23:59:59Z',
+    end: '2026-12-31T23:59:59Z',
     questions: [
       { id: 'q-claridad', text: 'Demuestra dominio actualizado, solidez conceptual y promueve la indagación metódica y fuentes técnicas.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
       { id: 'q-doc-expositiva', text: 'Estructura sus clases con claridad expositiva y metodología adecuada para facilitar el aprendizaje.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
@@ -525,7 +525,23 @@ export function activateDemoMode() {
   const deletedFormIds = getDeletedFormIds()
 
   const cleanUsers = sanitizeUsers(CONTINGENCY_USERS).filter((u) => !deletedIds.has(u.id))
-  const cleanForms = CONTINGENCY_FORMS.filter((f) => !deletedFormIds.has(f.id))
+  
+  let existingForms: Form[] = []
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(FORMS_STORAGE_KEY) : null
+    if (raw) existingForms = JSON.parse(raw)
+  } catch {}
+  if (!existingForms.length && state.forms.length) {
+    existingForms = state.forms
+  }
+  const formMap = new Map<string, Form>()
+  for (const f of CONTINGENCY_FORMS) {
+    formMap.set(f.id, f)
+  }
+  for (const f of existingForms) {
+    formMap.set(f.id, f)
+  }
+  const cleanForms = Array.from(formMap.values()).filter((f) => !deletedFormIds.has(f.id))
   const cleanResponses = CONTINGENCY_RESPONSES.filter((r) => !deletedFormIds.has(r.formId))
 
   try {
@@ -703,33 +719,54 @@ export const actions = {
   },
 
   createForm: async (f: Omit<Form, 'id'>) => {
+    const tempId = 'form-' + uid()
+    const newForm: Form = { ...f, id: tempId }
+    state.forms = [newForm, ...state.forms]
     try {
-      await evaluacionService.createForm(f)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
+      }
+    } catch {}
+    notify()
+
+    try {
+      const res = await evaluacionService.createForm(f)
+      if (res?.id && res.id !== tempId) {
+        state.forms = state.forms.map((item) => (item.id === tempId ? { ...item, id: res.id } : item))
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
+          }
+        } catch {}
+        notify()
+      }
       await initDB()
     } catch (err) {
-      const newForm: Form = { ...f, id: 'form-' + uid() }
-      state.forms = [newForm, ...state.forms]
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
-        }
-      } catch {}
-      notify()
+      console.warn('Aviso al crear formulario en backend:', err)
+      if (!demoModeActive && !(typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'))) {
+        throw err
+      }
     }
   },
 
   updateForm: async (id: string, f: Omit<Form, 'id'>) => {
+    const updatedForm: Form = { ...f, id }
+    state.forms = state.forms.map((item) => (item.id === id ? updatedForm : item))
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
+      }
+    } catch {}
+    notify()
+
     try {
       await evaluacionService.updateForm(id, f)
       await initDB()
     } catch (err) {
-      state.forms = state.forms.map((item) => (item.id === id ? { ...f, id } : item))
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
-        }
-      } catch {}
-      notify()
+      console.warn('Aviso al actualizar formulario en backend:', err)
+      if (!demoModeActive && !(typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'))) {
+        throw err
+      }
     }
   },
 
@@ -870,6 +907,10 @@ export const actions = {
 export async function execRaw(query: string): Promise<{ columns: string[]; values: unknown[][] }> {
   const data = await reporteService.executeSql(query)
   return { columns: data.columns || [], values: data.values || [] }
+}
+
+export function getDB(): DB {
+  return state
 }
 
 export function useDB() {

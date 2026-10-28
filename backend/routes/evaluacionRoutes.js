@@ -3,6 +3,8 @@ import {
   createCadi,
   updateCadi,
   deleteCadi,
+  getForms,
+  getFormById,
   createForm,
   updateForm,
   deleteForm,
@@ -19,6 +21,10 @@ evaluacionRoutes.put('/cadis/:id', updateCadi)
 evaluacionRoutes.patch('/cadis/:id', updateCadi)
 evaluacionRoutes.delete('/cadis/:id', deleteCadi)
 
+evaluacionRoutes.get('/forms', getForms)
+evaluacionRoutes.get('/forms/:id', getFormById)
+evaluacionRoutes.get('/evaluaciones', getForms)
+evaluacionRoutes.get('/evaluaciones/:id', getFormById)
 evaluacionRoutes.post('/forms', createForm)
 evaluacionRoutes.put('/forms/:id', updateForm)
 evaluacionRoutes.patch('/forms/:id', updateForm)

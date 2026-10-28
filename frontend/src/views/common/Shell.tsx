@@ -11,7 +11,7 @@ import {
   UserCog,
 } from 'lucide-react'
 import { ModalPerfil } from '../../components/ModalPerfil'
-import { useDB, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, logout, type User, type Role } from '../../store'
+import { useDB, initDB, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, logout, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
 import { StudentEvaluation } from '../estudiante'
@@ -32,7 +32,7 @@ export const VIEWS: Record<Role, View[]> = (() => {
 
   const mgmt: View[] = [
     { id: 'cuentas', label: 'Cuentas', icon: Users, render: (me) => <Accounts me={me} /> },
-    { id: 'formularios', label: 'Evaluaciones', icon: ClipboardList, render: () => <FormsAdmin /> },
+    { id: 'formularios', label: 'Evaluaciones', icon: ClipboardList, render: (me) => <FormsAdmin me={me} /> },
     cadisView,
     { id: 'resultados', label: 'Resultados', icon: BarChart3, render: () => <Results /> },
     { id: 'estadisticas', label: 'Estadísticas', icon: BarChart3, render: () => <Statistics /> },
@@ -69,6 +69,10 @@ export function Shell() {
   const me = db.users.find((u) => u.id === meId && u.active) || CONTINGENCY_USERS.find((u) => u.id === meId && u.active)
   const [view, setView] = useState('')
   const [showProfile, setShowProfile] = useState(false)
+
+  useEffect(() => {
+    initDB()
+  }, [location.pathname])
 
   useEffect(() => {
     if (me && location.pathname === '/') {

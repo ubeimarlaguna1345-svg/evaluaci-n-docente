@@ -33,6 +33,15 @@ export const evaluacionService = {
     return evaluacionService.assignCadiDocente(cadiId, docenteId)
   },
 
+  getForms: async (params?: Record<string, string>): Promise<{ ok: boolean; forms: Form[] }> => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+    return apiFetch<{ ok: boolean; forms: Form[] }>(`/api/forms${qs}`)
+  },
+
+  getFormById: async (id: string): Promise<{ ok: boolean; form: Form }> => {
+    return apiFetch<{ ok: boolean; form: Form }>(`/api/forms/${id}`)
+  },
+
   createForm: async (f: Omit<Form, 'id'>): Promise<{ ok: boolean; id: string }> => {
     return apiFetch<{ ok: boolean; id: string }>('/api/forms', {
       method: 'POST',

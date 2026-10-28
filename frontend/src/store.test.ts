@@ -1182,4 +1182,89 @@ describe('Guardián de Rutas y Estado de Autenticación (ProtectedRoute)', () =>
   })
 })
 
+describe('Co-creación y gestión colaborativa de evaluaciones (Admin y Coordinador)', () => {
+  it('el formulario general creado por Admin es visible para Coordinador y está Abierto', async () => {
+    const { getDB, isOpen } = await import('./store')
+    const db = getDB()
+    const generalForm = db.forms.find(
+      (f) => !f.cadiId && f.title.includes('Instrumento de Evaluación Integral del Desempeño Docente')
+    )
+    expect(generalForm).toBeDefined()
+    expect(generalForm?.kind).toBe('evaluacion')
+    expect(isOpen(generalForm!.start, generalForm!.end)).toBe(true)
+  })
+
+  it('updateForm actualiza la evaluación conservando su ID sin duplicar registros', async () => {
+    const { getDB, actions } = await import('./store')
+    const db = getDB()
+    const target = db.forms.find((f) => f.id === 'form-eval-2026') || db.forms[0]
+    expect(target).toBeDefined()
+
+    const initialCount = db.forms.length
+    const originalQuestions = target.questions ? [...target.questions] : []
+
+    // Agregar preguntas pedagógicas complementarias hasta alcanzar 15 preguntas
+    const complementarias = [
+      {
+        id: 'q-pedag-1',
+        text: 'Aplica estrategias didácticas innovadoras articuladas a los principios del MEDIT.',
+        type: 'escala' as const,
+        dimension: 'Pedagógica y Didáctica',
+        bloque: 'docente' as const,
+        required: true,
+        options: [],
+      },
+      {
+        id: 'q-pedag-2',
+        text: 'Promueve la evaluación formativa continua y la autorregulación del estudiante.',
+        type: 'escala' as const,
+        dimension: 'Pedagógica y Didáctica',
+        bloque: 'docente' as const,
+        required: true,
+        options: [],
+      },
+      {
+        id: 'q-formativa-1',
+        text: 'Fomenta el diálogo de saberes y la reflexión crítica en las actividades de aprendizaje.',
+        type: 'escala' as const,
+        dimension: 'Modelo MEDIT y Mediaciones Tecnológicas',
+        bloque: 'medit' as const,
+        required: true,
+        options: [],
+      },
+      {
+        id: 'q-formativa-2',
+        text: 'Orienta la articulación transdisciplinar entre la teoría y los desafíos del entorno.',
+        type: 'escala' as const,
+        dimension: 'Metodología y aplicación práctica',
+        bloque: 'medit' as const,
+        required: true,
+        options: [],
+      },
+    ]
+
+    const consolidatedQuestions = [...originalQuestions, ...complementarias]
+
+    await actions.updateForm(target.id, {
+      kind: target.kind,
+      title: target.title,
+      description: target.description,
+      period: target.period,
+      cadiId: target.cadiId,
+      start: target.start,
+      end: target.end,
+      questions: consolidatedQuestions,
+    })
+
+    const afterDb = getDB()
+    // No debe duplicar registros
+    expect(afterDb.forms.length).toBe(initialCount)
+    const updated = afterDb.forms.find((f) => f.id === target.id)
+    expect(updated).toBeDefined()
+    expect(updated?.id).toBe(target.id)
+    expect(updated?.questions.length).toBe(consolidatedQuestions.length)
+  })
+})
+
+
 
