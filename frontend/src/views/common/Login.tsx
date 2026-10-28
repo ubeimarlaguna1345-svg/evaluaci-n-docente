@@ -16,6 +16,32 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
 
   const firstUser = db.users.length === 0
 
+  const selectRole = (role: Role) => {
+    setSelectedRole(role)
+    setErr('')
+    const targetUser = CONTINGENCY_USERS.find((u) => u.role === role)
+    if (targetUser) {
+      setEmail(targetUser.email)
+      setPass(targetUser.password)
+    }
+  }
+
+  const quickLogin = (role: Role) => {
+    setSelectedRole(role)
+    setErr('')
+    const targetUser = CONTINGENCY_USERS.find((u) => u.role === role)
+    if (targetUser) {
+      setEmail(targetUser.email)
+      setPass(targetUser.password)
+      try {
+        localStorage.setItem('siard-me', targetUser.id)
+        localStorage.setItem('siard_user', JSON.stringify(targetUser))
+        sessionStorage.setItem('siard-me', targetUser.id)
+      } catch {}
+      onLogin(targetUser)
+    }
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr('')
@@ -64,64 +90,46 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       return
     }
 
-    let authenticatedUser: User | null = null
+    const candidateUsers = [...db.users, ...CONTINGENCY_USERS]
+    const u = candidateUsers.find((x) => {
+      const dbEmail = (x.email || '').trim().toLowerCase()
+      if (dbEmail === cleanEmail) return true
+      if (cleanEmail.includes('uberadmin') && dbEmail.includes('uberadmin')) return true
+      if (cleanEmail.includes('danidirec') && dbEmail.includes('danidirec')) return true
+      return false
+    })
 
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 2000)
-      const res = await usuarioService.login(cleanEmail, pass, { signal: controller.signal })
-      clearTimeout(timeoutId)
-      if (res?.ok && res?.user) {
-        authenticatedUser = res.user
-      }
-    } catch {
+    if (!u) {
+      setErr('No existe una cuenta registrada con este correo electrónico.')
+      return
     }
 
-    if (!authenticatedUser) {
-      const candidateUsers = [...db.users, ...CONTINGENCY_USERS]
-      const u = candidateUsers.find((x) => {
-        const dbEmail = (x.email || '').trim().toLowerCase()
-        if (dbEmail === cleanEmail) return true
-        if (cleanEmail.includes('uberadmin') && dbEmail.includes('uberadmin')) return true
-        if (cleanEmail.includes('danidirec') && dbEmail.includes('danidirec')) return true
-        return false
-      })
+    if (u.role !== selectedRole) {
+      setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
+      return
+    }
 
-      if (!u) {
-        setErr('No existe una cuenta registrada con este correo electrónico.')
-        return
-      }
+    if (u.password !== pass) {
+      setErr('Contraseña incorrecta.')
+      return
+    }
 
-      if (u.role !== selectedRole) {
-        setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
-        return
-      }
-
-      if (u.password !== pass) {
-        setErr('Contraseña incorrecta.')
-        return
-      }
-
-      if (!u.active) {
-        setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
-        return
-      }
-
-      authenticatedUser = u
-    } else {
-      if (authenticatedUser.role !== selectedRole) {
-        setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[authenticatedUser.role]}.`)
-        return
-      }
+    if (!u.active) {
+      setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
+      return
     }
 
     try {
-      localStorage.setItem('siard-me', authenticatedUser.id)
-      localStorage.setItem('siard_user', JSON.stringify(authenticatedUser))
-      sessionStorage.setItem('siard-me', authenticatedUser.id)
+      usuarioService.login(cleanEmail, pass).catch(() => {})
     } catch {}
 
-    onLogin(authenticatedUser)
+    try {
+      localStorage.setItem('siard-me', u.id)
+      localStorage.setItem('siard_user', JSON.stringify(u))
+      sessionStorage.setItem('siard-me', u.id)
+    } catch {}
+
+    onLogin(u)
   }
 
   return (
@@ -144,10 +152,23 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
           </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-px border-t border-paper/20 pt-6 text-xs text-paper/60">
-          {(['admin', 'coordinador', 'docente', 'estudiante'] as Role[]).map((r) => (
-            <span key={r}>{ROLE_LABEL[r]}</span>
-          ))}
+        <div className="border-t border-paper/20 pt-6">
+          <p className="text-[11px] font-mono uppercase tracking-wider text-ochre mb-2">
+            Accesos directos institucionales:
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-xs text-paper/80 sm:grid-cols-4">
+            {(['admin', 'coordinador', 'docente', 'estudiante'] as Role[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => quickLogin(r)}
+                className="text-left font-medium text-paper hover:text-white hover:underline transition cursor-pointer"
+                title={`Ingresar inmediatamente como ${ROLE_LABEL[r]}`}
+              >
+                {ROLE_LABEL[r]} →
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full border-[48px] border-moss/40" />
@@ -181,8 +202,8 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
                   <button
                     key={r.id}
                     type="button"
-                    onClick={() => { setSelectedRole(r.id); setErr('') }}
-                    className={`rounded-md py-2 px-1 text-center text-xs font-medium transition-all ${
+                    onClick={() => selectRole(r.id)}
+                    className={`rounded-md py-2 px-1 text-center text-xs font-medium transition-all cursor-pointer ${
                       selectedRole === r.id
                         ? 'bg-pine text-white shadow-sm ring-1 ring-pine'
                         : 'text-ink/70 hover:bg-white hover:text-pine'
@@ -247,6 +268,32 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
           >
             {firstUser ? 'Crear administrador' : 'Ingresar'}
           </button>
+
+          {!firstUser && (
+            <div className="pt-2 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-ink/50">
+                Accesos rápidos
+              </p>
+              <div className="mt-2 grid grid-cols-4 gap-1.5">
+                {([
+                  { id: 'admin', label: 'Admin' },
+                  { id: 'coordinador', label: 'Coord.' },
+                  { id: 'docente', label: 'Docente' },
+                  { id: 'estudiante', label: 'Estud.' },
+                ] as const).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => quickLogin(item.id)}
+                    className="rounded border border-line bg-white py-1 px-1.5 text-[11px] font-medium text-ink/70 hover:border-pine hover:bg-pine/5 hover:text-pine transition cursor-pointer"
+                    title={`Ingresar de inmediato como ${ROLE_LABEL[item.id]}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       </section>
     </div>
