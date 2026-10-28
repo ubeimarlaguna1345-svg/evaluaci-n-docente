@@ -11,6 +11,13 @@ export interface CreateUserData {
 }
 
 export const usuarioService = {
+  login: async (email: string, password: string): Promise<{ ok: boolean; user: User }> => {
+    return apiFetch<{ ok: boolean; user: User }>('/api/users/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    })
+  },
+
   createUser: async (data: CreateUserData): Promise<{ ok: boolean; user: User }> => {
     return apiFetch<{ ok: boolean; user: User }>('/api/users', {
       method: 'POST',

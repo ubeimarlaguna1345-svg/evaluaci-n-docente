@@ -48,20 +48,7 @@ export const MEDIT_DIMENSIONES = [
   'Disciplina e Investigativa',
   'Evaluativa y Curricular',
   'Interacción Social y Ética',
-  'Gestión y Formación Continua',
-]
-
-let state: DB = {
-  users: [],
-  cadis: [],
-  feedbacks: [],
-  feedbackResponses: [],
-  forms: [],
-  formResponses: [],
-  connected: false,
-  loading: true,
-  error: null,
-}
+  'Gestión y Formación Continua',]
 
 const subs = new Set<() => void>()
 const notify = () => subs.forEach((fn) => fn())
@@ -173,20 +160,20 @@ export const CONTINGENCY_USERS: User[] = [
     carrera: 'Ingeniería de Sistemas y Computación',
   },
   {
-    id: 'doc-navarro',
-    name: 'Andrés Navarro',
-    email: 'andres.navarro@ucundinamarca.edu.co',
-    password: 'doc123',
+    id: 'doc-salazar',
+    name: 'Diana Salazar',
+    email: 'prof.salazar.siard@ucundinamarca.edu.co',
+    password: 'ProfSal2026*',
     role: 'docente',
     active: true,
     sede: 'Sede Facatativá',
     carrera: 'Ingeniería de Sistemas y Computación',
   },
   {
-    id: 'doc-salazar',
-    name: 'Diana Salazar',
-    email: 'diana.salazar@ucundinamarca.edu.co',
-    password: 'doc123',
+    id: 'doc-navarro',
+    name: 'Andrés Navarro',
+    email: 'prof.navarro.siard@ucundinamarca.edu.co',
+    password: 'ProfNav2026*',
     role: 'docente',
     active: true,
     sede: 'Sede Facatativá',
@@ -195,8 +182,8 @@ export const CONTINGENCY_USERS: User[] = [
   {
     id: 'doc-prieto',
     name: 'Gabriel Prieto',
-    email: 'gabriel.prieto@ucundinamarca.edu.co',
-    password: 'doc123',
+    email: 'prof.prieto.siard@ucundinamarca.edu.co',
+    password: 'ProfPri2026*',
     role: 'docente',
     active: true,
     sede: 'Sede Facatativá',
@@ -205,8 +192,8 @@ export const CONTINGENCY_USERS: User[] = [
   {
     id: 'doc-cifuentes',
     name: 'Mariana Cifuentes',
-    email: 'mariana.cifuentes@ucundinamarca.edu.co',
-    password: 'doc123',
+    email: 'prof.cifuentes.siard@ucundinamarca.edu.co',
+    password: 'ProfCif2026*',
     role: 'docente',
     active: true,
     sede: 'Sede Facatativá',
@@ -224,9 +211,9 @@ export const CONTINGENCY_USERS: User[] = [
   },
   {
     id: 'est-1',
-    name: 'Juan David Romero',
-    email: 'juan.romero@ucundinamarca.edu.co',
-    password: 'est123',
+    name: 'Laura Quintero',
+    email: 'lauraquintero.siard@ucundinamarca.edu.co',
+    password: 'Laur5193*',
     role: 'estudiante',
     active: true,
     sede: 'Sede Facatativá',
@@ -234,9 +221,9 @@ export const CONTINGENCY_USERS: User[] = [
   },
   {
     id: 'est-2',
-    name: 'Valentina Ramos',
-    email: 'valentina.ramos@ucundinamarca.edu.co',
-    password: 'est123',
+    name: 'Mateo Rincón',
+    email: 'mateorincon.siard@ucundinamarca.edu.co',
+    password: 'Mate6381*',
     role: 'estudiante',
     active: true,
     sede: 'Sede Facatativá',
@@ -244,9 +231,9 @@ export const CONTINGENCY_USERS: User[] = [
   },
   {
     id: 'est-3',
-    name: 'Mateo Vargas',
-    email: 'mateo.vargas@ucundinamarca.edu.co',
-    password: 'est123',
+    name: 'Camila Torres',
+    email: 'camilatorres.siard@ucundinamarca.edu.co',
+    password: 'Cami9240*',
     role: 'estudiante',
     active: true,
     sede: 'Sede Facatativá',
@@ -254,19 +241,9 @@ export const CONTINGENCY_USERS: User[] = [
   },
   {
     id: 'est-4',
-    name: 'Sofía Morales',
-    email: 'sofia.morales@ucundinamarca.edu.co',
-    password: 'est123',
-    role: 'estudiante',
-    active: true,
-    sede: 'Sede Facatativá',
-    carrera: 'Ingeniería de Sistemas y Computación',
-  },
-  {
-    id: 'est-5',
-    name: 'Camilo Torres',
-    email: 'camilo.torres@ucundinamarca.edu.co',
-    password: 'est123',
+    name: 'Julián Morales',
+    email: 'julianmorales.siard@ucundinamarca.edu.co',
+    password: 'Juli1835*',
     role: 'estudiante',
     active: true,
     sede: 'Sede Facatativá',
@@ -277,9 +254,9 @@ export const CONTINGENCY_USERS: User[] = [
 export const CONTINGENCY_CADIS: CADI[] = [
   { id: 'cadi-calc-101', codigo: 'MAT101', nombre: 'Cálculo Diferencial', semestre: 1, tipo: 'CADI', esArticulador: false, docenteId: 'doc-salazar' },
   { id: 'cai-lect-101', codigo: 'CAI101', nombre: 'Lectura Crítica y Competencias Comunicativas', semestre: 1, tipo: 'CAI', esArticulador: false, docenteId: 'doc-prieto' },
+  { id: 'cai-etica-201', codigo: 'CAI201', nombre: 'Ética y Ciudadanía', semestre: 2, tipo: 'CAI', esArticulador: false, docenteId: 'doc-cifuentes' },
   { id: 'cadi-prog-301', codigo: 'SIS301', nombre: 'Programación II', semestre: 3, tipo: 'CADI', esArticulador: true, docenteId: 'doc-navarro' },
   { id: 'cadi-elec-302', codigo: 'ELC301', nombre: 'Electrónica Básica', semestre: 3, tipo: 'CADI', esArticulador: false, docenteId: 'doc-mendoza' },
-  { id: 'cai-etica-201', codigo: 'CAI201', nombre: 'Ética y Ciudadanía', semestre: 2, tipo: 'CAI', esArticulador: false, docenteId: 'doc-cifuentes' },
 ]
 
 export const CONTINGENCY_FORMS: Form[] = [
@@ -333,7 +310,7 @@ export const CONTINGENCY_RESPONSES: FormResponse[] = [
   { id: 'rf-nav-auto', formId: 'form-auto-2026', userId: 'doc-navarro', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-auto-1': '4', 'q-auto-2': '5', 'q-auto-3': '4', 'q-auto-4': '5' }, observation: 'Fomento continuo del aprendizaje basado en problemas de desarrollo de software.', date: '2026-02-14T08:30:00Z' },
   { id: 'rf-cif-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Propicia debates éticos muy constructivos y analiza dilemas profesionales de ingeniería.', date: '2026-02-09T17:00:00Z' },
   { id: 'rf-cif-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Cumplimiento impecable del cronograma y respeto mutuo en todas las sesiones.', date: '2026-02-11T12:00:00Z' },
-  { id: 'rf-cif-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', date: '2026-02-13T15:40:00Z' },
+  { id: 'rf-cif-3', formId: 'form-eval-2026', userId: 'est-carlos', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', date: '2026-02-13T15:40:00Z' },
   { id: 'rf-cif-auto', formId: 'form-auto-2026', userId: 'doc-cifuentes', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-auto-1': '4', 'q-auto-2': '4', 'q-auto-3': '4', 'q-auto-4': '5' }, observation: 'Promoción constante de la responsabilidad social universitaria bajo el MEDIT.', date: '2026-02-14T10:00:00Z' },
   { id: 'rf-prie-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Tiene sólido conocimiento lingüístico, pero los tiempos de devolución de ensayos son algo extensos.', date: '2026-02-08T09:30:00Z' },
   { id: 'rf-prie-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '4' }, observation: 'Las lecturas seleccionadas son buenas. Se sugiere mayor dinamismo y participación oral en clase.', date: '2026-02-10T11:20:00Z' },
@@ -341,7 +318,7 @@ export const CONTINGENCY_RESPONSES: FormResponse[] = [
   { id: 'rf-prie-auto', formId: 'form-auto-2026', userId: 'doc-prieto', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-auto-1': '4', 'q-auto-2': '4', 'q-auto-3': '4', 'q-auto-4': '4' }, observation: 'Reflexión pedagógica orientada a optimizar tiempos de corrección escrita.', date: '2026-02-13T14:00:00Z' },
   { id: 'rf-men-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas.', date: '2026-02-09T18:00:00Z' },
   { id: 'rf-men-2', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '3', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '3' }, observation: 'Las rúbricas de evaluación no son claras y las retroalimentaciones de los circuitos son muy breves.', date: '2026-02-11T13:40:00Z' },
-  { id: 'rf-men-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', date: '2026-02-13T16:10:00Z' },
+  { id: 'rf-men-3', formId: 'form-eval-2026', userId: 'est-carlos', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', date: '2026-02-13T16:10:00Z' },
   { id: 'rf-men-auto', formId: 'form-auto-2026', userId: 'doc-mendoza', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-auto-1': '4', 'q-auto-2': '3', 'q-auto-3': '3', 'q-auto-4': '4' }, observation: 'Reconozco la necesidad de incorporar simulaciones virtuales para fortalecer el componente práctico.', date: '2026-02-14T09:20:00Z' },
 ]
 
@@ -383,8 +360,32 @@ export function sanitizeUsers(users: User[]): User[] {
     } else if (emailLower.includes('prof.mendoza') || emailLower.includes('javier.mendoza')) {
       updated.password = 'ProfMen2026*'
       updated.role = 'docente'
+    } else if (emailLower.includes('prof.salazar') || emailLower.includes('diana.salazar')) {
+      updated.password = 'ProfSal2026*'
+      updated.role = 'docente'
+    } else if (emailLower.includes('prof.navarro') || emailLower.includes('andres.navarro')) {
+      updated.password = 'ProfNav2026*'
+      updated.role = 'docente'
+    } else if (emailLower.includes('prof.prieto') || emailLower.includes('gabriel.prieto')) {
+      updated.password = 'ProfPri2026*'
+      updated.role = 'docente'
+    } else if (emailLower.includes('prof.cifuentes') || emailLower.includes('mariana.cifuentes')) {
+      updated.password = 'ProfCif2026*'
+      updated.role = 'docente'
     } else if (emailLower.includes('carlospena')) {
       updated.password = 'Carl8742*'
+      updated.role = 'estudiante'
+    } else if (emailLower.includes('lauraquintero')) {
+      updated.password = 'Laur5193*'
+      updated.role = 'estudiante'
+    } else if (emailLower.includes('mateorincon')) {
+      updated.password = 'Mate6381*'
+      updated.role = 'estudiante'
+    } else if (emailLower.includes('camilatorres')) {
+      updated.password = 'Cami9240*'
+      updated.role = 'estudiante'
+    } else if (emailLower.includes('julianmorales')) {
+      updated.password = 'Juli1835*'
       updated.role = 'estudiante'
     }
     result.push(updated)
@@ -407,6 +408,79 @@ export function sanitizeUsers(users: User[]): User[] {
   }
 
   return result
+}
+
+function getInitialUsers(): User[] {
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const raw = storage.getItem(USERS_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const deleted = getDeletedUserIds()
+          const sanitized = sanitizeUsers(parsed).filter((u) => !deleted.has(u.id))
+          if (sanitized.length > 0) {
+            return sanitized
+          }
+        }
+      }
+      storage.setItem(USERS_STORAGE_KEY, JSON.stringify(CONTINGENCY_USERS))
+    }
+  } catch {}
+  return sanitizeUsers(CONTINGENCY_USERS)
+}
+
+function getInitialCadis(): CADI[] {
+  return [...CONTINGENCY_CADIS]
+}
+
+function getInitialForms(): Form[] {
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const raw = storage.getItem(FORMS_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const deleted = getDeletedFormIds()
+          return parsed.filter((f: Form) => !deleted.has(f.id))
+        }
+      }
+      storage.setItem(FORMS_STORAGE_KEY, JSON.stringify(CONTINGENCY_FORMS))
+    }
+  } catch {}
+  return [...CONTINGENCY_FORMS]
+}
+
+function getInitialResponses(): FormResponse[] {
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const raw = storage.getItem(RESPONSES_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const deleted = getDeletedFormIds()
+          return parsed.filter((r: FormResponse) => !deleted.has(r.formId))
+        }
+      }
+      storage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(CONTINGENCY_RESPONSES))
+    }
+  } catch {}
+  return [...CONTINGENCY_RESPONSES]
+}
+
+let state: DB = {
+  users: getInitialUsers(),
+  cadis: getInitialCadis(),
+  feedbacks: [],
+  feedbackResponses: [],
+  forms: getInitialForms(),
+  formResponses: getInitialResponses(),
+  connected: true,
+  loading: false,
+  error: null,
 }
 
 let demoModeActive = false
@@ -443,10 +517,8 @@ export function activateDemoMode() {
 }
 
 export async function initDB() {
-  state.loading = true
-  notify()
-
   const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+  const isRemote = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
 
   try {
     const data = (await reporteService.getBootstrap()) as DB & { ok?: boolean }
@@ -497,8 +569,8 @@ export async function initDB() {
     notify()
   } catch (err) {
     console.error('Error al inicializar PostgreSQL:', err)
-    if (isVercel || demoModeActive) {
-      console.warn('Conmutando a modo demostración (Datos institucionales)...')
+    if (isVercel || isRemote || demoModeActive) {
+      console.warn('Conmutando a modo autónomo / demostración (Datos institucionales)...')
       activateDemoMode()
       return
     }

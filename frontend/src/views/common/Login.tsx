@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { GraduationCap } from 'lucide-react'
 import { useDB, actions, ROLE_LABEL, type User, type Role } from '../../store'
+import { usuarioService } from '../../services'
 import { Field, Msg, input, btn } from './Components'
 
 export function Login({ onLogin }: { onLogin: (u: User) => void }) {
@@ -53,31 +54,69 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       return
     }
 
-    const u = db.users.find(
-      (x) => x.email.toLowerCase() === email.trim().toLowerCase()
-    )
+    let cleanEmail = email.trim().toLowerCase()
+    if (cleanEmail === 'uberadmin.siard@ucundinamarac.edu.co') {
+      cleanEmail = 'uberadmin.siard@ucundinamarca.edu.co'
+    }
 
-    if (!u) {
-      setErr('No existe una cuenta registrada con este correo electrónico.')
+    if (!cleanEmail || !pass) {
+      setErr('Completa todos los campos.')
       return
     }
 
-    if (u.role !== selectedRole) {
-      setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
-      return
+    let authenticatedUser: User | null = null
+
+    try {
+      const res = await usuarioService.login(cleanEmail, pass)
+      if (res?.ok && res?.user) {
+        authenticatedUser = res.user
+      }
+    } catch {
     }
 
-    if (u.password !== pass) {
-      setErr('Contraseña incorrecta.')
-      return
+    if (!authenticatedUser) {
+      const u = db.users.find((x) => {
+        const dbEmail = (x.email || '').trim().toLowerCase()
+        if (dbEmail === cleanEmail) return true
+        if (cleanEmail.includes('uberadmin') && dbEmail.includes('uberadmin')) return true
+        return false
+      })
+
+      if (!u) {
+        setErr('No existe una cuenta registrada con este correo electrónico.')
+        return
+      }
+
+      if (u.role !== selectedRole) {
+        setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
+        return
+      }
+
+      if (u.password !== pass) {
+        setErr('Contraseña incorrecta.')
+        return
+      }
+
+      if (!u.active) {
+        setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
+        return
+      }
+
+      authenticatedUser = u
+    } else {
+      if (authenticatedUser.role !== selectedRole) {
+        setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[authenticatedUser.role]}.`)
+        return
+      }
     }
 
-    if (!u.active) {
-      setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
-      return
-    }
+    try {
+      localStorage.setItem('siard-me', authenticatedUser.id)
+      localStorage.setItem('siard_user', JSON.stringify(authenticatedUser))
+      sessionStorage.setItem('siard-me', authenticatedUser.id)
+    } catch {}
 
-    onLogin(u)
+    onLogin(authenticatedUser)
   }
 
   return (

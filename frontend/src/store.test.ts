@@ -1034,25 +1034,93 @@ describe('Contingencia y Modo Demostración institucional en store.ts', () => {
     expect(mendoza?.password).toBe('ProfMen2026*')
     expect(mendoza?.role).toBe('docente')
 
+    const salazar = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'prof.salazar.siard@ucundinamarca.edu.co'
+    )
+    expect(salazar).toBeDefined()
+    expect(salazar?.password).toBe('ProfSal2026*')
+    expect(salazar?.role).toBe('docente')
+
+    const navarro = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'prof.navarro.siard@ucundinamarca.edu.co'
+    )
+    expect(navarro).toBeDefined()
+    expect(navarro?.password).toBe('ProfNav2026*')
+    expect(navarro?.role).toBe('docente')
+
+    const prieto = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'prof.prieto.siard@ucundinamarca.edu.co'
+    )
+    expect(prieto).toBeDefined()
+    expect(prieto?.password).toBe('ProfPri2026*')
+    expect(prieto?.role).toBe('docente')
+
+    const cifuentes = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'prof.cifuentes.siard@ucundinamarca.edu.co'
+    )
+    expect(cifuentes).toBeDefined()
+    expect(cifuentes?.password).toBe('ProfCif2026*')
+    expect(cifuentes?.role).toBe('docente')
+
     const carlos = CONTINGENCY_USERS.find(
       (u) => u.email.toLowerCase() === 'carlospena.siard@ucundinamarca.edu.co'
     )
     expect(carlos).toBeDefined()
     expect(carlos?.password).toBe('Carl8742*')
     expect(carlos?.role).toBe('estudiante')
+
+    const laura = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'lauraquintero.siard@ucundinamarca.edu.co'
+    )
+    expect(laura).toBeDefined()
+    expect(laura?.password).toBe('Laur5193*')
+    expect(laura?.role).toBe('estudiante')
+
+    const mateo = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'mateorincon.siard@ucundinamarca.edu.co'
+    )
+    expect(mateo).toBeDefined()
+    expect(mateo?.password).toBe('Mate6381*')
+    expect(mateo?.role).toBe('estudiante')
+
+    const camila = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'camilatorres.siard@ucundinamarca.edu.co'
+    )
+    expect(camila).toBeDefined()
+    expect(camila?.password).toBe('Cami9240*')
+    expect(camila?.role).toBe('estudiante')
+
+    const julian = CONTINGENCY_USERS.find(
+      (u) => u.email.toLowerCase() === 'julianmorales.siard@ucundinamarca.edu.co'
+    )
+    expect(julian).toBeDefined()
+    expect(julian?.password).toBe('Juli1835*')
+    expect(julian?.role).toBe('estudiante')
   })
 
-  it('asigna correctamente las materias CADI a los docentes en contingencia', () => {
+  it('asigna correctamente las materias CADI por semestre a cada docente en contingencia', () => {
     expect(CONTINGENCY_CADIS.length).toBeGreaterThanOrEqual(5)
-    const prog = CONTINGENCY_CADIS.find((c) => c.codigo === 'SIS301')
-    expect(prog?.docenteId).toBe('doc-navarro')
-    expect(prog?.esArticulador).toBe(true)
 
     const calc = CONTINGENCY_CADIS.find((c) => c.codigo === 'MAT101')
     expect(calc?.docenteId).toBe('doc-salazar')
+    expect(calc?.semestre).toBe(1)
+
+    const lect = CONTINGENCY_CADIS.find((c) => c.codigo === 'CAI101')
+    expect(lect?.docenteId).toBe('doc-prieto')
+    expect(lect?.semestre).toBe(1)
+
+    const etica = CONTINGENCY_CADIS.find((c) => c.codigo === 'CAI201')
+    expect(etica?.docenteId).toBe('doc-cifuentes')
+    expect(etica?.semestre).toBe(2)
+
+    const prog = CONTINGENCY_CADIS.find((c) => c.codigo === 'SIS301')
+    expect(prog?.docenteId).toBe('doc-navarro')
+    expect(prog?.semestre).toBe(3)
+    expect(prog?.esArticulador).toBe(true)
 
     const elec = CONTINGENCY_CADIS.find((c) => c.codigo === 'ELC301')
     expect(elec?.docenteId).toBe('doc-mendoza')
+    expect(elec?.semestre).toBe(3)
   })
 
   it('permite activar el modo demostración sin arrojar errores', () => {

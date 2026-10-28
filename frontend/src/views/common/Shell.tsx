@@ -56,7 +56,13 @@ export const VIEWS: Record<Role, View[]> = (() => {
 
 export function Shell() {
   const db = useDB()
-  const [meId, setMeId] = useState<string | null>(() => sessionStorage.getItem('siard-me'))
+  const [meId, setMeId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('siard-me') || localStorage.getItem('siard-me')
+    } catch {
+      return null
+    }
+  })
   const me = db.users.find((u) => u.id === meId && u.active)
   const [view, setView] = useState('')
   const [showProfile, setShowProfile] = useState(false)
@@ -65,7 +71,11 @@ export function Shell() {
     return (
       <Login
         onLogin={(u) => {
-          sessionStorage.setItem('siard-me', u.id)
+          try {
+            sessionStorage.setItem('siard-me', u.id)
+            localStorage.setItem('siard-me', u.id)
+            localStorage.setItem('siard_user', JSON.stringify(u))
+          } catch {}
           setMeId(u.id)
           setView('')
         }}
@@ -129,7 +139,11 @@ export function Shell() {
               type="button"
               className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper transition text-left"
               onClick={() => {
-                sessionStorage.removeItem('siard-me')
+                try {
+                  sessionStorage.removeItem('siard-me')
+                  localStorage.removeItem('siard-me')
+                  localStorage.removeItem('siard_user')
+                } catch {}
                 setMeId(null)
               }}
             >
@@ -152,7 +166,11 @@ export function Shell() {
             type="button"
             className="flex items-center gap-1.5 text-xs text-paper/75 hover:text-paper"
             onClick={() => {
-              sessionStorage.removeItem('siard-me')
+              try {
+                sessionStorage.removeItem('siard-me')
+                localStorage.removeItem('siard-me')
+                localStorage.removeItem('siard_user')
+              } catch {}
               setMeId(null)
             }}
           >
