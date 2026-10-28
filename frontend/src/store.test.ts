@@ -1128,3 +1128,46 @@ describe('Contingencia y Modo Demostración institucional en store.ts', () => {
   })
 })
 
+describe('Guardián de Rutas y Estado de Autenticación (ProtectedRoute)', () => {
+  it('el estado inicial de currentUser debe ser estrictamente null si no hay sesión activa', async () => {
+    const { logout, getCurrentUser } = await import('./store')
+    logout()
+    expect(getCurrentUser()).toBeNull()
+  })
+
+  it('setCurrentUser almacena el usuario con propiedades role y rol', async () => {
+    const { setCurrentUser, getCurrentUser, logout } = await import('./store')
+    const testAdmin: User = {
+      id: 'usr-admin-test',
+      name: 'Ubeimar Laguna Cárdenas',
+      email: 'uberadmin.siard@ucundinamarca.edu.co',
+      password: 'Uber1019',
+      role: 'admin',
+      active: true,
+    }
+    setCurrentUser(testAdmin)
+    const current = getCurrentUser()
+    expect(current).not.toBeNull()
+    expect(current?.id).toBe('usr-admin-test')
+    expect(current?.role).toBe('admin')
+    expect(current?.rol).toBe('admin')
+    logout()
+  })
+
+  it('logout resetea currentUser a null', async () => {
+    const { setCurrentUser, getCurrentUser, logout } = await import('./store')
+    setCurrentUser({
+      id: 'usr-test',
+      name: 'Test',
+      email: 'test@ucundinamarca.edu.co',
+      password: '123',
+      role: 'docente',
+      active: true,
+    })
+    expect(getCurrentUser()).not.toBeNull()
+    logout()
+    expect(getCurrentUser()).toBeNull()
+  })
+})
+
+

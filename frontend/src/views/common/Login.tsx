@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { GraduationCap } from 'lucide-react'
-import { useDB, actions, ROLE_LABEL, CONTINGENCY_USERS, type User, type Role } from '../../store'
+import { useDB, actions, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, type User, type Role } from '../../store'
 import { usuarioService } from '../../services'
 import { Field, Msg, input, btn } from './Components'
 
@@ -97,12 +97,7 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       usuarioService.login(cleanEmail, pass).catch(() => {})
     } catch {}
 
-    try {
-      localStorage.setItem('siard-me', u.id)
-      localStorage.setItem('siard_user', JSON.stringify(u))
-      sessionStorage.setItem('siard-me', u.id)
-    } catch {}
-
+    setCurrentUser(u)
     onLogin(u)
   }
 

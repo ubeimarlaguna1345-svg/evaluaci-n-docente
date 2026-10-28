@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Users,
   ClipboardList,
@@ -10,7 +11,7 @@ import {
   UserCog,
 } from 'lucide-react'
 import { ModalPerfil } from '../../components/ModalPerfil'
-import { useDB, ROLE_LABEL, CONTINGENCY_USERS, type User, type Role } from '../../store'
+import { useDB, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, logout, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
 import { StudentEvaluation } from '../estudiante'
@@ -56,6 +57,8 @@ export const VIEWS: Record<Role, View[]> = (() => {
 
 export function Shell() {
   const db = useDB()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [meId, setMeId] = useState<string | null>(() => {
     try {
       return sessionStorage.getItem('siard-me') || localStorage.getItem('siard-me')
@@ -67,17 +70,20 @@ export function Shell() {
   const [view, setView] = useState('')
   const [showProfile, setShowProfile] = useState(false)
 
+  useEffect(() => {
+    if (me && location.pathname === '/') {
+      navigate(`/${me.role}`, { replace: true })
+    }
+  }, [me, location.pathname, navigate])
+
   if (!me) {
     return (
       <Login
         onLogin={(u) => {
-          try {
-            sessionStorage.setItem('siard-me', u.id)
-            localStorage.setItem('siard-me', u.id)
-            localStorage.setItem('siard_user', JSON.stringify(u))
-          } catch {}
+          setCurrentUser(u)
           setMeId(u.id)
           setView('')
+          navigate(`/${u.role}`)
         }}
       />
     )
@@ -137,14 +143,11 @@ export function Shell() {
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper transition text-left"
+              className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper transition text-left cursor-pointer"
               onClick={() => {
-                try {
-                  sessionStorage.removeItem('siard-me')
-                  localStorage.removeItem('siard-me')
-                  localStorage.removeItem('siard_user')
-                } catch {}
+                logout()
                 setMeId(null)
+                navigate('/')
               }}
             >
               <LogOut size={14} />
@@ -155,7 +158,7 @@ export function Shell() {
         <div className="m-3 flex items-center justify-between gap-2 md:hidden">
           <button
             type="button"
-            className="flex items-center gap-1.5 text-xs text-ochre hover:text-paper"
+            className="flex items-center gap-1.5 text-xs text-ochre hover:text-paper cursor-pointer"
             onClick={() => setShowProfile(true)}
             title="Mi Perfil / Contraseña"
           >
@@ -164,14 +167,11 @@ export function Shell() {
           </button>
           <button
             type="button"
-            className="flex items-center gap-1.5 text-xs text-paper/75 hover:text-paper"
+            className="flex items-center gap-1.5 text-xs text-paper/75 hover:text-paper cursor-pointer"
             onClick={() => {
-              try {
-                sessionStorage.removeItem('siard-me')
-                localStorage.removeItem('siard-me')
-                localStorage.removeItem('siard_user')
-              } catch {}
+              logout()
               setMeId(null)
+              navigate('/')
             }}
           >
             <LogOut size={14} />

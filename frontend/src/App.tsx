@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useDB, initDB, actions } from './store'
 import { Shell } from './views/common/Shell'
 import { Msg } from './views/common/Components'
+import { ProtectedRoute } from './ProtectedRoute'
 
-export default function App() {
+export function AppContent() {
   const db = useDB()
   useEffect(() => {
     initDB()
@@ -47,5 +49,50 @@ export default function App() {
     )
   }
 
-  return <Shell />
+  return (
+    <Routes>
+      <Route path="/" element={<Shell />} />
+      <Route
+        path="/admin/*"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/coordinador/*"
+        element={
+          <ProtectedRoute allowedRoles={['coordinador', 'admin']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/docente/*"
+        element={
+          <ProtectedRoute allowedRoles={['docente', 'admin']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/estudiante/*"
+        element={
+          <ProtectedRoute allowedRoles={['estudiante', 'admin']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate replace to="/" />} />
+    </Routes>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  )
 }

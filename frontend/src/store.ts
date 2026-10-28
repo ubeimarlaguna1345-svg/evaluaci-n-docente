@@ -882,6 +882,109 @@ export function useDB() {
   return val
 }
 
+function getStoredUser(): (User & { rol: string }) | null {
+  try {
+    const raw =
+      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('siard_user') : null) ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null)
+    if (raw) {
+      const u = JSON.parse(raw)
+      if (u && u.id && u.role && u.active) {
+        return { ...u, rol: u.rol || u.role }
+      }
+    }
+    const meId =
+      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('siard-me') : null) ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('siard-me') : null)
+    if (meId) {
+      const found =
+        state.users.find((x) => x.id === meId && x.active) ||
+        CONTINGENCY_USERS.find((x) => x.id === meId && x.active)
+      if (found) {
+        return { ...found, rol: found.role }
+      }
+    }
+  } catch {}
+  return null
+}
+
+let currentUser: (User & { rol: string }) | null = getStoredUser()
+
+export function setCurrentUser(u: User | null) {
+  if (u) {
+    currentUser = { ...u, rol: (u as any).rol || u.role }
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('siard-me', u.id)
+        sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('siard-me', u.id)
+        localStorage.setItem('siard_user', JSON.stringify(currentUser))
+      }
+    } catch {}
+  } else {
+    currentUser = null
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('siard-me')
+        sessionStorage.removeItem('siard_user')
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('siard-me')
+        localStorage.removeItem('siard_user')
+      }
+    } catch {}
+  }
+  notify()
+}
+
+export function getCurrentUser(): (User & { rol: string }) | null {
+  return currentUser
+}
+
+export function logout() {
+  setCurrentUser(null)
+}
+
+export interface AppStoreState extends DB {
+  currentUser: (User & { rol: string }) | null
+  user: (User & { rol: string }) | null
+  setCurrentUser: (u: User | null) => void
+  logout: () => void
+}
+
+export function useAppStore<T = AppStoreState>(selector?: (state: AppStoreState) => T): T {
+  const [storeState, setStoreState] = useState<AppStoreState>(() => ({
+    ...state,
+    currentUser,
+    user: currentUser,
+    setCurrentUser,
+    logout,
+  }))
+
+  useEffect(() => {
+    const fn = () => {
+      setStoreState({
+        ...state,
+        currentUser,
+        user: currentUser,
+        setCurrentUser,
+        logout,
+      })
+    }
+    subs.add(fn)
+    return () => {
+      subs.delete(fn)
+    }
+  }, [])
+
+  if (selector) {
+    return selector(storeState)
+  }
+  return storeState as unknown as T
+}
+
 export const isOpen = (start: string, end: string) => {
   const n = new Date().toISOString().slice(0, 16)
   return n >= start && n <= end
