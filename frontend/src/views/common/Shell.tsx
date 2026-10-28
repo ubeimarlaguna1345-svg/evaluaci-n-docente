@@ -4,7 +4,6 @@ import {
   ClipboardList,
   BarChart3,
   FileText,
-  MessageSquare,
   Award,
   BookOpen,
   LogOut,
@@ -14,7 +13,7 @@ import { ModalPerfil } from '../../components/ModalPerfil'
 import { useDB, ROLE_LABEL, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
-import { StudentEvaluation, StudentFeedback } from '../estudiante'
+import { StudentEvaluation } from '../estudiante'
 import { SelfEvaluation } from '../docente'
 import { CadisView, FormsAdmin, Results, Statistics, Report } from '../coordinador'
 import { Accounts } from '../admin'
@@ -50,7 +49,6 @@ export const VIEWS: Record<Role, View[]> = (() => {
     ],
     estudiante: [
       { id: 'eval', label: 'Evaluación docente', icon: ClipboardList, render: (me) => <StudentEvaluation me={me} /> },
-      { id: 'retro', label: 'Retroalimentación', icon: MessageSquare, render: (me) => <StudentFeedback me={me} /> },
       normativaView,
     ],
   }

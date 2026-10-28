@@ -923,3 +923,26 @@ describe('7. Formato de ID Institucional Docente en Reportes', () => {
   })
 })
 
+describe('8. Restricción del Menú para el Rol Estudiante', () => {
+  it('el menú del estudiante debe contener estrictamente 2 opciones normativas', () => {
+    const estudianteViews = VIEWS.estudiante
+    expect(estudianteViews.length).toBe(2)
+
+    const ids = estudianteViews.map((v) => v.id)
+    expect(ids).toEqual(['eval', 'normativa'])
+
+    const labels = estudianteViews.map((v) => v.label)
+    expect(labels).toContain('Evaluación docente')
+    expect(labels).toContain('Normativa y MEDIT')
+  })
+
+  it('el menú del estudiante no debe contener la opción de retroalimentación', () => {
+    const estudianteViews = VIEWS.estudiante
+    const labels = estudianteViews.map((v) => v.label.toLowerCase())
+    const ids = estudianteViews.map((v) => v.id.toLowerCase())
+
+    expect(labels.some((l) => l.includes('retroalimentación'))).toBe(false)
+    expect(ids.some((id) => id === 'retro')).toBe(false)
+  })
+})
+
