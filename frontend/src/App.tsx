@@ -53,6 +53,14 @@ export function AppContent() {
     <Routes>
       <Route path="/" element={<Shell />} />
       <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/*"
         element={
           <ProtectedRoute allowedRoles={['admin']}>
@@ -61,9 +69,25 @@ export function AppContent() {
         }
       />
       <Route
+        path="/coordinador"
+        element={
+          <ProtectedRoute allowedRoles={['coordinador']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/coordinador/*"
         element={
-          <ProtectedRoute allowedRoles={['coordinador', 'admin']}>
+          <ProtectedRoute allowedRoles={['coordinador']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/docente"
+        element={
+          <ProtectedRoute allowedRoles={['docente']}>
             <Shell />
           </ProtectedRoute>
         }
@@ -71,7 +95,15 @@ export function AppContent() {
       <Route
         path="/docente/*"
         element={
-          <ProtectedRoute allowedRoles={['docente', 'admin']}>
+          <ProtectedRoute allowedRoles={['docente']}>
+            <Shell />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/estudiante"
+        element={
+          <ProtectedRoute allowedRoles={['estudiante']}>
             <Shell />
           </ProtectedRoute>
         }
@@ -79,12 +111,12 @@ export function AppContent() {
       <Route
         path="/estudiante/*"
         element={
-          <ProtectedRoute allowedRoles={['estudiante', 'admin']}>
+          <ProtectedRoute allowedRoles={['estudiante']}>
             <Shell />
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate replace to="/" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

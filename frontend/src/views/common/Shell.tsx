@@ -61,7 +61,7 @@ export function Shell() {
   const location = useLocation()
   const [meId, setMeId] = useState<string | null>(() => {
     try {
-      return sessionStorage.getItem('siard-me') || localStorage.getItem('siard-me')
+      return sessionStorage.getItem('siard-me')
     } catch {
       return null
     }

@@ -884,18 +884,15 @@ export function useDB() {
 
 function getStoredUser(): (User & { rol: string }) | null {
   try {
-    const raw =
-      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('siard_user') : null) ||
-      (typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null)
+    if (typeof sessionStorage === 'undefined') return null
+    const raw = sessionStorage.getItem('currentUser') || sessionStorage.getItem('siard_user')
     if (raw) {
       const u = JSON.parse(raw)
-      if (u && u.id && u.role && u.active) {
-        return { ...u, rol: u.rol || u.role }
+      if (u && u.id && (u.role || u.rol) && u.active !== false) {
+        return { ...u, role: u.role || u.rol, rol: u.rol || u.role }
       }
     }
-    const meId =
-      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('siard-me') : null) ||
-      (typeof localStorage !== 'undefined' ? localStorage.getItem('siard-me') : null)
+    const meId = sessionStorage.getItem('siard-me')
     if (meId) {
       const found =
         state.users.find((x) => x.id === meId && x.active) ||
@@ -915,22 +912,24 @@ export function setCurrentUser(u: User | null) {
     currentUser = { ...u, rol: (u as any).rol || u.role }
     try {
       if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
         sessionStorage.setItem('siard-me', u.id)
         sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
       }
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('siard-me', u.id)
-        localStorage.setItem('siard_user', JSON.stringify(currentUser))
+        localStorage.removeItem('currentUser')
+        localStorage.removeItem('siard-me')
+        localStorage.removeItem('siard_user')
       }
     } catch {}
   } else {
     currentUser = null
     try {
       if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem('siard-me')
-        sessionStorage.removeItem('siard_user')
+        sessionStorage.clear()
       }
       if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('currentUser')
         localStorage.removeItem('siard-me')
         localStorage.removeItem('siard_user')
       }

@@ -1135,7 +1135,7 @@ describe('Guardián de Rutas y Estado de Autenticación (ProtectedRoute)', () =>
     expect(getCurrentUser()).toBeNull()
   })
 
-  it('setCurrentUser almacena el usuario con propiedades role y rol', async () => {
+  it('setCurrentUser almacena la sesión en sessionStorage y limpia localStorage', async () => {
     const { setCurrentUser, getCurrentUser, logout } = await import('./store')
     const testAdmin: User = {
       id: 'usr-admin-test',
@@ -1151,10 +1151,18 @@ describe('Guardián de Rutas y Estado de Autenticación (ProtectedRoute)', () =>
     expect(current?.id).toBe('usr-admin-test')
     expect(current?.role).toBe('admin')
     expect(current?.rol).toBe('admin')
+
+    if (typeof sessionStorage !== 'undefined') {
+      expect(sessionStorage.getItem('siard-me')).toBe('usr-admin-test')
+    }
+    if (typeof localStorage !== 'undefined') {
+      expect(localStorage.getItem('currentUser')).toBeNull()
+      expect(localStorage.getItem('siard-me')).toBeNull()
+    }
     logout()
   })
 
-  it('logout resetea currentUser a null', async () => {
+  it('logout limpia sessionStorage y resetea currentUser a null', async () => {
     const { setCurrentUser, getCurrentUser, logout } = await import('./store')
     setCurrentUser({
       id: 'usr-test',
@@ -1167,6 +1175,10 @@ describe('Guardián de Rutas y Estado de Autenticación (ProtectedRoute)', () =>
     expect(getCurrentUser()).not.toBeNull()
     logout()
     expect(getCurrentUser()).toBeNull()
+    if (typeof sessionStorage !== 'undefined') {
+      expect(sessionStorage.getItem('siard-me')).toBeNull()
+      expect(sessionStorage.getItem('currentUser')).toBeNull()
+    }
   })
 })
 
