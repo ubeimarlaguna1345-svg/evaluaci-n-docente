@@ -975,5 +975,28 @@ describe('9. Reestructuración de Heteroevaluación en Tres Bloques Instituciona
     expect(categorizarPregunta(qMedit, 1, 3)).toBe('B')
     expect(categorizarPregunta(qSede, 2, 3)).toBe('C')
   })
+
+  it('debe reubicar la pregunta sobre comunicación y calendario de la facultad en el Bloque 3 (Recursos y Gestión)', () => {
+    const qFacultad = {
+      id: 'q-facultad-calendario',
+      text: '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?',
+      type: 'escala' as const,
+      options: [],
+      required: true,
+      dimension: 'Recursos y Gestión Institucional',
+    }
+
+    expect(categorizarPregunta(qFacultad, 0, 11)).toBe('C')
+  })
+
+  it('debe respetar el metadato explícito bloque en cada pregunta', () => {
+    const qD = { id: 'qd', text: 'Pregunta', type: 'escala' as const, options: [], required: true, bloque: 'docente' as const }
+    const qM = { id: 'qm', text: 'Pregunta', type: 'escala' as const, options: [], required: true, bloque: 'medit' as const }
+    const qI = { id: 'qi', text: 'Pregunta', type: 'escala' as const, options: [], required: true, bloque: 'institucional' as const }
+
+    expect(categorizarPregunta(qD, 0, 3)).toBe('A')
+    expect(categorizarPregunta(qM, 0, 3)).toBe('B')
+    expect(categorizarPregunta(qI, 0, 3)).toBe('C')
+  })
 })
 

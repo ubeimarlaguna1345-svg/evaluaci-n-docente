@@ -50,7 +50,7 @@ export async function getBootstrap(_req, res) {
     )
 
     const questionsRes = await pool.query(
-      'SELECT id, formulario_id, enunciado AS text, tipo_respuesta AS type, dimension, obligatoria AS required, orden FROM preguntas ORDER BY orden'
+      "SELECT id, formulario_id, enunciado AS text, tipo_respuesta AS type, dimension, COALESCE(bloque, 'docente') AS bloque, obligatoria AS required, orden FROM preguntas ORDER BY orden"
     )
 
     const optionsRes = await pool.query(
@@ -70,6 +70,7 @@ export async function getBootstrap(_req, res) {
         text: q.text,
         type: q.type,
         dimension: q.dimension || 'General',
+        bloque: q.bloque || 'docente',
         required: Boolean(q.required),
         options: optionsByQ[q.id] || [],
       }

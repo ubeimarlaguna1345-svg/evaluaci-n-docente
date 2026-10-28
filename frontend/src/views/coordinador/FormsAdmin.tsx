@@ -248,6 +248,11 @@ export function FormsAdmin() {
                 <span>
                   <span className="mr-2 font-mono text-ink/40">{i + 1}.</span>{q.text} 
                   <span className="ml-1 text-xs text-ochre">[{TYPE_LABEL[q.type]}]</span>
+                  {q.bloque && (
+                    <span className="ml-1 rounded bg-pine/10 px-1.5 py-0.5 text-xs text-pine font-medium">
+                      {q.bloque === 'docente' ? 'Bloque 1 (Docente)' : q.bloque === 'medit' ? 'Bloque 2 (MEDIT)' : 'Bloque 3 (Gestión)'}
+                    </span>
+                  )}
                   {q.dimension && <span className="ml-1 rounded bg-paper px-1.5 py-0.5 text-xs text-pine font-medium">{q.dimension}</span>}
                 </span>
                 <button type="button" onClick={() => setF({ ...f, questions: f.questions.filter((x) => x.id !== q.id) })} className="text-ink/40 hover:text-red-600 transition-colors" title="Quitar pregunta"><X size={14} /></button>

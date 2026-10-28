@@ -10,10 +10,11 @@ export type AnswerType = 'escala' | 'seleccion' | 'texto'
 export type FormKind = 'evaluacion' | 'autoevaluacion'
 
 export type TipoCampo = 'CADI' | 'CAI'
+export type BloquePregunta = 'docente' | 'medit' | 'institucional'
 
 export interface User { id: string; name: string; email: string; password: string; role: Role; active: boolean; sede?: string; carrera?: string }
 export interface CADI { id: string; codigo: string; nombre: string; semestre: number; tipo?: 'CADI' | 'CAI'; esArticulador?: boolean; docenteId?: string | null }
-export interface Question { id: string; text: string; type: AnswerType; options: string[]; required: boolean; dimension?: string }
+export interface Question { id: string; text: string; type: AnswerType; options: string[]; required: boolean; dimension?: string; bloque?: BloquePregunta }
 export interface Feedback { id: string; docenteId?: string; teacherId?: string; course: string; question: Question; start: string; end: string; createdAt: string }
 export interface FeedbackResponse { id: string; feedbackId: string; studentId: string; value: string; date: string }
 export interface Form { id: string; kind: FormKind; title: string; description: string; period: string; cadiId?: string; start: string; end: string; questions: Question[] }

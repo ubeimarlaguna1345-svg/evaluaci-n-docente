@@ -128,21 +128,27 @@ export async function initSchema() {
         WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-auto-2026')
         ON CONFLICT (id) DO NOTHING;
 
-        INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
+        ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS bloque TEXT DEFAULT 'docente';
+
+        INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden, bloque)
         VALUES
-          ('q-claridad', 'form-eval-2026', 'Claridad conceptual, dominio temático y explicación en clase', 'escala', 'Claridad conceptual y explicación', true, 1),
-          ('q-organizacion', 'form-eval-2026', 'Organización, puntualidad y cumplimiento de acuerdos académicos', 'escala', 'Organización y cumplimiento del programa', true, 2),
-          ('q-retro', 'form-eval-2026', 'Retroalimentación oportuna, trato asertivo y resolución de dudas', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3),
-          ('q-metodologia', 'form-eval-2026', 'Metodología activa y aplicación práctica orientada al MEDIT', 'escala', 'Metodología y aplicación práctica', true, 4),
-          ('q-tic', 'form-eval-2026', 'Integración de herramientas digitales, casos reales y aprendizaje autónomo', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 5),
-          ('q-infraestructura', 'form-eval-2026', 'Disponibilidad, dotación y estado de aulas y laboratorios en la sede', 'escala', 'Recursos y Gestión Institucional', true, 6),
-          ('q-conectividad', 'form-eval-2026', 'Conectividad a internet, plataformas institucionales y soporte técnico de la sede', 'escala', 'Recursos y Gestión Institucional', true, 7),
-          ('q-auto-1', 'form-auto-2026', 'Autoevaluación: Claridad didáctica y mediación pedagógica', 'escala', 'Claridad conceptual y explicación', true, 1),
-          ('q-auto-2', 'form-auto-2026', 'Autoevaluación: Cumplimiento de planeación y rúbricas', 'escala', 'Organización y cumplimiento del programa', true, 2),
-          ('q-auto-3', 'form-auto-2026', 'Autoevaluación: Oportunidad en retroalimentación formativa', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3),
-          ('q-auto-4', 'form-auto-2026', 'Autoevaluación: Innovación en prácticas y proyectos MEDIT', 'escala', 'Metodología y aplicación práctica', true, 4)
+          ('q-claridad', 'form-eval-2026', 'Demuestra dominio actualizado, solidez conceptual y promueve la indagación metódica y fuentes técnicas.', 'escala', 'Claridad conceptual y explicación', true, 1, 'docente'),
+          ('q-doc-expositiva', 'form-eval-2026', 'Estructura sus clases con claridad expositiva y metodología adecuada para facilitar el aprendizaje.', 'escala', 'Claridad conceptual y explicación', true, 2, 'docente'),
+          ('q-organizacion', 'form-eval-2026', 'Cumple con el cronograma académico, los horarios acordados y el seguimiento del CADI.', 'escala', 'Organización y cumplimiento del programa', true, 3, 'docente'),
+          ('q-retro', 'form-eval-2026', 'Realiza retroalimentación oportuna y orienta constructivamente sobre los resultados de las evaluaciones.', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 4, 'docente'),
+          ('q-doc-comunicacion', 'form-eval-2026', 'Mantiene una comunicación respetuosa, asertiva y disposición para atender inquietudes pedagógicas.', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 5, 'docente'),
+          ('q-tic', 'form-eval-2026', 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 6, 'medit'),
+          ('q-metodologia', 'form-eval-2026', 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', 'escala', 'Metodología y aplicación práctica', true, 7, 'medit'),
+          ('q-medit-autonomo', 'form-eval-2026', 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 8, 'medit'),
+          ('q-infraestructura', 'form-eval-2026', 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', 'escala', 'Recursos y Gestión Institucional', true, 9, 'institucional'),
+          ('q-conectividad', 'form-eval-2026', 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', 'escala', 'Recursos y Gestión Institucional', true, 10, 'institucional'),
+          ('q-facultad-comunicacion', 'form-eval-2026', '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?', 'escala', 'Recursos y Gestión Institucional', true, 11, 'institucional'),
+          ('q-auto-1', 'form-auto-2026', 'Autoevaluación: Claridad didáctica y mediación pedagógica', 'escala', 'Claridad conceptual y explicación', true, 1, 'docente'),
+          ('q-auto-2', 'form-auto-2026', 'Autoevaluación: Cumplimiento de planeación y rúbricas', 'escala', 'Organización y cumplimiento del programa', true, 2, 'docente'),
+          ('q-auto-3', 'form-auto-2026', 'Autoevaluación: Oportunidad en retroalimentación formativa', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3, 'docente'),
+          ('q-auto-4', 'form-auto-2026', 'Autoevaluación: Innovación en prácticas y proyectos MEDIT', 'escala', 'Metodología y aplicación práctica', true, 4, 'medit')
         ON CONFLICT (id) DO UPDATE
-        SET enunciado = EXCLUDED.enunciado, dimension = EXCLUDED.dimension, orden = EXCLUDED.orden;
+        SET enunciado = EXCLUDED.enunciado, dimension = EXCLUDED.dimension, orden = EXCLUDED.orden, bloque = EXCLUDED.bloque;
 
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES

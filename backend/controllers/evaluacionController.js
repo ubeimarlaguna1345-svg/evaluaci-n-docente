@@ -106,9 +106,9 @@ export async function createForm(req, res) {
         const q = questions[i]
         const qId = q.id || crypto.randomUUID()
         await client.query(
-          `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [qId, formId, q.text, q.type, q.dimension || 'General', q.required !== false, i]
+          `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden, bloque)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [qId, formId, q.text, q.type, q.dimension || 'General', q.required !== false, i, q.bloque || 'docente']
         )
 
         if (Array.isArray(q.options)) {
@@ -170,16 +170,16 @@ export async function updateForm(req, res) {
         if (currentQIds.has(qId)) {
           await client.query(
             `UPDATE preguntas
-             SET enunciado = $1, tipo_respuesta = $2, dimension = $3, obligatoria = $4, orden = $5
-             WHERE id = $6`,
-            [q.text, q.type, q.dimension || 'General', q.required !== false, i, qId]
+             SET enunciado = $1, tipo_respuesta = $2, dimension = $3, obligatoria = $4, orden = $5, bloque = $6
+             WHERE id = $7`,
+            [q.text, q.type, q.dimension || 'General', q.required !== false, i, q.bloque || 'docente', qId]
           )
           await client.query('DELETE FROM opciones WHERE pregunta_id = $1', [qId])
         } else {
           await client.query(
-            `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [qId, id, q.text, q.type, q.dimension || 'General', q.required !== false, i]
+            `INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden, bloque)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [qId, id, q.text, q.type, q.dimension || 'General', q.required !== false, i, q.bloque || 'docente']
           )
         }
 

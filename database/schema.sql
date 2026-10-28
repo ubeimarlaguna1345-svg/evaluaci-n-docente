@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS preguntas (
   enunciado       TEXT NOT NULL,
   tipo_respuesta  TEXT NOT NULL CHECK (tipo_respuesta IN ('escala', 'seleccion', 'texto')),
   dimension       TEXT NOT NULL DEFAULT 'General',
+  bloque          TEXT NOT NULL DEFAULT 'docente' CHECK (bloque IN ('docente', 'medit', 'institucional')),
   obligatoria     BOOLEAN NOT NULL DEFAULT TRUE,
   orden           INTEGER NOT NULL DEFAULT 0
 );

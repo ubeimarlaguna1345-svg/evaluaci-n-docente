@@ -44,11 +44,19 @@ export const BLOQUES: BloqueDef[] = [
 ]
 
 export function categorizarPregunta(q: Question, idx: number, total: number): 'A' | 'B' | 'C' {
+  if (q.bloque === 'docente') return 'A'
+  if (q.bloque === 'medit') return 'B'
+  if (q.bloque === 'institucional') return 'C'
+
   const dim = (q.dimension || '').toLowerCase()
   const txt = (q.text || '').toLowerCase()
   const combined = `${txt} ${dim}`
 
   if (
+    combined.includes('facultad') ||
+    combined.includes('calendario') ||
+    combined.includes('dependencia') ||
+    combined.includes('trámite') ||
     combined.includes('infraestructura') ||
     combined.includes('conectividad') ||
     combined.includes('recurso') ||
@@ -59,7 +67,8 @@ export function categorizarPregunta(q: Question, idx: number, total: number): 'A
     combined.includes('wifi') ||
     combined.includes('físic') ||
     combined.includes('equipos') ||
-    dim.includes('recursos y gestión')
+    dim.includes('recursos y gestión') ||
+    dim.includes('institucional')
   ) {
     return 'C'
   }
@@ -73,6 +82,11 @@ export function categorizarPregunta(q: Question, idx: number, total: number): 'A
     combined.includes('proyecto') ||
     combined.includes('innovación') ||
     combined.includes('aplicación práctica') ||
+    combined.includes('colaborativo') ||
+    combined.includes('pensamiento crítico') ||
+    combined.includes('problemas reales') ||
+    combined.includes('casos del entorno') ||
+    combined.includes('aprendizaje significativo') ||
     combined.includes('metodología') ||
     dim.includes('modelo medit') ||
     dim.includes('metodología')
@@ -84,11 +98,18 @@ export function categorizarPregunta(q: Question, idx: number, total: number): 'A
     combined.includes('claridad') ||
     combined.includes('explicación') ||
     combined.includes('dominio') ||
+    combined.includes('solidez') ||
+    combined.includes('indagación') ||
+    combined.includes('fuentes') ||
+    combined.includes('expositiva') ||
+    combined.includes('horario') ||
+    combined.includes('cadi') ||
     combined.includes('puntualidad') ||
     combined.includes('cumplimiento') ||
     combined.includes('acuerdo') ||
     combined.includes('retroalimentación') ||
     combined.includes('trato') ||
+    combined.includes('asertiva') ||
     combined.includes('organización') ||
     combined.includes('calificación') ||
     dim.includes('claridad') ||
@@ -200,7 +221,7 @@ export function StudentEvaluationForm({
               Progreso de la evaluación
             </span>
             <h4 className="text-sm font-bold text-pine">
-              Paso {activeStep + 1} de {BLOQUES.length}: {currentBloque.stepLabel}
+              Paso {activeStep + 1} de {BLOQUES.length}: {currentBloque.stepLabel} ({currentQuestions.length} {currentBloque.id === 'A' ? 'preguntas del docente' : currentBloque.id === 'B' ? 'preguntas de MEDIT' : 'preguntas de infraestructura y gestión'})
             </h4>
           </div>
           <span className="font-mono text-xs text-ink/60">
@@ -252,7 +273,7 @@ export function StudentEvaluationForm({
                     {b.stepLabel}
                   </p>
                   <p className="text-[10px] text-ink/50">
-                    {blockAnswered}/{blockQuestions.length} respondidas
+                    {blockQuestions.length} {b.id === 'A' ? 'preguntas del docente' : b.id === 'B' ? 'preguntas de MEDIT' : 'preguntas de gestión'} · {blockAnswered}/{blockQuestions.length}
                   </p>
                 </div>
               </button>

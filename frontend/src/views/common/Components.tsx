@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Check, AlertCircle, Plus } from 'lucide-react'
-import { uid, MEDIT_DIMENSIONES, type Question, type AnswerType } from '../../store'
+import { uid, MEDIT_DIMENSIONES, type Question, type AnswerType, type BloquePregunta } from '../../store'
 
 export const input = 'w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-moss focus:ring-2 focus:ring-moss/20'
 export const btn = 'inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-moss disabled:opacity-40'
@@ -104,6 +104,7 @@ export function QuestionEditor({
   const [text, setText] = useState('')
   const [type, setType] = useState<AnswerType>('escala')
   const [dimension, setDimension] = useState<string>(hideDimension ? 'Retroalimentación de Aula' : defaultDimension)
+  const [bloque, setBloque] = useState<BloquePregunta>('docente')
   const [opts, setOpts] = useState('')
   const [err, setErr] = useState('')
 
@@ -118,6 +119,7 @@ export function QuestionEditor({
       options,
       required: true,
       dimension: hideDimension ? 'Retroalimentación de Aula' : (dimension || 'General'),
+      bloque,
     })
     setText('')
     setOpts('')
@@ -129,7 +131,7 @@ export function QuestionEditor({
       <Field label="Enunciado">
         <input className={input} value={text} onChange={(e) => setText(e.target.value)} placeholder="Escriba la pregunta…" />
       </Field>
-      <div className={`grid gap-3 ${hideDimension ? (type === 'seleccion' ? 'sm:grid-cols-2' : 'sm:grid-cols-1') : 'sm:grid-cols-3'}`}>
+      <div className={`grid gap-3 ${hideDimension ? (type === 'seleccion' ? 'sm:grid-cols-2' : 'sm:grid-cols-1') : 'sm:grid-cols-4'}`}>
         <Field label="Tipo de respuesta">
           <select className={input} value={type} onChange={(e) => setType(e.target.value as AnswerType)}>
             <option value="escala">Escala 1 – 5</option>
@@ -137,6 +139,15 @@ export function QuestionEditor({
             <option value="texto">Texto libre</option>
           </select>
         </Field>
+        {!hideDimension && (
+          <Field label="Bloque institucional">
+            <select className={input} value={bloque} onChange={(e) => setBloque(e.target.value as BloquePregunta)}>
+              <option value="docente">Bloque 1 · Desempeño Docente</option>
+              <option value="medit">Bloque 2 · Modelo MEDIT</option>
+              <option value="institucional">Bloque 3 · Recursos y Gestión</option>
+            </select>
+          </Field>
+        )}
         {!hideDimension && (
           <Field label="Dimensión MEDIT">
             <select className={input} value={dimension} onChange={(e) => setDimension(e.target.value)}>
