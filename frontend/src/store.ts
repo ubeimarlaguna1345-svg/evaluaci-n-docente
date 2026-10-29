@@ -646,12 +646,17 @@ function getInitialUsers(): User[] {
 }
 
 export function sanitizeCadis(cadis: CADI[]): CADI[] {
-  const list = [...(cadis || [])]
+  const officialCodes = new Set(['MAT101', 'CAI101', 'CAI201', 'SIS301', 'ELC301'])
+  const filtered = (cadis || []).filter((c) => c && c.codigo && officialCodes.has(c.codigo))
+  const list = [...filtered]
   for (const fallback of CONTINGENCY_CADIS) {
     const idx = list.findIndex((c) => c.codigo === fallback.codigo || c.id === fallback.id)
     if (idx >= 0) {
-      if (!list[idx].docenteId) {
-        list[idx] = { ...list[idx], docenteId: fallback.docenteId }
+      list[idx] = {
+        ...fallback,
+        ...list[idx],
+        docenteId: list[idx].docenteId || fallback.docenteId,
+        docenteAsignado: list[idx].docenteAsignado || fallback.docenteAsignado,
       }
     } else {
       list.push(fallback)
