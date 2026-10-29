@@ -11,6 +11,7 @@ import {
   UserCog,
 } from 'lucide-react'
 import { ModalPerfil } from '../../components/ModalPerfil'
+import { ChangePasswordModal } from '../../components/ChangePasswordModal'
 import { useDB, initDB, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, logout, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
@@ -188,7 +189,7 @@ export function Shell() {
       </main>
 
       {showProfile && (
-        <ModalPerfil
+        <ChangePasswordModal
           user={me}
           onClose={() => setShowProfile(false)}
         />

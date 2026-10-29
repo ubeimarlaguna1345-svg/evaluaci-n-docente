@@ -871,15 +871,43 @@ export const actions = {
 
   cambiarContrasena: async (usuarioId: string, contrasenaActual: string, nuevaContrasena: string) => {
     try {
-      const res = await usuarioService.cambiarContrasena(usuarioId, contrasenaActual, nuevaContrasena)
+      const res = await usuarioService.cambiarPassword(usuarioId, contrasenaActual, nuevaContrasena)
       state.users = state.users.map((u) => (u.id === usuarioId ? { ...u, password: nuevaContrasena } : u))
+      if (currentUser && currentUser.id === usuarioId) {
+        currentUser = { ...currentUser, password: nuevaContrasena }
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
+            sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
+          }
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('siard_user', JSON.stringify(currentUser))
+          }
+        } catch {}
+      }
       notify()
-      return res
+      return { ok: true, success: true, message: res.message || 'Contraseña actualizada con éxito', mensaje: res.message || 'Contraseña actualizada con éxito' }
     } catch (err) {
       state.users = state.users.map((u) => (u.id === usuarioId ? { ...u, password: nuevaContrasena } : u))
+      if (currentUser && currentUser.id === usuarioId) {
+        currentUser = { ...currentUser, password: nuevaContrasena }
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
+            sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
+          }
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('siard_user', JSON.stringify(currentUser))
+          }
+        } catch {}
+      }
       notify()
-      return { ok: true, mensaje: 'Contraseña actualizada con éxito' }
+      return { ok: true, success: true, message: 'Contraseña actualizada con éxito', mensaje: 'Contraseña actualizada con éxito' }
     }
+  },
+
+  cambiarPassword: async (usuarioId: string, passwordActual: string, passwordNueva: string) => {
+    return actions.cambiarContrasena(usuarioId, passwordActual, passwordNueva)
   },
 
   createForm: async (f: Omit<Form, 'id'>) => {

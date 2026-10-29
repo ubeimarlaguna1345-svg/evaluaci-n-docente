@@ -56,14 +56,20 @@ export class AuthController {
   }
 
   static async cambiarContrasena(req, res) {
-    const { usuarioId, contrasenaActual, nuevaContrasena } = req.body || {}
+    const usuarioId = req.body?.usuarioId || req.user?.id || req.query?.usuarioId || req.headers?.['x-user-id']
+    const contrasenaActual = req.body?.contrasenaActual ?? req.body?.passwordActual
+    const nuevaContrasena = req.body?.nuevaContrasena ?? req.body?.passwordNueva
     try {
       const result = await authService.cambiarContrasena(usuarioId, contrasenaActual, nuevaContrasena)
-      return sendJson(res, 200, result)
+      return sendJson(res, 200, { ok: true, success: true, ...result })
     } catch (error) {
       const status = error.statusCode || 500
-      return sendJson(res, status, { ok: false, message: error.message || 'Error interno al cambiar la contraseña.', detail: error.message })
+      return sendJson(res, status, { ok: false, success: false, message: error.message || 'Error interno al cambiar la contraseña.', detail: error.message })
     }
+  }
+
+  static async cambiarPassword(req, res) {
+    return AuthController.cambiarContrasena(req, res)
   }
 }
 
@@ -72,3 +78,5 @@ export const getUsers = AuthController.getUsers
 export const authenticateUser = AuthController.authenticateUser
 export const deleteUser = AuthController.deleteUser
 export const cambiarContrasena = AuthController.cambiarContrasena
+export const cambiarPassword = AuthController.cambiarContrasena
+export const changePassword = AuthController.cambiarContrasena

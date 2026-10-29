@@ -32,6 +32,31 @@ export const usuarioService = {
     })
   },
 
+  cambiarPassword: async (
+    usuarioId: string,
+    passwordActual: string,
+    passwordNueva: string
+  ): Promise<{ ok: boolean; success: boolean; message: string }> => {
+    const payload = {
+      usuarioId,
+      passwordActual,
+      passwordNueva,
+      contrasenaActual: passwordActual,
+      nuevaContrasena: passwordNueva,
+    }
+    try {
+      return await apiFetch<{ ok: boolean; success: boolean; message: string }>('/api/auth/cambiar-password', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      })
+    } catch {
+      return apiFetch<{ ok: boolean; success: boolean; message: string }>('/api/cambiar-contrasena', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+    }
+  },
+
   cambiarContrasena: async (
     usuarioId: string,
     contrasenaActual: string,
