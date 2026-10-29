@@ -33,12 +33,12 @@ export const usuarioService = {
   },
 
   cambiarPassword: async (
-    userOrId: string | { id?: string; email?: string },
+    userOrId: string | { id?: string; email?: string; userId?: string; correo?: string },
     passwordActual: string,
     passwordNueva: string
   ): Promise<{ ok: boolean; success: boolean; message: string }> => {
-    const id = typeof userOrId === 'object' ? userOrId.id : userOrId
-    const email = typeof userOrId === 'object' ? userOrId.email : undefined
+    const id = typeof userOrId === 'object' ? (userOrId.id || userOrId.userId) : userOrId
+    const email = typeof userOrId === 'object' ? (userOrId.email || userOrId.correo) : undefined
 
     let token = ''
     try {
@@ -58,8 +58,9 @@ export const usuarioService = {
     }
 
     const payload = {
-      id,
       email,
+      userId: id,
+      id,
       usuarioId: id,
       passwordActual,
       passwordNueva,

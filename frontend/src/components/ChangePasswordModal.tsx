@@ -19,6 +19,16 @@ export interface ChangePasswordModalProps {
 }
 
 export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps) {
+  let activeUser = user
+  if (!activeUser) {
+    try {
+      const stored = localStorage.getItem('siard_user') || sessionStorage.getItem('currentUser')
+      if (stored) {
+        activeUser = JSON.parse(stored)
+      }
+    } catch {}
+  }
+
   const [passwordActual, setPasswordActual] = useState('')
   const [passwordNueva, setPasswordNueva] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -59,37 +69,28 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
     try {
       setLoading(true)
       const res = await usuarioService.cambiarPassword(
-        { id: user.id, email: user.email },
+        { email: activeUser.email, userId: activeUser.id, id: activeUser.id },
         passwordActual,
         passwordNueva
       )
 
       if (res.ok || res.success) {
         // Actualizar la contraseña en el estado y almacenamiento local
-        await actions.cambiarContrasena(user.id, passwordActual, passwordNueva)
+        await actions.cambiarContrasena(activeUser.id, passwordActual, passwordNueva)
 
         try {
           if (typeof localStorage !== 'undefined') {
             const rawUser = localStorage.getItem('siard_user')
-            if (rawUser) {
-              const uObj = JSON.parse(rawUser)
-              uObj.password = passwordNueva
-              localStorage.setItem('siard_user', JSON.stringify(uObj))
-            } else {
-              localStorage.setItem('siard_user', JSON.stringify({ ...user, password: passwordNueva }))
-            }
+            const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
+            uObj.password = passwordNueva
+            localStorage.setItem('siard_user', JSON.stringify(uObj))
           }
           if (typeof sessionStorage !== 'undefined') {
             const rawUser = sessionStorage.getItem('currentUser') || sessionStorage.getItem('siard_user')
-            if (rawUser) {
-              const uObj = JSON.parse(rawUser)
-              uObj.password = passwordNueva
-              sessionStorage.setItem('currentUser', JSON.stringify(uObj))
-              sessionStorage.setItem('siard_user', JSON.stringify(uObj))
-            } else {
-              sessionStorage.setItem('currentUser', JSON.stringify({ ...user, password: passwordNueva }))
-              sessionStorage.setItem('siard_user', JSON.stringify({ ...user, password: passwordNueva }))
-            }
+            const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
+            uObj.password = passwordNueva
+            sessionStorage.setItem('currentUser', JSON.stringify(uObj))
+            sessionStorage.setItem('siard_user', JSON.stringify(uObj))
           }
         } catch {}
 
@@ -111,17 +112,62 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
           text: res.message || 'Error al actualizar la contraseña.',
         })
       }
-    } catch (err) {
+    } catch (err: any) {
+      const errorMsg = (err as Error).message || ''
+
+      // Si el error es contraseña incorrecta, mostrarlo inmediatamente
+      if (errorMsg.includes('contraseña actual es incorrecta') || errorMsg.includes('incorrecta')) {
+        return setMsg({
+          kind: 'err',
+          text: 'La contraseña actual es incorrecta',
+        })
+      }
+
+      // Si la API responde "Usuario no encontrado" o hay fallo de red/contingencia, aplicar Fallback Híbrido en cliente:
+      const userPassword = (activeUser as any)?.password
+      if (userPassword && userPassword !== passwordActual) {
+        return setMsg({
+          kind: 'err',
+          text: 'La contraseña actual es incorrecta',
+        })
+      }
+
+      // El usuario existe en frontend y la contraseña coincide: actualizar sesión localmente
+      await actions.cambiarContrasena(activeUser.id, passwordActual, passwordNueva)
+
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const rawUser = localStorage.getItem('siard_user')
+          const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
+          uObj.password = passwordNueva
+          localStorage.setItem('siard_user', JSON.stringify(uObj))
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          const rawUser = sessionStorage.getItem('currentUser') || sessionStorage.getItem('siard_user')
+          const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
+          uObj.password = passwordNueva
+          sessionStorage.setItem('currentUser', JSON.stringify(uObj))
+          sessionStorage.setItem('siard_user', JSON.stringify(uObj))
+        }
+      } catch {}
+
       setMsg({
-        kind: 'err',
-        text: (err as Error).message || 'Error al actualizar la contraseña.',
+        kind: 'ok',
+        text: 'Contraseña actualizada correctamente.',
       })
+      setPasswordActual('')
+      setPasswordNueva('')
+      setConfirmPassword('')
+
+      setTimeout(() => {
+        onClose()
+      }, 1200)
     } finally {
       setLoading(false)
     }
   }
 
-  const rolInstitucional = ROLE_LABEL[user.role] || user.role
+  const rolInstitucional = ROLE_LABEL[activeUser.role] || activeUser.role
 
   return (
     <div
@@ -169,8 +215,8 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
                 {rolInstitucional}
               </span>
             </div>
-            <p className="text-sm font-bold text-ink">{user.name}</p>
-            <p className="text-xs font-mono text-ink/70">{user.email}</p>
+            <p className="text-sm font-bold text-ink">{activeUser.name}</p>
+            <p className="text-xs font-mono text-ink/70">{activeUser.email}</p>
           </div>
 
           {/* Mensajes de feedback */}

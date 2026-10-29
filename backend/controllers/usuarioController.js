@@ -56,12 +56,13 @@ export class AuthController {
   }
 
   static async cambiarContrasena(req, res) {
-    const userId = req.user?.id || req.body?.id || req.body?.usuarioId || req.query?.usuarioId || req.headers?.['x-user-id']
-    const userEmail = req.user?.email || req.body?.email || req.body?.correo
+    const userId = req.body?.userId || req.body?.id || req.body?.usuarioId || req.user?.id || req.query?.usuarioId || req.headers?.['x-user-id']
+    const userEmail = req.body?.email || req.body?.correo || req.user?.email
     const passwordActual = req.body?.passwordActual ?? req.body?.contrasenaActual
     const passwordNueva = req.body?.passwordNueva ?? req.body?.nuevaContrasena
     try {
       const result = await authService.cambiarContrasena({
+        userId,
         usuarioId: userId,
         email: userEmail,
         contrasenaActual: passwordActual,
