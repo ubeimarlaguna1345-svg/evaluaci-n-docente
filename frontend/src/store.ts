@@ -79,8 +79,35 @@ const DELETED_FORMS_KEY = 'siard_deleted_forms'
 export const EVALUACIONES_STORAGE_KEY = 'siard_evaluaciones'
 export const FORMS_STORAGE_KEY = 'siard_evaluaciones'
 export const LEGACY_FORMS_STORAGE_KEY = 'siard_forms_storage'
+export const CHANGED_PASSWORDS_KEY = 'siard_changed_passwords'
+export const SIARD_USER_KEY = 'siard_user'
+export const SIARD_USUARIOS_KEY = 'siard_usuarios'
 const RESPONSES_STORAGE_KEY = 'siard_responses_storage'
 const memoryDeletedForms = new Set<string>()
+
+export function recordChangedPassword(emailOrId: string, newPassword: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(CHANGED_PASSWORDS_KEY)
+      const map = raw ? JSON.parse(raw) : {}
+      map[emailOrId.toLowerCase().trim()] = newPassword
+      localStorage.setItem(CHANGED_PASSWORDS_KEY, JSON.stringify(map))
+    }
+  } catch {}
+}
+
+export function getChangedPassword(emailOrId: string): string | null {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(CHANGED_PASSWORDS_KEY)
+      if (raw) {
+        const map = JSON.parse(raw)
+        return map[emailOrId.toLowerCase().trim()] || null
+      }
+    }
+  } catch {}
+  return null
+}
 
 export function getStoredEvaluaciones(): Form[] {
   try {
@@ -406,58 +433,65 @@ export function sanitizeUsers(users: User[]): User[] {
     const emailLower = (u.email || '').toLowerCase().trim()
     const nameLower = (u.name || '').toLowerCase().trim()
     const updated = { ...u }
+    const changedPass =
+      getChangedPassword(emailLower) ||
+      getChangedPassword(u.id) ||
+      (emailLower.includes('uberadmin') ? getChangedPassword('uberadmin.siard@ucundinamarca.edu.co') : null)
+
     if (emailLower.includes('uberadmin') || nameLower.includes('ubeimar')) {
       updated.email = 'uberadmin.siard@ucundinamarca.edu.co'
-      updated.password = 'Uber1019'
+      updated.password = changedPass || u.password || 'Uber1019'
       updated.role = 'admin'
     } else if (emailLower.includes('danidirec') || nameLower.includes('daniel moreno')) {
       updated.email = 'danidirec.siard@ucundinamarca.edu.co'
-      updated.password = 'siardVd3'
+      updated.password = changedPass || u.password || 'siardVd3'
       updated.role = 'admin'
     } else if (emailLower.includes('jaimeparra') || nameLower.includes('jaime parra')) {
       updated.email = 'jaimeparra.siard@ucundinamarca.edu.co'
-      updated.password = 'CoordParra2026*'
+      updated.password = changedPass || u.password || 'CoordParra2026*'
       updated.role = 'coordinador'
     } else if (emailLower.includes('prof.mendoza') || emailLower.includes('javier.mendoza') || nameLower.includes('javier mendoza')) {
       updated.email = 'prof.mendoza.siard@ucundinamarca.edu.co'
-      updated.password = 'ProfMen2026*'
+      updated.password = changedPass || u.password || 'ProfMen2026*'
       updated.role = 'docente'
     } else if (emailLower.includes('prof.salazar') || emailLower.includes('diana.salazar') || nameLower.includes('diana salazar')) {
       updated.email = 'prof.salazar.siard@ucundinamarca.edu.co'
-      updated.password = 'ProfSal2026*'
+      updated.password = changedPass || u.password || 'ProfSal2026*'
       updated.role = 'docente'
     } else if (emailLower.includes('prof.navarro') || emailLower.includes('andres.navarro') || nameLower.includes('andrés navarro') || nameLower.includes('andres navarro')) {
       updated.email = 'prof.navarro.siard@ucundinamarca.edu.co'
-      updated.password = 'ProfNav2026*'
+      updated.password = changedPass || u.password || 'ProfNav2026*'
       updated.role = 'docente'
     } else if (emailLower.includes('prof.prieto') || emailLower.includes('gabriel.prieto') || nameLower.includes('gabriel prieto')) {
       updated.email = 'prof.prieto.siard@ucundinamarca.edu.co'
-      updated.password = 'ProfPri2026*'
+      updated.password = changedPass || u.password || 'ProfPri2026*'
       updated.role = 'docente'
     } else if (emailLower.includes('prof.cifuentes') || emailLower.includes('mariana.cifuentes') || nameLower.includes('mariana cifuentes')) {
       updated.email = 'prof.cifuentes.siard@ucundinamarca.edu.co'
-      updated.password = 'ProfCif2026*'
+      updated.password = changedPass || u.password || 'ProfCif2026*'
       updated.role = 'docente'
     } else if (emailLower.includes('carlospena') || emailLower.includes('carlos.pena') || nameLower.includes('carlos peña') || nameLower.includes('carlos pena')) {
       updated.email = 'carlospena.siard@ucundinamarca.edu.co'
-      updated.password = 'Carl8742*'
+      updated.password = changedPass || u.password || 'Carl8742*'
       updated.role = 'estudiante'
     } else if (emailLower.includes('lauraquintero') || emailLower.includes('laura.quintero') || nameLower.includes('laura quintero')) {
       updated.email = 'lauraquintero.siard@ucundinamarca.edu.co'
-      updated.password = 'Laur5193*'
+      updated.password = changedPass || u.password || 'Laur5193*'
       updated.role = 'estudiante'
     } else if (emailLower.includes('mateorincon') || emailLower.includes('mateo.rincon') || nameLower.includes('mateo rincón') || nameLower.includes('mateo rincon')) {
       updated.email = 'mateorincon.siard@ucundinamarca.edu.co'
-      updated.password = 'Mate6381*'
+      updated.password = changedPass || u.password || 'Mate6381*'
       updated.role = 'estudiante'
     } else if (emailLower.includes('camilatorres') || emailLower.includes('camila.torres') || nameLower.includes('camila torres')) {
       updated.email = 'camilatorres.siard@ucundinamarca.edu.co'
-      updated.password = 'Cami9240*'
+      updated.password = changedPass || u.password || 'Cami9240*'
       updated.role = 'estudiante'
     } else if (emailLower.includes('julianmorales') || emailLower.includes('julian.morales') || nameLower.includes('julián morales') || nameLower.includes('julian morales')) {
       updated.email = 'julianmorales.siard@ucundinamarca.edu.co'
-      updated.password = 'Juli1835*'
+      updated.password = changedPass || u.password || 'Juli1835*'
       updated.role = 'estudiante'
+    } else if (changedPass) {
+      updated.password = changedPass
     }
     result.push(updated)
   }
@@ -466,11 +500,15 @@ export function sanitizeUsers(users: User[]): User[] {
     (u) => u.role === 'admin' && (u.email.toLowerCase().includes('uberadmin') || u.name.toLowerCase().includes('ubeimar'))
   )
   if (!hasUbeimar) {
+    const uberPass =
+      getChangedPassword('uberadmin.siard@ucundinamarca.edu.co') ||
+      getChangedPassword('usr-admin-uber') ||
+      'Uber1019'
     result.unshift({
       id: 'usr-admin-uber',
       name: 'Ubeimar Laguna Cárdenas',
       email: 'uberadmin.siard@ucundinamarca.edu.co',
-      password: 'Uber1019',
+      password: uberPass,
       role: 'admin',
       active: true,
       sede: 'Sede Facatativá',
@@ -491,7 +529,8 @@ export function mergeContingencyUsers(users: User[]): User[] {
         (u.role === official.role && u.name.toLowerCase().trim() === official.name.toLowerCase().trim())
     )
     if (!found) {
-      result.push({ ...official })
+      const changed = getChangedPassword(official.email) || getChangedPassword(official.id)
+      result.push({ ...official, password: changed || official.password })
     }
   }
   return result
@@ -870,43 +909,48 @@ export const actions = {
   },
 
   cambiarContrasena: async (usuarioId: string, contrasenaActual: string, nuevaContrasena: string) => {
+    const existingUser = state.users.find((u) => u.id === usuarioId)
+    const syncLocal = () => {
+      recordChangedPassword(usuarioId, nuevaContrasena)
+      if (existingUser?.email) {
+        recordChangedPassword(existingUser.email, nuevaContrasena)
+      }
+      if (usuarioId.includes('uber') || existingUser?.email?.includes('uberadmin')) {
+        recordChangedPassword('uberadmin.siard@ucundinamarca.edu.co', nuevaContrasena)
+        recordChangedPassword('usr-admin-uber', nuevaContrasena)
+      }
+      state.users = state.users.map((u) => (u.id === usuarioId || (existingUser?.email && u.email?.toLowerCase() === existingUser.email.toLowerCase()) ? { ...u, password: nuevaContrasena } : u))
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(state.users))
+          localStorage.setItem(SIARD_USUARIOS_KEY, JSON.stringify(state.users))
+        }
+      } catch {}
+      if (currentUser && (currentUser.id === usuarioId || (existingUser?.email && currentUser.email?.toLowerCase() === existingUser.email.toLowerCase()))) {
+        currentUser = { ...currentUser, password: nuevaContrasena }
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
+            sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
+          }
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('siard_user', JSON.stringify(currentUser))
+          }
+        } catch {}
+      }
+      notify()
+    }
+
     try {
-      const existingUser = state.users.find((u) => u.id === usuarioId)
       const res = await usuarioService.cambiarPassword(
         { id: usuarioId, email: existingUser?.email },
         contrasenaActual,
         nuevaContrasena
       )
-      state.users = state.users.map((u) => (u.id === usuarioId ? { ...u, password: nuevaContrasena } : u))
-      if (currentUser && currentUser.id === usuarioId) {
-        currentUser = { ...currentUser, password: nuevaContrasena }
-        try {
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
-            sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
-          }
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('siard_user', JSON.stringify(currentUser))
-          }
-        } catch {}
-      }
-      notify()
+      syncLocal()
       return { ok: true, success: true, message: res.message || 'Contraseña actualizada con éxito', mensaje: res.message || 'Contraseña actualizada con éxito' }
-    } catch (err) {
-      state.users = state.users.map((u) => (u.id === usuarioId ? { ...u, password: nuevaContrasena } : u))
-      if (currentUser && currentUser.id === usuarioId) {
-        currentUser = { ...currentUser, password: nuevaContrasena }
-        try {
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
-            sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
-          }
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('siard_user', JSON.stringify(currentUser))
-          }
-        } catch {}
-      }
-      notify()
+    } catch (err: any) {
+      syncLocal()
       return { ok: true, success: true, message: 'Contraseña actualizada con éxito', mensaje: 'Contraseña actualizada con éxito' }
     }
   },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { GraduationCap } from 'lucide-react'
-import { useDB, actions, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, type User, type Role } from '../../store'
+import { useDB, actions, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, getChangedPassword, type User, type Role } from '../../store'
 import { usuarioService } from '../../services'
 import { Field, Msg, input, btn } from './Components'
 
@@ -83,22 +83,68 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       return
     }
 
-    if (u.password !== pass) {
-      setErr('Contraseña incorrecta.')
-      return
-    }
-
     if (!u.active) {
       setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
       return
     }
 
-    try {
-      usuarioService.login(cleanEmail, pass).catch(() => {})
-    } catch {}
+    const changedPass =
+      getChangedPassword(cleanEmail) ||
+      getChangedPassword(u.id) ||
+      (cleanEmail.includes('uberadmin') ? getChangedPassword('uberadmin.siard@ucundinamarca.edu.co') : null)
+    const expectedPassword = changedPass || u.password
 
-    setCurrentUser(u)
-    onLogin(u)
+    // 1. Validar primero contra el backend (PostgreSQL / AuthService)
+    let backendAuthUser: User | null = null
+    try {
+      const res = await usuarioService.login(cleanEmail, pass)
+      if (res?.ok && res?.user) {
+        backendAuthUser = res.user
+      }
+    } catch (apiErr: any) {
+      const errMsg = (apiErr?.message || '').toLowerCase()
+      if (
+        errMsg.includes('credenciales') ||
+        errMsg.includes('contraseña') ||
+        errMsg.includes('incorrect') ||
+        apiErr?.status === 401 ||
+        apiErr?.statusCode === 401
+      ) {
+        setErr('Contraseña incorrecta.')
+        return
+      }
+    }
+
+    // 2. Si el backend autenticó correctamente:
+    if (backendAuthUser) {
+      const userRole = (backendAuthUser.role || u.role) as Role
+      if (userRole !== selectedRole) {
+        setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[userRole]}.`)
+        return
+      }
+      const finalUser: User = {
+        ...u,
+        ...backendAuthUser,
+        password: pass,
+        role: userRole,
+      }
+      setCurrentUser(finalUser)
+      onLogin(finalUser)
+      return
+    }
+
+    // 3. Contingencia / fallback offline: validación rigurosa invalidando credenciales anteriores
+    if (pass !== expectedPassword) {
+      setErr('Contraseña incorrecta.')
+      return
+    }
+
+    const finalUser: User = {
+      ...u,
+      password: pass,
+    }
+    setCurrentUser(finalUser)
+    onLogin(finalUser)
   }
 
   return (
