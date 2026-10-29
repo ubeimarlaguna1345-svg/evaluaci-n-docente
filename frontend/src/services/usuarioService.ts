@@ -33,25 +33,53 @@ export const usuarioService = {
   },
 
   cambiarPassword: async (
-    usuarioId: string,
+    userOrId: string | { id?: string; email?: string },
     passwordActual: string,
     passwordNueva: string
   ): Promise<{ ok: boolean; success: boolean; message: string }> => {
+    const id = typeof userOrId === 'object' ? userOrId.id : userOrId
+    const email = typeof userOrId === 'object' ? userOrId.email : undefined
+
+    let token = ''
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        token = sessionStorage.getItem('token') || sessionStorage.getItem('siard_token') || ''
+      }
+      if (!token && typeof localStorage !== 'undefined') {
+        token = localStorage.getItem('token') || localStorage.getItem('siard_token') || ''
+      }
+    } catch {}
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
     const payload = {
-      usuarioId,
+      id,
+      email,
+      usuarioId: id,
       passwordActual,
       passwordNueva,
       contrasenaActual: passwordActual,
       nuevaContrasena: passwordNueva,
     }
+
     try {
       return await apiFetch<{ ok: boolean; success: boolean; message: string }>('/api/auth/cambiar-password', {
         method: 'PUT',
+        headers,
         body: JSON.stringify(payload),
       })
-    } catch {
+    } catch (err: any) {
+      if (err?.message && (err.message.includes('incorrecta') || err.message.includes('no encontrado') || err.message.includes('caracteres'))) {
+        throw err
+      }
       return apiFetch<{ ok: boolean; success: boolean; message: string }>('/api/cambiar-contrasena', {
         method: 'POST',
+        headers,
         body: JSON.stringify(payload),
       })
     }

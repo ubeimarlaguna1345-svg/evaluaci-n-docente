@@ -58,7 +58,11 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
 
     try {
       setLoading(true)
-      const res = await usuarioService.cambiarPassword(user.id, passwordActual, passwordNueva)
+      const res = await usuarioService.cambiarPassword(
+        { id: user.id, email: user.email },
+        passwordActual,
+        passwordNueva
+      )
 
       if (res.ok || res.success) {
         // Actualizar la contraseña en el estado y almacenamiento local
@@ -71,6 +75,8 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
               const uObj = JSON.parse(rawUser)
               uObj.password = passwordNueva
               localStorage.setItem('siard_user', JSON.stringify(uObj))
+            } else {
+              localStorage.setItem('siard_user', JSON.stringify({ ...user, password: passwordNueva }))
             }
           }
           if (typeof sessionStorage !== 'undefined') {
@@ -80,6 +86,9 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
               uObj.password = passwordNueva
               sessionStorage.setItem('currentUser', JSON.stringify(uObj))
               sessionStorage.setItem('siard_user', JSON.stringify(uObj))
+            } else {
+              sessionStorage.setItem('currentUser', JSON.stringify({ ...user, password: passwordNueva }))
+              sessionStorage.setItem('siard_user', JSON.stringify({ ...user, password: passwordNueva }))
             }
           }
         } catch {}

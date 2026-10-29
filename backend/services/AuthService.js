@@ -102,8 +102,27 @@ export class AuthService {
     return { ok: true }
   }
 
-  async cambiarContrasena(usuarioId, contrasenaActual, nuevaContrasena) {
-    if (!usuarioId || !contrasenaActual || !nuevaContrasena) {
+  async cambiarContrasena(usuarioIdOrObj, contrasenaActualParam, nuevaContrasenaParam) {
+    let userId = ''
+    let userEmail = ''
+    let contrasenaActual = ''
+    let nuevaContrasena = ''
+
+    if (usuarioIdOrObj && typeof usuarioIdOrObj === 'object') {
+      userId = usuarioIdOrObj.usuarioId || usuarioIdOrObj.id || ''
+      userEmail = usuarioIdOrObj.email || usuarioIdOrObj.correo || ''
+      contrasenaActual = usuarioIdOrObj.contrasenaActual || usuarioIdOrObj.passwordActual || ''
+      nuevaContrasena = usuarioIdOrObj.nuevaContrasena || usuarioIdOrObj.passwordNueva || ''
+    } else {
+      userId = usuarioIdOrObj || ''
+      contrasenaActual = contrasenaActualParam || ''
+      nuevaContrasena = nuevaContrasenaParam || ''
+    }
+
+    userId = String(userId || '').trim()
+    userEmail = String(userEmail || '').trim().toLowerCase()
+
+    if ((!userId && !userEmail) || !contrasenaActual || !nuevaContrasena) {
       const error = new Error('Todos los campos son obligatorios.')
       error.statusCode = 400
       throw error
@@ -116,10 +135,20 @@ export class AuthService {
     }
 
     try {
-      const result = await pool.query(
-        'SELECT id, contrasena, contrasena_hash FROM usuarios WHERE id = $1',
-        [usuarioId]
-      )
+      let queryStr = 'SELECT id, correo, contrasena, contrasena_hash FROM usuarios WHERE '
+      const queryParams = []
+      if (userId && userEmail) {
+        queryParams.push(userId, userEmail)
+        queryStr += 'id = $1 OR LOWER(correo) = LOWER($2)'
+      } else if (userId) {
+        queryParams.push(userId)
+        queryStr += 'id = $1'
+      } else {
+        queryParams.push(userEmail)
+        queryStr += 'LOWER(correo) = LOWER($1)'
+      }
+
+      const result = await pool.query(queryStr, queryParams)
 
       if (result.rows.length === 0) {
         const error = new Error('Usuario no encontrado.')
@@ -128,6 +157,8 @@ export class AuthService {
       }
 
       const row = result.rows[0]
+      const targetUserId = row.id
+
       const passwordMatch = row.contrasena_hash
         ? await bcrypt.compare(contrasenaActual, row.contrasena_hash)
         : row.contrasena === contrasenaActual
@@ -141,7 +172,7 @@ export class AuthService {
       const nuevoHash = await bcrypt.hash(nuevaContrasena, 10)
       await pool.query(
         'UPDATE usuarios SET contrasena = $1, contrasena_hash = $2 WHERE id = $3',
-        [nuevaContrasena, nuevoHash, usuarioId]
+        [nuevaContrasena, nuevoHash, targetUserId]
       )
 
       return { ok: true, success: true, message: 'Contraseña actualizada con éxito' }

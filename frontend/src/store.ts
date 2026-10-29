@@ -871,7 +871,12 @@ export const actions = {
 
   cambiarContrasena: async (usuarioId: string, contrasenaActual: string, nuevaContrasena: string) => {
     try {
-      const res = await usuarioService.cambiarPassword(usuarioId, contrasenaActual, nuevaContrasena)
+      const existingUser = state.users.find((u) => u.id === usuarioId)
+      const res = await usuarioService.cambiarPassword(
+        { id: usuarioId, email: existingUser?.email },
+        contrasenaActual,
+        nuevaContrasena
+      )
       state.users = state.users.map((u) => (u.id === usuarioId ? { ...u, password: nuevaContrasena } : u))
       if (currentUser && currentUser.id === usuarioId) {
         currentUser = { ...currentUser, password: nuevaContrasena }
