@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { GraduationCap } from 'lucide-react'
 import { useDB, actions, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, getChangedPassword, type User, type Role } from '../../store'
 import { usuarioService } from '../../services'
 import { Field, Msg, input, btn } from './Components'
 
-export function Login({ onLogin }: { onLogin: (u: User) => void }) {
+export function Login({ onLogin }: { onLogin?: (u: User) => void }) {
   const db = useDB()
+  const navigate = useNavigate()
   const [selectedRole, setSelectedRole] = useState<Role>('estudiante')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -18,133 +20,163 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     setErr('')
     setInfo('')
 
-    if (firstUser) {
-      if (!name.trim() || !email.trim() || !pass || !confirm) {
+    try {
+      if (firstUser) {
+        if (!name.trim() || !email.trim() || !pass || !confirm) {
+          setErr('Completa todos los campos.')
+          return
+        }
+        if (pass.length < 8) {
+          setErr('La contraseña debe tener al menos 8 caracteres.')
+          return
+        }
+        if (pass !== confirm) {
+          setErr('Las contraseñas no coinciden.')
+          return
+        }
+
+        try {
+          await actions.createUser({
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            password: pass,
+            role: 'admin',
+            sede: 'Sede Facatativá',
+            carrera: 'Ingeniería de Sistemas y Computación',
+          })
+          setInfo('Administrador creado en PostgreSQL. Ya puedes iniciar sesión.')
+          setName('')
+          setPass('')
+          setConfirm('')
+        } catch (e) {
+          setErr((e as Error).message || 'No se pudo crear la cuenta en PostgreSQL.')
+        }
+        return
+      }
+
+      let cleanEmail = email.trim().toLowerCase().replace('@ucundinamarac.edu.co', '@ucundinamarca.edu.co')
+      if (cleanEmail === 'uberadmin.siard@ucundinamarac.edu.co') {
+        cleanEmail = 'uberadmin.siard@ucundinamarca.edu.co'
+      }
+
+      if (!cleanEmail || !pass) {
         setErr('Completa todos los campos.')
         return
       }
-      if (pass.length < 8) {
-        setErr('La contraseña debe tener al menos 8 caracteres.')
-        return
-      }
-      if (pass !== confirm) {
-        setErr('Las contraseñas no coinciden.')
+
+      const candidateUsers = [...db.users, ...CONTINGENCY_USERS]
+      const u = candidateUsers.find((x) => {
+        const dbEmail = (x.email || '').trim().toLowerCase()
+        if (dbEmail === cleanEmail) return true
+        if (cleanEmail.includes('uberadmin') && dbEmail.includes('uberadmin')) return true
+        if (cleanEmail.includes('danidirec') && dbEmail.includes('danidirec')) return true
+        return false
+      })
+
+      if (!u) {
+        setErr('No existe una cuenta registrada con este correo electrónico.')
         return
       }
 
+      if (u.role !== selectedRole) {
+        setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
+        return
+      }
+
+      if (!u.active) {
+        setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
+        return
+      }
+
+      const changedPass =
+        getChangedPassword(cleanEmail) ||
+        getChangedPassword(u.id) ||
+        (cleanEmail.includes('uberadmin') ? getChangedPassword('uberadmin.siard@ucundinamarca.edu.co') : null)
+      const expectedPassword = changedPass || u.password
+
+      // 1. Validar primero contra el backend (PostgreSQL / AuthService)
+      let backendAuthUser: User | null = null
+      let token = 'demo_token'
       try {
-        await actions.createUser({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
+        const res = await usuarioService.login(cleanEmail, pass)
+        if (res?.ok && res?.user) {
+          backendAuthUser = res.user
+          token = (res as any).token || (res as any).user?.token || 'session_token_' + Date.now()
+        }
+      } catch (apiErr: any) {
+        const errMsg = (apiErr?.message || '').toLowerCase()
+        if (
+          errMsg.includes('credenciales') ||
+          errMsg.includes('contraseña') ||
+          errMsg.includes('incorrect') ||
+          apiErr?.status === 401 ||
+          apiErr?.statusCode === 401
+        ) {
+          setErr('Contraseña incorrecta.')
+          return
+        }
+      }
+
+      let usuarioAutenticado: User
+
+      // 2. Si el backend autenticó correctamente:
+      if (backendAuthUser) {
+        const userRole = (backendAuthUser.role || u.role) as Role
+        if (userRole !== selectedRole) {
+          setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[userRole]}.`)
+          return
+        }
+        usuarioAutenticado = {
+          ...u,
+          ...backendAuthUser,
           password: pass,
-          role: 'admin',
-          sede: 'Sede Facatativá',
-          carrera: 'Ingeniería de Sistemas y Computación',
-        })
-        setInfo('Administrador creado en PostgreSQL. Ya puedes iniciar sesión.')
-        setName('')
-        setPass('')
-        setConfirm('')
-      } catch (e) {
-        setErr((e as Error).message || 'No se pudo crear la cuenta en PostgreSQL.')
+          role: userRole,
+        }
+      } else {
+        // 3. Contingencia / fallback offline: validación rigurosa invalidando credenciales anteriores
+        if (pass !== expectedPassword) {
+          setErr('Contraseña incorrecta.')
+          return
+        }
+        usuarioAutenticado = {
+          ...u,
+          password: pass,
+        }
       }
-      return
-    }
 
-    let cleanEmail = email.trim().toLowerCase().replace('@ucundinamarac.edu.co', '@ucundinamarca.edu.co')
-    if (cleanEmail === 'uberadmin.siard@ucundinamarac.edu.co') {
-      cleanEmail = 'uberadmin.siard@ucundinamarca.edu.co'
-    }
+      // Sincronización previa a la navegación:
+      // 1. Guardar de inmediato en localStorage y sessionStorage
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('siard_user', JSON.stringify(usuarioAutenticado))
+          localStorage.setItem('currentUser', JSON.stringify(usuarioAutenticado))
+          localStorage.setItem('siard_token', token || 'demo_token')
+          localStorage.setItem('siard-me', usuarioAutenticado.id)
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('siard_user', JSON.stringify(usuarioAutenticado))
+          sessionStorage.setItem('currentUser', JSON.stringify(usuarioAutenticado))
+          sessionStorage.setItem('siard_token', token || 'demo_token')
+          sessionStorage.setItem('siard-me', usuarioAutenticado.id)
+        }
+      } catch {}
 
-    if (!cleanEmail || !pass) {
-      setErr('Completa todos los campos.')
-      return
-    }
-
-    const candidateUsers = [...db.users, ...CONTINGENCY_USERS]
-    const u = candidateUsers.find((x) => {
-      const dbEmail = (x.email || '').trim().toLowerCase()
-      if (dbEmail === cleanEmail) return true
-      if (cleanEmail.includes('uberadmin') && dbEmail.includes('uberadmin')) return true
-      if (cleanEmail.includes('danidirec') && dbEmail.includes('danidirec')) return true
-      return false
-    })
-
-    if (!u) {
-      setErr('No existe una cuenta registrada con este correo electrónico.')
-      return
-    }
-
-    if (u.role !== selectedRole) {
-      setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[u.role]}.`)
-      return
-    }
-
-    if (!u.active) {
-      setErr('Esta cuenta fue dada de baja. Contacte al administrador.')
-      return
-    }
-
-    const changedPass =
-      getChangedPassword(cleanEmail) ||
-      getChangedPassword(u.id) ||
-      (cleanEmail.includes('uberadmin') ? getChangedPassword('uberadmin.siard@ucundinamarca.edu.co') : null)
-    const expectedPassword = changedPass || u.password
-
-    // 1. Validar primero contra el backend (PostgreSQL / AuthService)
-    let backendAuthUser: User | null = null
-    try {
-      const res = await usuarioService.login(cleanEmail, pass)
-      if (res?.ok && res?.user) {
-        backendAuthUser = res.user
+      // 2. Actualizar el estado global / contexto de autenticación de forma síncrona
+      setCurrentUser(usuarioAutenticado)
+      if (onLogin) {
+        onLogin(usuarioAutenticado)
       }
-    } catch (apiErr: any) {
-      const errMsg = (apiErr?.message || '').toLowerCase()
-      if (
-        errMsg.includes('credenciales') ||
-        errMsg.includes('contraseña') ||
-        errMsg.includes('incorrect') ||
-        apiErr?.status === 401 ||
-        apiErr?.statusCode === 401
-      ) {
-        setErr('Contraseña incorrecta.')
-        return
-      }
-    }
 
-    // 2. Si el backend autenticó correctamente:
-    if (backendAuthUser) {
-      const userRole = (backendAuthUser.role || u.role) as Role
-      if (userRole !== selectedRole) {
-        setErr(`El correo ingresado no corresponde al rol de ${ROLE_LABEL[selectedRole]}. Esta cuenta está registrada como ${ROLE_LABEL[userRole]}.`)
-        return
-      }
-      const finalUser: User = {
-        ...u,
-        ...backendAuthUser,
-        password: pass,
-        role: userRole,
-      }
-      setCurrentUser(finalUser)
-      onLogin(finalUser)
-      return
+      // 3. Ejecutar la navegación programática según el rol:
+      const targetPath = `/${usuarioAutenticado.role}`
+      navigate(targetPath)
+    } catch (err: any) {
+      setErr(err?.message || 'Error al iniciar sesión. Por favor intente nuevamente.')
     }
-
-    // 3. Contingencia / fallback offline: validación rigurosa invalidando credenciales anteriores
-    if (pass !== expectedPassword) {
-      setErr('Contraseña incorrecta.')
-      return
-    }
-
-    const finalUser: User = {
-      ...u,
-      password: pass,
-    }
-    setCurrentUser(finalUser)
-    onLogin(finalUser)
   }
 
   return (

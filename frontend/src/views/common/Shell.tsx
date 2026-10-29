@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { ModalPerfil } from '../../components/ModalPerfil'
 import { ChangePasswordModal } from '../../components/ChangePasswordModal'
-import { useDB, initDB, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, logout, type User, type Role } from '../../store'
+import { useDB, initDB, ROLE_LABEL, CONTINGENCY_USERS, setCurrentUser, getCurrentUser, logout, type User, type Role } from '../../store'
 import { Login } from './Login'
 import { NormativaView } from './NormativaView'
 import { StudentEvaluation } from '../estudiante'
@@ -62,12 +62,44 @@ export function Shell() {
   const location = useLocation()
   const [meId, setMeId] = useState<string | null>(() => {
     try {
-      return sessionStorage.getItem('siard-me')
+      const stored =
+        sessionStorage.getItem('siard-me') ||
+        sessionStorage.getItem('siard_user') ||
+        localStorage.getItem('siard_user')
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (parsed?.id) return parsed.id
+        } catch {}
+        return stored
+      }
+      return null
     } catch {
       return null
     }
   })
-  const me = db.users.find((u) => u.id === meId && u.active) || CONTINGENCY_USERS.find((u) => u.id === meId && u.active)
+  const currentAppUser = getCurrentUser()
+  const storedUserObj: User | null = (() => {
+    try {
+      const raw =
+        (typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null) ||
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('siard_user') : null)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && parsed.id && parsed.active !== false) {
+          return {
+            ...parsed,
+            role: (parsed.role || parsed.rol || 'estudiante') as Role,
+          } as User
+        }
+      }
+    } catch {}
+    return null
+  })()
+  const me: User | null =
+    (meId ? db.users.find((u) => u.id === meId && u.active) || CONTINGENCY_USERS.find((u) => u.id === meId && u.active) : null) ||
+    currentAppUser ||
+    storedUserObj
   const [view, setView] = useState('')
   const [showProfile, setShowProfile] = useState(false)
 
@@ -94,7 +126,8 @@ export function Shell() {
     )
   }
 
-  const views = VIEWS[me.role]
+  const userRole: Role = (me.role || (me as any).rol || 'estudiante') as Role
+  const views = VIEWS[userRole] || VIEWS.estudiante
   const current = views.find((v) => v.id === view) ?? views[0]
 
   return (
@@ -133,7 +166,7 @@ export function Shell() {
             }}
           >
             <p className="text-sm font-semibold group-hover:text-ochre transition">{me.name}</p>
-            <p className="text-xs text-paper/60">{ROLE_LABEL[me.role]}</p>
+            <p className="text-xs text-paper/60">{ROLE_LABEL[userRole]}</p>
             {me.sede && <p className="text-[11px] text-paper/40 font-mono">{me.sede}</p>}
           </div>
           <div className="flex flex-col gap-1.5 pt-1">
