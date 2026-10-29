@@ -14,9 +14,8 @@ export class EvaluacionService {
       WHERE f.id NOT IN (SELECT id FROM formularios_eliminados)
     `
     const params = []
-    if (role === 'coordinador' && cadiId) {
-      params.push(cadiId)
-      query += ` AND (f.cadi_id = $${params.length} OR f.cadi_id IS NULL)`
+    if (role === 'admin' || role === 'coordinador') {
+      // Roles de gestión institucional: acceso irrestricto y colaborativo a todas las evaluaciones
     } else if (cadiId) {
       params.push(cadiId)
       query += ` AND (f.cadi_id = $${params.length} OR f.cadi_id IS NULL)`

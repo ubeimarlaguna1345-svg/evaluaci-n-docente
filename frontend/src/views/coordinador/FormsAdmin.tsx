@@ -139,7 +139,7 @@ export function FormsAdmin({ me }: { me?: User }) {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    initDB()
+    actions.fetchEvaluaciones().catch(() => initDB())
   }, [])
 
   const startEdit = (fm: Form) => {
@@ -181,6 +181,7 @@ export function FormsAdmin({ me }: { me?: User }) {
         setMsg({ kind: 'ok', text: 'Formulario guardado y registrado en PostgreSQL.' })
         setF(blank)
       }
+      await actions.fetchEvaluaciones()
     } catch (e) {
       setMsg({ kind: 'err', text: (e as Error).message || 'Error al procesar formulario.' })
     } finally {
@@ -195,21 +196,14 @@ export function FormsAdmin({ me }: { me?: User }) {
     try {
       await actions.deleteForm(fm.id)
       setMsg({ kind: 'ok', text: `Evaluación "${fm.title}" eliminada correctamente.` })
+      await actions.fetchEvaluaciones()
     } catch (e) {
       setMsg({ kind: 'err', text: (e as Error).message || 'Error al eliminar formulario.' })
     }
   }
 
-  const visibleForms = db.forms.filter((fm) => {
-    if (!activeUser || activeUser.role === 'admin') return true
-    if (activeUser.role === 'coordinador') {
-      if (!fm.cadiId) return true
-      const cadi = db.cadis.find((c) => c.id === fm.cadiId)
-      if (cadi) return true
-      return true
-    }
-    return true
-  })
+  // Colaboración institucional plena: admin y coordinador gestionan todas las evaluaciones sin exclusión
+  const visibleForms = db.forms
 
   return ( 
     <>

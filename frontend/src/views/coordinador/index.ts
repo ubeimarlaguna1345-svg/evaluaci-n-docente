@@ -1,5 +1,7 @@
 export * from './CadisView'
 export * from './FormsAdmin'
+export { FormsAdmin as Evaluaciones } from './FormsAdmin'
+export { FormsAdmin as CoordinadorView } from './FormsAdmin'
 export * from './Results'
 export * from './Statistics'
 export * from './Report'

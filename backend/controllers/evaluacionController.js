@@ -67,7 +67,9 @@ export class EvaluacionController {
 
   static async getForms(req, res) {
     try {
-      const forms = await evaluacionService.obtenerFormularios(req.query || {})
+      const { role, rol, ...rest } = req.query || {}
+      const userRole = role || rol || (req.user && req.user.role)
+      const forms = await evaluacionService.obtenerFormularios({ ...rest, role: userRole })
       return sendJson(res, 200, { ok: true, forms })
     } catch (error) {
       console.warn('Aviso en getForms (PostgreSQL no disponible, devolviendo formularios activos):', error.message)
@@ -204,6 +206,7 @@ export const createCadi = EvaluacionController.createCadi
 export const updateCadi = EvaluacionController.updateCadi
 export const deleteCadi = EvaluacionController.deleteCadi
 export const getForms = EvaluacionController.getForms
+export const getEvaluaciones = EvaluacionController.getForms
 export const getFormById = EvaluacionController.getFormById
 export const createForm = EvaluacionController.createForm
 export const updateForm = EvaluacionController.updateForm

@@ -530,7 +530,13 @@ export function sanitizeForms(forms: Form[]): Form[] {
       return true
     })
     .map((f) => {
-      if (f.id === 'form-eval-2026' || f.title?.includes('Evaluación Integral del Desempeño Docente') || f.kind === 'evaluacion') {
+      const titleLower = (f.title || '').toLowerCase().trim()
+      const isDefaultEval =
+        f.id === 'form-eval-2026' ||
+        titleLower === 'evaluación docente 2026-i' ||
+        titleLower === 'evaluacion docente 2026-i' ||
+        titleLower.includes('evaluación integral del desempeño docente y mediaciones medit')
+      if (isDefaultEval) {
         const existingQIds = new Set((f.questions || []).map((q) => q.id))
         const missingQuestions = MEDIT_15_QUESTIONS.filter((q) => !existingQIds.has(q.id))
         const allQuestions = [...(f.questions || []), ...missingQuestions]
@@ -542,7 +548,12 @@ export function sanitizeForms(forms: Form[]): Form[] {
           questions: allQuestions.length >= 15 ? allQuestions : f.questions,
         }
       }
-      if (f.kind === 'autoevaluacion' || f.id === 'form-auto-2026') {
+      const isDefaultAuto =
+        f.id === 'form-auto-2026' ||
+        titleLower === 'autoevaluación docente 2026-i' ||
+        titleLower === 'autoevaluacion docente 2026-i' ||
+        titleLower.includes('instrumento de autoevaluación integral del desempeño docente medit')
+      if (isDefaultAuto) {
         return {
           ...f,
           title: 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT',
@@ -1126,6 +1137,27 @@ export const actions = {
 
     notify()
     return { forms: freshForms, docenteResponses }
+  },
+
+  fetchEvaluaciones: async () => {
+    try {
+      const res = await evaluacionService.getEvaluaciones()
+      if (res?.forms && Array.isArray(res.forms)) {
+        const clean = sanitizeForms(res.forms)
+        state.forms = clean
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(clean))
+          }
+        } catch {}
+        notify()
+        return clean
+      }
+    } catch (err) {
+      console.warn('Aviso al consultar evaluaciones en backend:', err)
+    }
+    await initDB()
+    return state.forms
   },
 
   syncGlobalData: async () => {
