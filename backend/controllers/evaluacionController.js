@@ -72,24 +72,14 @@ export class EvaluacionController {
       const forms = await evaluacionService.obtenerFormularios({ ...rest, role: userRole })
       return sendJson(res, 200, { ok: true, forms })
     } catch (error) {
-      console.warn('Aviso en getForms (PostgreSQL no disponible, devolviendo formularios activos):', error.message)
+      console.warn('Aviso en getForms (PostgreSQL no disponible, devolviendo formulario activo institucional):', error.message)
       const fallbackForms = [
         {
           id: 'form-eval-2026',
           kind: 'evaluacion',
-          title: 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT',
+          title: 'Instrumento de Evaluación Integral del Desempeño Docente MEDIT',
           description: 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.',
-          period: '2026-I',
-          start: '2026-08-01T00:00:00Z',
-          end: '2026-11-30T23:59:59Z',
-          questions: [],
-        },
-        {
-          id: 'form-auto-2026',
-          kind: 'autoevaluacion',
-          title: 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT',
-          description: 'Instrumento de reflexión pedagógica y autoevaluación docente.',
-          period: '2026-I',
+          period: '2026-II',
           start: '2026-08-01T00:00:00Z',
           end: '2026-11-30T23:59:59Z',
           questions: [],

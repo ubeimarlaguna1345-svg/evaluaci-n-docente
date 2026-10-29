@@ -122,16 +122,13 @@ export async function initSchema() {
         );
 
         INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-        SELECT 'form-eval-2026', 'evaluacion', 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-08-01T00:00:00Z', '2026-11-30T23:59:59Z'
+        SELECT 'form-eval-2026', 'evaluacion', 'Instrumento de Evaluación Integral del Desempeño Docente MEDIT', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-II', NULL, '2026-08-01T00:00:00Z', '2026-11-30T23:59:59Z'
         WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-eval-2026')
-        ON CONFLICT (id) DO UPDATE SET titulo = EXCLUDED.titulo, fecha_inicio = EXCLUDED.fecha_inicio, fecha_cierre = EXCLUDED.fecha_cierre;
-
-        INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-        SELECT 'form-auto-2026', 'autoevaluacion', 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT', 'Instrumento de reflexión pedagógica y autoevaluación.', '2026-I', NULL, '2026-08-01T00:00:00Z', '2026-11-30T23:59:59Z'
-        WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-auto-2026')
-        ON CONFLICT (id) DO UPDATE SET titulo = EXCLUDED.titulo, fecha_inicio = EXCLUDED.fecha_inicio, fecha_cierre = EXCLUDED.fecha_cierre;
+        ON CONFLICT (id) DO UPDATE SET titulo = EXCLUDED.titulo, periodo = EXCLUDED.periodo, fecha_inicio = EXCLUDED.fecha_inicio, fecha_cierre = EXCLUDED.fecha_cierre;
 
         ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS bloque TEXT DEFAULT 'docente';
+
+        DELETE FROM preguntas WHERE formulario_id = 'form-eval-2026' AND id NOT IN ('q-claridad', 'q-doc-expositiva', 'q-organizacion', 'q-retro', 'q-doc-comunicacion', 'q-tic', 'q-metodologia', 'q-medit-autonomo', 'q-infraestructura', 'q-conectividad');
 
         INSERT INTO preguntas (id, formulario_id, enunciado, tipo_respuesta, dimension, obligatoria, orden, bloque)
         VALUES
@@ -140,16 +137,11 @@ export async function initSchema() {
           ('q-organizacion', 'form-eval-2026', 'Cumple con el cronograma académico, los horarios acordados y el seguimiento del CADI.', 'escala', 'Organización y cumplimiento del programa', true, 3, 'docente'),
           ('q-retro', 'form-eval-2026', 'Realiza retroalimentación oportuna y orienta constructivamente sobre los resultados de las evaluaciones.', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 4, 'docente'),
           ('q-doc-comunicacion', 'form-eval-2026', 'Mantiene una comunicación respetuosa, asertiva y disposición para atender inquietudes pedagógicas.', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 5, 'docente'),
-          ('q-pedag-1', 'form-eval-2026', 'Aplica estrategias didácticas innovadoras articuladas a los principios del MEDIT.', 'escala', 'Pedagógica y Didáctica', true, 6, 'docente'),
-          ('q-pedag-2', 'form-eval-2026', 'Promueve la evaluación formativa continua y la autorregulación del estudiante.', 'escala', 'Pedagógica y Didáctica', true, 7, 'docente'),
-          ('q-tic', 'form-eval-2026', 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 8, 'medit'),
-          ('q-metodologia', 'form-eval-2026', 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', 'escala', 'Metodología y aplicación práctica', true, 9, 'medit'),
-          ('q-medit-autonomo', 'form-eval-2026', 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 10, 'medit'),
-          ('q-formativa-1', 'form-eval-2026', 'Fomenta el diálogo de saberes y la reflexión crítica en las actividades de aprendizaje.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 11, 'medit'),
-          ('q-formativa-2', 'form-eval-2026', 'Orienta la articulación transdisciplinar entre la teoría y los desafíos del entorno.', 'escala', 'Metodología y aplicación práctica', true, 12, 'medit'),
-          ('q-infraestructura', 'form-eval-2026', 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', 'escala', 'Recursos y Gestión Institucional', true, 13, 'institucional'),
-          ('q-conectividad', 'form-eval-2026', 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', 'escala', 'Recursos y Gestión Institucional', true, 14, 'institucional'),
-          ('q-facultad-comunicacion', 'form-eval-2026', '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?', 'escala', 'Recursos y Gestión Institucional', true, 15, 'institucional'),
+          ('q-tic', 'form-eval-2026', 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 6, 'medit'),
+          ('q-metodologia', 'form-eval-2026', 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', 'escala', 'Metodología y aplicación práctica', true, 7, 'medit'),
+          ('q-medit-autonomo', 'form-eval-2026', 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 8, 'medit'),
+          ('q-infraestructura', 'form-eval-2026', 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', 'escala', 'Recursos y Gestión Institucional', true, 9, 'institucional'),
+          ('q-conectividad', 'form-eval-2026', 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', 'escala', 'Recursos y Gestión Institucional', true, 10, 'institucional'),
           ('q-auto-1', 'form-auto-2026', 'Autoevaluación: Claridad didáctica y mediación pedagógica', 'escala', 'Claridad conceptual y explicación', true, 1, 'docente'),
           ('q-auto-2', 'form-auto-2026', 'Autoevaluación: Cumplimiento de planeación y rúbricas', 'escala', 'Organización y cumplimiento del programa', true, 2, 'docente'),
           ('q-auto-3', 'form-auto-2026', 'Autoevaluación: Oportunidad en retroalimentación formativa', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3, 'docente'),

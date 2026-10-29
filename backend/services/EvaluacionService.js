@@ -64,10 +64,13 @@ export class EvaluacionService {
 
     return formsRes.rows.map((f) => {
       let title = f.title || ''
-      if (f.id === 'form-eval-2026' || title.toLowerCase().includes('evaluación docente 2026-i') || title.toLowerCase().includes('evaluacion docente 2026-i')) {
-        title = 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT'
-      } else if (f.id === 'form-auto-2026' || title.toLowerCase().includes('autoevaluación docente 2026-i') || title.toLowerCase().includes('autoevaluacion docente 2026-i')) {
+      let period = f.period || '2026-II'
+      if (f.id === 'form-eval-2026' || title.toLowerCase().includes('evaluación docente') || title.toLowerCase().includes('evaluacion docente') || title.toLowerCase().includes('evaluación integral') || title.toLowerCase().includes('evaluacion integral')) {
+        title = 'Instrumento de Evaluación Integral del Desempeño Docente MEDIT'
+        period = '2026-II'
+      } else if (f.id === 'form-auto-2026' || title.toLowerCase().includes('autoevaluación docente') || title.toLowerCase().includes('autoevaluacion docente')) {
         title = 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT'
+        period = '2026-II'
       }
       const rawEnd = f.end ? new Date(f.end).toISOString().slice(0, 16) : ''
       const isExpired = !rawEnd || new Date(rawEnd).getTime() < Date.now()
@@ -76,6 +79,7 @@ export class EvaluacionService {
       return {
         ...f,
         title,
+        period,
         start,
         end,
         questions: questionsByForm[f.id] || [],

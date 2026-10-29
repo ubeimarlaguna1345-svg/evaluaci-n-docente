@@ -50,23 +50,25 @@ export const MEDIT_DIMENSIONES = [
   'Interacción Social y Ética',
   'Gestión y Formación Continua',]
 
-export const MEDIT_15_QUESTIONS: Question[] = [
+export const DATA_VERSION = 'siard_udec_v2026_final_10p'
+
+export const MEDIT_10_QUESTIONS: Question[] = [
+  // Bloque 1: Docente (P1 - P5)
   { id: 'q-claridad', text: 'Demuestra dominio actualizado, solidez conceptual y promueve la indagación metódica y fuentes técnicas.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
   { id: 'q-doc-expositiva', text: 'Estructura sus clases con claridad expositiva y metodología adecuada para facilitar el aprendizaje.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
   { id: 'q-organizacion', text: 'Cumple con el cronograma académico, los horarios acordados y el seguimiento del CADI.', type: 'escala', dimension: 'Organización y cumplimiento del programa', required: true, bloque: 'docente', options: [] },
   { id: 'q-retro', text: 'Realiza retroalimentación oportuna y orienta constructivamente sobre los resultados de las evaluaciones.', type: 'escala', dimension: 'Retroalimentación y entrega oportuna de notas', required: true, bloque: 'docente', options: [] },
   { id: 'q-doc-comunicacion', text: 'Mantiene una comunicación respetuosa, asertiva y disposición para atender inquietudes pedagógicas.', type: 'escala', dimension: 'Retroalimentación y entrega oportuna de notas', required: true, bloque: 'docente', options: [] },
-  { id: 'q-pedag-1', text: 'Aplica estrategias didácticas innovadoras articuladas a los principios del MEDIT.', type: 'escala', dimension: 'Pedagógica y Didáctica', required: true, bloque: 'docente', options: [] },
-  { id: 'q-pedag-2', text: 'Promueve la evaluación formativa continua y la autorregulación del estudiante.', type: 'escala', dimension: 'Pedagógica y Didáctica', required: true, bloque: 'docente', options: [] },
+  // Bloque 2: MEDIT (P6 - P8)
   { id: 'q-tic', text: 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
   { id: 'q-metodologia', text: 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', type: 'escala', dimension: 'Metodología y aplicación práctica', required: true, bloque: 'medit', options: [] },
   { id: 'q-medit-autonomo', text: 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
-  { id: 'q-formativa-1', text: 'Fomenta el diálogo de saberes y la reflexión crítica en las actividades de aprendizaje.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
-  { id: 'q-formativa-2', text: 'Orienta la articulación transdisciplinar entre la teoría y los desafíos del entorno.', type: 'escala', dimension: 'Metodología y aplicación práctica', required: true, bloque: 'medit', options: [] },
+  // Bloque 3: Institucional (P9 - P10)
   { id: 'q-infraestructura', text: 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
   { id: 'q-conectividad', text: 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
-  { id: 'q-facultad-comunicacion', text: '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
 ]
+
+export const MEDIT_15_QUESTIONS: Question[] = MEDIT_10_QUESTIONS
 
 const subs = new Set<() => void>()
 const notify = () => subs.forEach((fn) => fn())
@@ -84,6 +86,24 @@ export const SIARD_USER_KEY = 'siard_user'
 export const SIARD_USUARIOS_KEY = 'siard_usuarios'
 const RESPONSES_STORAGE_KEY = 'siard_responses_storage'
 const memoryDeletedForms = new Set<string>()
+
+export function checkAndInvalidateCache(): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const currentVersion = localStorage.getItem('siard_version')
+      if (currentVersion !== DATA_VERSION) {
+        localStorage.removeItem(EVALUACIONES_STORAGE_KEY)
+        localStorage.removeItem(LEGACY_FORMS_STORAGE_KEY)
+        localStorage.removeItem('siard_evaluaciones')
+        localStorage.removeItem('siard_cadis')
+        localStorage.removeItem('siard_forms_storage')
+        localStorage.setItem('siard_version', DATA_VERSION)
+      }
+    }
+  } catch {}
+}
+
+checkAndInvalidateCache()
 
 export function recordChangedPassword(emailOrId: string, newPassword: string): void {
   try {
@@ -380,27 +400,12 @@ export const CONTINGENCY_FORMS: Form[] = [
   {
     id: 'form-eval-2026',
     kind: 'evaluacion',
-    title: 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT',
+    title: 'Instrumento de Evaluación Integral del Desempeño Docente MEDIT',
     description: 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.',
-    period: '2026-I',
+    period: '2026-II',
     start: '2026-08-01T00:00:00Z',
     end: '2026-11-30T23:59:59Z',
-    questions: MEDIT_15_QUESTIONS,
-  },
-  {
-    id: 'form-auto-2026',
-    kind: 'autoevaluacion',
-    title: 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT',
-    description: 'Instrumento de reflexión pedagógica y autoevaluación docente.',
-    period: '2026-I',
-    start: '2026-08-01T00:00:00Z',
-    end: '2026-11-30T23:59:59Z',
-    questions: [
-      { id: 'q-auto-1', text: 'Autoevaluación: Claridad didáctica y mediación pedagógica', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
-      { id: 'q-auto-2', text: 'Autoevaluación: Cumplimiento de planeación y rúbricas', type: 'escala', dimension: 'Organización y cumplimiento del programa', required: true, bloque: 'docente', options: [] },
-      { id: 'q-auto-3', text: 'Autoevaluación: Oportunidad en retroalimentación formativa', type: 'escala', dimension: 'Retroalimentación y entrega oportuna de notas', required: true, bloque: 'docente', options: [] },
-      { id: 'q-auto-4', text: 'Autoevaluación: Innovación en prácticas y proyectos MEDIT', type: 'escala', dimension: 'Metodología y aplicación práctica', required: true, bloque: 'medit', options: [] },
-    ],
+    questions: MEDIT_10_QUESTIONS,
   },
 ]
 
@@ -596,7 +601,12 @@ export function sanitizeForms(forms: Form[]): Form[] {
       if (!f || !f.id) return false
       if (deletedIds.has(f.id)) return false
       const titleLower = (f.title || '').toLowerCase().trim()
-      if ((titleLower === 'evaluación docente 2026-i' || titleLower === 'evaluacion docente 2026-i') && !isOpen(f.start, f.end)) {
+      if (
+        (f.period === '2026-I' && f.id !== 'form-eval-2026') ||
+        (f.id === 'form-auto-2026') ||
+        titleLower === 'evaluación docente 2026-i' ||
+        titleLower === 'evaluacion docente 2026-i'
+      ) {
         return false
       }
       return true
@@ -605,32 +615,17 @@ export function sanitizeForms(forms: Form[]): Form[] {
       const titleLower = (f.title || '').toLowerCase().trim()
       const isDefaultEval =
         f.id === 'form-eval-2026' ||
-        titleLower === 'evaluación docente 2026-i' ||
-        titleLower === 'evaluacion docente 2026-i' ||
-        titleLower.includes('evaluación integral del desempeño docente y mediaciones medit')
+        titleLower.includes('evaluación integral del desempeño docente') ||
+        titleLower.includes('evaluacion integral del desempeño docente')
       if (isDefaultEval) {
-        const existingQIds = new Set((f.questions || []).map((q) => q.id))
-        const missingQuestions = MEDIT_15_QUESTIONS.filter((q) => !existingQIds.has(q.id))
-        const allQuestions = [...(f.questions || []), ...missingQuestions]
         return {
           ...f,
-          title: 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT',
+          id: 'form-eval-2026',
+          title: 'Instrumento de Evaluación Integral del Desempeño Docente MEDIT',
+          period: '2026-II',
           start: f.start || '2026-08-01T00:00:00Z',
           end: f.end && isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
-          questions: allQuestions.length >= 15 ? allQuestions : f.questions,
-        }
-      }
-      const isDefaultAuto =
-        f.id === 'form-auto-2026' ||
-        titleLower === 'autoevaluación docente 2026-i' ||
-        titleLower === 'autoevaluacion docente 2026-i' ||
-        titleLower.includes('instrumento de autoevaluación integral del desempeño docente medit')
-      if (isDefaultAuto) {
-        return {
-          ...f,
-          title: 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT',
-          start: f.start || '2026-08-01T00:00:00Z',
-          end: f.end && isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
+          questions: MEDIT_10_QUESTIONS,
         }
       }
       return f
@@ -639,6 +634,7 @@ export function sanitizeForms(forms: Form[]): Form[] {
 
 function getInitialForms(): Form[] {
   try {
+    checkAndInvalidateCache()
     const stored = getStoredEvaluaciones()
     if (stored.length > 0) {
       return stored
@@ -683,6 +679,7 @@ let state: DB = {
 let demoModeActive = false
 
 export function activateDemoMode() {
+  checkAndInvalidateCache()
   demoModeActive = true
   const deletedIds = getDeletedUserIds()
   const deletedFormIds = getDeletedFormIds()
@@ -726,6 +723,7 @@ export function activateDemoMode() {
 }
 
 export async function initDB() {
+  checkAndInvalidateCache()
   const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
   const isRemote = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
 
