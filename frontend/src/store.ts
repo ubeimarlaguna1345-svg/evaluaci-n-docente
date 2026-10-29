@@ -284,30 +284,18 @@ export const CONTINGENCY_FORMS: Form[] = [
     title: 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT',
     description: 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.',
     period: '2026-I',
-    start: '2026-01-15T00:00:00Z',
-    end: '2026-12-31T23:59:59Z',
-    questions: [
-      { id: 'q-claridad', text: 'Demuestra dominio actualizado, solidez conceptual y promueve la indagación metódica y fuentes técnicas.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
-      { id: 'q-doc-expositiva', text: 'Estructura sus clases con claridad expositiva y metodología adecuada para facilitar el aprendizaje.', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
-      { id: 'q-organizacion', text: 'Cumple con el cronograma académico, los horarios acordados y el seguimiento del CADI.', type: 'escala', dimension: 'Organización y cumplimiento del programa', required: true, bloque: 'docente', options: [] },
-      { id: 'q-retro', text: 'Realiza retroalimentación oportuna y orienta constructivamente sobre los resultados de las evaluaciones.', type: 'escala', dimension: 'Retroalimentación y entrega oportuna de notas', required: true, bloque: 'docente', options: [] },
-      { id: 'q-doc-comunicacion', text: 'Mantiene una comunicación respetuosa, asertiva y disposición para atender inquietudes pedagógicas.', type: 'escala', dimension: 'Retroalimentación y entrega oportuna de notas', required: true, bloque: 'docente', options: [] },
-      { id: 'q-tic', text: 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
-      { id: 'q-metodologia', text: 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', type: 'escala', dimension: 'Metodología y aplicación práctica', required: true, bloque: 'medit', options: [] },
-      { id: 'q-medit-autonomo', text: 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', type: 'escala', dimension: 'Modelo MEDIT y Mediaciones Tecnológicas', required: true, bloque: 'medit', options: [] },
-      { id: 'q-infraestructura', text: 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
-      { id: 'q-conectividad', text: 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
-      { id: 'q-facultad-comunicacion', text: '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?', type: 'escala', dimension: 'Recursos y Gestión Institucional', required: true, bloque: 'institucional', options: [] },
-    ],
+    start: '2026-08-01T00:00:00Z',
+    end: '2026-11-30T23:59:59Z',
+    questions: MEDIT_15_QUESTIONS,
   },
   {
     id: 'form-auto-2026',
     kind: 'autoevaluacion',
-    title: 'Autoevaluación Docente 2026-I',
-    description: 'Instrumento de reflexión pedagógica y autoevaluación.',
+    title: 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT',
+    description: 'Instrumento de reflexión pedagógica y autoevaluación docente.',
     period: '2026-I',
-    start: '2026-01-15T00:00:00Z',
-    end: '2026-12-31T23:59:59Z',
+    start: '2026-08-01T00:00:00Z',
+    end: '2026-11-30T23:59:59Z',
     questions: [
       { id: 'q-auto-1', text: 'Autoevaluación: Claridad didáctica y mediación pedagógica', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
       { id: 'q-auto-2', text: 'Autoevaluación: Cumplimiento de planeación y rúbricas', type: 'escala', dimension: 'Organización y cumplimiento del programa', required: true, bloque: 'docente', options: [] },
@@ -321,23 +309,18 @@ export const CONTINGENCY_RESPONSES: FormResponse[] = [
   { id: 'rf-sal-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-salazar', teacherId: 'doc-salazar', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '5', 'q-retro': '5', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Excelente docente, su dominio de los temas de cálculo y paciencia para resolver dudas complejas es insuperable.', date: '2026-02-10T14:30:00Z' },
   { id: 'rf-sal-2', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-salazar', teacherId: 'doc-salazar', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Clases muy ordenadas, rúbricas transparentes y retroalimentación constante que motiva a aprender.', date: '2026-02-11T16:20:00Z' },
   { id: 'rf-sal-3', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-salazar', teacherId: 'doc-salazar', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '4', 'q-retro': '5', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '5', 'q-infraestructura': '5', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Gran metodología práctica, siempre propone talleres contextualizados a la ingeniería.', date: '2026-02-12T10:15:00Z' },
-  { id: 'rf-sal-auto', formId: 'form-auto-2026', userId: 'doc-salazar', docenteId: 'doc-salazar', teacherId: 'doc-salazar', answers: { 'q-auto-1': '5', 'q-auto-2': '5', 'q-auto-3': '4', 'q-auto-4': '5' }, observation: 'Compromiso riguroso con la formación matemática y diseño de guías paso a paso.', date: '2026-02-13T09:00:00Z' },
   { id: 'rf-nav-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '5', 'q-facultad-comunicacion': '4' }, observation: 'Muy buen profesor en programación, explica conceptos abstractos con ejemplos reales.', date: '2026-02-10T14:30:00Z' },
   { id: 'rf-nav-2', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '5', 'q-metodologia': '4', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Excelente dinamismo en clase. Podría otorgar más margen de tiempo en los laboratorios prácticos.', date: '2026-02-11T16:20:00Z' },
   { id: 'rf-nav-3', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-claridad': '5', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Gran apoyo durante el desarrollo de los proyectos de aula integradores.', date: '2026-02-13T11:00:00Z' },
-  { id: 'rf-nav-auto', formId: 'form-auto-2026', userId: 'doc-navarro', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-auto-1': '4', 'q-auto-2': '5', 'q-auto-3': '4', 'q-auto-4': '5' }, observation: 'Fomento continuo del aprendizaje basado en problemas de desarrollo de software.', date: '2026-02-14T08:30:00Z' },
   { id: 'rf-cif-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Propicia debates éticos muy constructivos y analiza dilemas profesionales de ingeniería.', date: '2026-02-09T17:00:00Z' },
   { id: 'rf-cif-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Cumplimiento impecable del cronograma y respeto mutuo en todas las sesiones.', date: '2026-02-11T12:00:00Z' },
   { id: 'rf-cif-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', date: '2026-02-13T15:40:00Z' },
-  { id: 'rf-cif-auto', formId: 'form-auto-2026', userId: 'doc-cifuentes', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-auto-1': '4', 'q-auto-2': '4', 'q-auto-3': '4', 'q-auto-4': '5' }, observation: 'Promoción constante de la responsabilidad social universitaria bajo el MEDIT.', date: '2026-02-14T10:00:00Z' },
   { id: 'rf-prie-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Tiene sólido conocimiento lingüístico, pero los tiempos de devolución de ensayos son algo extensos.', date: '2026-02-08T09:30:00Z' },
   { id: 'rf-prie-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '4' }, observation: 'Las lecturas seleccionadas son buenas. Se sugiere mayor dinamismo y participación oral en clase.', date: '2026-02-10T11:20:00Z' },
   { id: 'rf-prie-3', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Falta publicar las calificaciones intermedias con mayor anticipación a los cortes oficiales.', date: '2026-02-12T16:00:00Z' },
-  { id: 'rf-prie-auto', formId: 'form-auto-2026', userId: 'doc-prieto', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-auto-1': '4', 'q-auto-2': '4', 'q-auto-3': '4', 'q-auto-4': '4' }, observation: 'Reflexión pedagógica orientada a optimizar tiempos de corrección escrita.', date: '2026-02-13T14:00:00Z' },
   { id: 'rf-men-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas.', date: '2026-02-09T18:00:00Z' },
   { id: 'rf-men-2', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '3', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '3' }, observation: 'Las rúbricas de evaluación no son claras y las retroalimentaciones de los circuitos son muy breves.', date: '2026-02-11T13:40:00Z' },
   { id: 'rf-men-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', date: '2026-02-13T16:10:00Z' },
-  { id: 'rf-men-auto', formId: 'form-auto-2026', userId: 'doc-mendoza', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-auto-1': '4', 'q-auto-2': '3', 'q-auto-3': '3', 'q-auto-4': '4' }, observation: 'Reconozco la necesidad de incorporar simulaciones virtuales para fortalecer el componente práctico.', date: '2026-02-14T09:20:00Z' },
 ]
 
 export function sanitizeUsers(users: User[]): User[] {
@@ -509,23 +492,24 @@ export function sanitizeForms(forms: Form[]): Form[] {
       return true
     })
     .map((f) => {
-      if (f.id === 'form-eval-2026' || f.title?.includes('Evaluación Integral del Desempeño Docente')) {
+      if (f.id === 'form-eval-2026' || f.title?.includes('Evaluación Integral del Desempeño Docente') || f.kind === 'evaluacion') {
         const existingQIds = new Set((f.questions || []).map((q) => q.id))
         const missingQuestions = MEDIT_15_QUESTIONS.filter((q) => !existingQIds.has(q.id))
         const allQuestions = [...(f.questions || []), ...missingQuestions]
         return {
           ...f,
           title: 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT',
-          start: f.start || '2026-01-15T00:00:00Z',
-          end: f.end && isOpen(f.start, f.end) ? f.end : '2026-12-31T23:59:59Z',
+          start: f.start || '2026-08-01T00:00:00Z',
+          end: f.end && isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
           questions: allQuestions.length >= 15 ? allQuestions : f.questions,
         }
       }
-      if (f.kind === 'autoevaluacion') {
+      if (f.kind === 'autoevaluacion' || f.id === 'form-auto-2026') {
         return {
           ...f,
-          start: f.start || '2026-01-15T00:00:00Z',
-          end: f.end && isOpen(f.start, f.end) ? f.end : '2026-12-31T23:59:59Z',
+          title: 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT',
+          start: f.start || '2026-08-01T00:00:00Z',
+          end: f.end && isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
         }
       }
       return f
@@ -564,7 +548,7 @@ function getInitialResponses(): FormResponse[] {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
           const deleted = getDeletedFormIds()
-          return parsed.filter((r: FormResponse) => !deleted.has(r.formId))
+          return parsed.filter((r: FormResponse) => !deleted.has(r.formId) && r.formId !== 'form-auto-2026')
         }
       }
       storage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(CONTINGENCY_RESPONSES))
@@ -693,8 +677,27 @@ export async function initDB() {
     }
     notify()
   } catch (err) {
-    console.error('Error al inicializar PostgreSQL:', err)
-    if (isVercel || isRemote || demoModeActive) {
+    console.warn('Aviso al inicializar PostgreSQL desde /api/bootstrap:', err)
+    // Tolerancia a fallos: intento de sincronización secundaria mediante endpoints individuales
+    try {
+      const [evalsRes, cadisRes] = await Promise.allSettled([
+        evaluacionService.getEvaluaciones(),
+        evaluacionService.getCadis(),
+      ])
+      if (evalsRes.status === 'fulfilled' && evalsRes.value?.forms && evalsRes.value.forms.length > 0) {
+        state.forms = sanitizeForms(evalsRes.value.forms)
+        if (cadisRes.status === 'fulfilled' && cadisRes.value?.cadis) {
+          state.cadis = cadisRes.value.cadis
+        }
+        state.connected = true
+        state.loading = false
+        state.error = null
+        notify()
+        return
+      }
+    } catch {}
+
+    if (isVercel || isRemote || demoModeActive || typeof window !== 'undefined') {
       console.warn('Conmutando a modo autónomo / demostración (Datos institucionales)...')
       activateDemoMode()
       return

@@ -63,12 +63,25 @@ export class EvaluacionService {
       }
     }
 
-    return formsRes.rows.map((f) => ({
-      ...f,
-      start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
-      end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
-      questions: questionsByForm[f.id] || [],
-    }))
+    return formsRes.rows.map((f) => {
+      let title = f.title || ''
+      if (f.id === 'form-eval-2026' || title.toLowerCase().includes('evaluación docente 2026-i') || title.toLowerCase().includes('evaluacion docente 2026-i')) {
+        title = 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT'
+      } else if (f.id === 'form-auto-2026' || title.toLowerCase().includes('autoevaluación docente 2026-i') || title.toLowerCase().includes('autoevaluacion docente 2026-i')) {
+        title = 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT'
+      }
+      const rawEnd = f.end ? new Date(f.end).toISOString().slice(0, 16) : ''
+      const isExpired = !rawEnd || new Date(rawEnd).getTime() < Date.now()
+      const end = isExpired ? '2026-11-30T23:59' : rawEnd
+      const start = f.start ? new Date(f.start).toISOString().slice(0, 16) : '2026-08-01T00:00'
+      return {
+        ...f,
+        title,
+        start,
+        end,
+        questions: questionsByForm[f.id] || [],
+      }
+    })
   }
 
   async obtenerFormularioPorId(id) {

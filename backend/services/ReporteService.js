@@ -60,12 +60,25 @@ export class ReporteService {
       }
     }
 
-    const forms = formsRes.rows.map((f) => ({
-      ...f,
-      start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
-      end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
-      questions: questionsByForm[f.id] || [],
-    }))
+    const forms = formsRes.rows.map((f) => {
+      let title = f.title || ''
+      if (f.id === 'form-eval-2026' || title.toLowerCase().includes('evaluación docente 2026-i') || title.toLowerCase().includes('evaluacion docente 2026-i')) {
+        title = 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT'
+      } else if (f.id === 'form-auto-2026' || title.toLowerCase().includes('autoevaluación docente 2026-i') || title.toLowerCase().includes('autoevaluacion docente 2026-i')) {
+        title = 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT'
+      }
+      const rawEnd = f.end ? new Date(f.end).toISOString().slice(0, 16) : ''
+      const isExpired = !rawEnd || new Date(rawEnd).getTime() < Date.now()
+      const end = isExpired ? '2026-11-30T23:59' : rawEnd
+      const start = f.start ? new Date(f.start).toISOString().slice(0, 16) : '2026-08-01T00:00'
+      return {
+        ...f,
+        title,
+        start,
+        end,
+        questions: questionsByForm[f.id] || [],
+      }
+    })
 
     const responsesRes = await pool.query(
       'SELECT id, formulario_id AS "formId", usuario_id AS "userId", docente_id AS "docenteId", docente_id AS "teacherId", observacion AS observation, fecha AS date FROM respuestas_formulario'
@@ -87,34 +100,41 @@ export class ReporteService {
       answers: answersByResp[r.id] || {},
     }))
 
-    const feedbacksRes = await pool.query(
-      `SELECT r.id, r.docente_id AS "docenteId", r.docente_id AS "teacherId", r.curso AS course, 
-              r.fecha_inicio AS start, r.fecha_cierre AS end, r.creada_en AS "createdAt",
-              p.enunciado AS text, p.tipo_respuesta AS type, p.dimension
-       FROM retroalimentaciones r
-       JOIN preguntas p ON p.id = r.pregunta_id
-       ORDER BY r.creada_en DESC`
-    )
+    let feedbacks = []
+    let feedbackResponses = []
+    try {
+      const feedbacksRes = await pool.query(
+        `SELECT r.id, r.docente_id AS "docenteId", r.docente_id AS "teacherId", r.curso AS course, 
+                r.fecha_inicio AS start, r.fecha_cierre AS end, r.creada_en AS "createdAt",
+                p.enunciado AS text, p.tipo_respuesta AS type, p.dimension
+         FROM retroalimentaciones r
+         JOIN preguntas p ON p.id = r.pregunta_id
+         ORDER BY r.creada_en DESC`
+      )
 
-    const feedbacks = feedbacksRes.rows.map((f) => ({
-      id: f.id,
-      docenteId: f.docenteId,
-      teacherId: f.docenteId,
-      course: f.course,
-      start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
-      end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
-      createdAt: f.createdAt ? new Date(f.createdAt).toISOString() : '',
-      question: {
-        text: f.text,
-        type: f.type,
-        dimension: f.dimension,
-        options: optionsByQ[f.id] || [],
-      },
-    }))
+      feedbacks = feedbacksRes.rows.map((f) => ({
+        id: f.id,
+        docenteId: f.docenteId,
+        teacherId: f.docenteId,
+        course: f.course,
+        start: f.start ? new Date(f.start).toISOString().slice(0, 16) : '',
+        end: f.end ? new Date(f.end).toISOString().slice(0, 16) : '',
+        createdAt: f.createdAt ? new Date(f.createdAt).toISOString() : '',
+        question: {
+          text: f.text,
+          type: f.type,
+          dimension: f.dimension,
+          options: optionsByQ[f.id] || [],
+        },
+      }))
 
-    const feedbackRespRes = await pool.query(
-      'SELECT id, retroalimentacion_id AS "feedbackId", estudiante_id AS "studentId", valor AS value, fecha AS date FROM respuestas_retroalimentacion'
-    )
+      const feedbackRespRes = await pool.query(
+        'SELECT id, retroalimentacion_id AS "feedbackId", estudiante_id AS "studentId", valor AS value, fecha AS date FROM respuestas_retroalimentacion'
+      )
+      feedbackResponses = feedbackRespRes.rows
+    } catch (fbErr) {
+      console.warn('Aviso no crítico al consultar retroalimentaciones:', fbErr.message)
+    }
 
     return {
       users: usersRes.rows,
@@ -122,7 +142,7 @@ export class ReporteService {
       forms,
       formResponses,
       feedbacks,
-      feedbackResponses: feedbackRespRes.rows,
+      feedbackResponses,
     }
   }
 

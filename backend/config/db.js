@@ -47,6 +47,7 @@ const useSSL = shouldEnableSSL()
 export const pool = new Pool({
   connectionString,
   ssl: useSSL ? { rejectUnauthorized: false } : undefined,
+  connectionTimeoutMillis: 5000,
 })
 
 pool.on('error', (err) => {
@@ -121,14 +122,14 @@ export async function initSchema() {
         );
 
         INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-        SELECT 'form-eval-2026', 'evaluacion', 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-12-31T23:59:59Z'
+        SELECT 'form-eval-2026', 'evaluacion', 'Instrumento de Evaluación Integral del Desempeño Docente y Mediaciones MEDIT', 'Evaluación integral de desempeño docente bajo dimensiones MEDIT.', '2026-I', NULL, '2026-08-01T00:00:00Z', '2026-11-30T23:59:59Z'
         WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-eval-2026')
-        ON CONFLICT (id) DO UPDATE SET titulo = EXCLUDED.titulo, fecha_cierre = EXCLUDED.fecha_cierre;
+        ON CONFLICT (id) DO UPDATE SET titulo = EXCLUDED.titulo, fecha_inicio = EXCLUDED.fecha_inicio, fecha_cierre = EXCLUDED.fecha_cierre;
 
         INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-        SELECT 'form-auto-2026', 'autoevaluacion', 'Autoevaluación Docente 2026-I', 'Instrumento de reflexión pedagógica y autoevaluación.', '2026-I', NULL, '2026-01-15T00:00:00Z', '2026-06-30T23:59:59Z'
+        SELECT 'form-auto-2026', 'autoevaluacion', 'Instrumento de Autoevaluación Integral del Desempeño Docente MEDIT', 'Instrumento de reflexión pedagógica y autoevaluación.', '2026-I', NULL, '2026-08-01T00:00:00Z', '2026-11-30T23:59:59Z'
         WHERE NOT EXISTS (SELECT 1 FROM formularios_eliminados WHERE id = 'form-auto-2026')
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT (id) DO UPDATE SET titulo = EXCLUDED.titulo, fecha_inicio = EXCLUDED.fecha_inicio, fecha_cierre = EXCLUDED.fecha_cierre;
 
         ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS bloque TEXT DEFAULT 'docente';
 
@@ -139,12 +140,16 @@ export async function initSchema() {
           ('q-organizacion', 'form-eval-2026', 'Cumple con el cronograma académico, los horarios acordados y el seguimiento del CADI.', 'escala', 'Organización y cumplimiento del programa', true, 3, 'docente'),
           ('q-retro', 'form-eval-2026', 'Realiza retroalimentación oportuna y orienta constructivamente sobre los resultados de las evaluaciones.', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 4, 'docente'),
           ('q-doc-comunicacion', 'form-eval-2026', 'Mantiene una comunicación respetuosa, asertiva y disposición para atender inquietudes pedagógicas.', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 5, 'docente'),
-          ('q-tic', 'form-eval-2026', 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 6, 'medit'),
-          ('q-metodologia', 'form-eval-2026', 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', 'escala', 'Metodología y aplicación práctica', true, 7, 'medit'),
-          ('q-medit-autonomo', 'form-eval-2026', 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 8, 'medit'),
-          ('q-infraestructura', 'form-eval-2026', 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', 'escala', 'Recursos y Gestión Institucional', true, 9, 'institucional'),
-          ('q-conectividad', 'form-eval-2026', 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', 'escala', 'Recursos y Gestión Institucional', true, 10, 'institucional'),
-          ('q-facultad-comunicacion', 'form-eval-2026', '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?', 'escala', 'Recursos y Gestión Institucional', true, 11, 'institucional'),
+          ('q-pedag-1', 'form-eval-2026', 'Aplica estrategias didácticas innovadoras articuladas a los principios del MEDIT.', 'escala', 'Pedagógica y Didáctica', true, 6, 'docente'),
+          ('q-pedag-2', 'form-eval-2026', 'Promueve la evaluación formativa continua y la autorregulación del estudiante.', 'escala', 'Pedagógica y Didáctica', true, 7, 'docente'),
+          ('q-tic', 'form-eval-2026', 'Uso efectivo de plataformas virtuales, herramientas digitales y mediaciones tecnológicas en la formación.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 8, 'medit'),
+          ('q-metodologia', 'form-eval-2026', 'Aplicación de contenidos a problemas reales y casos del entorno para fomentar el aprendizaje significativo.', 'escala', 'Metodología y aplicación práctica', true, 9, 'medit'),
+          ('q-medit-autonomo', 'form-eval-2026', 'Estímulo al trabajo colaborativo, aprendizaje autónomo y desarrollo del pensamiento crítico.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 10, 'medit'),
+          ('q-formativa-1', 'form-eval-2026', 'Fomenta el diálogo de saberes y la reflexión crítica en las actividades de aprendizaje.', 'escala', 'Modelo MEDIT y Mediaciones Tecnológicas', true, 11, 'medit'),
+          ('q-formativa-2', 'form-eval-2026', 'Orienta la articulación transdisciplinar entre la teoría y los desafíos del entorno.', 'escala', 'Metodología y aplicación práctica', true, 12, 'medit'),
+          ('q-infraestructura', 'form-eval-2026', 'Disponibilidad, dotación, iluminación y condiciones físicas adecuadas en las aulas y laboratorios de la sede.', 'escala', 'Recursos y Gestión Institucional', true, 13, 'institucional'),
+          ('q-conectividad', 'form-eval-2026', 'Calidad y estabilidad de la conectividad a internet, redes institucionales y soporte técnico provisto.', 'escala', 'Recursos y Gestión Institucional', true, 14, 'institucional'),
+          ('q-facultad-comunicacion', 'form-eval-2026', '¿La facultad y sus dependencias comunicaron oportunamente el calendario académico, trámites y lineamientos institucionales?', 'escala', 'Recursos y Gestión Institucional', true, 15, 'institucional'),
           ('q-auto-1', 'form-auto-2026', 'Autoevaluación: Claridad didáctica y mediación pedagógica', 'escala', 'Claridad conceptual y explicación', true, 1, 'docente'),
           ('q-auto-2', 'form-auto-2026', 'Autoevaluación: Cumplimiento de planeación y rúbricas', 'escala', 'Organización y cumplimiento del programa', true, 2, 'docente'),
           ('q-auto-3', 'form-auto-2026', 'Autoevaluación: Oportunidad en retroalimentación formativa', 'escala', 'Retroalimentación y entrega oportuna de notas', true, 3, 'docente'),
@@ -152,84 +157,76 @@ export async function initSchema() {
         ON CONFLICT (id) DO UPDATE
         SET enunciado = EXCLUDED.enunciado, dimension = EXCLUDED.dimension, orden = EXCLUDED.orden, bloque = EXCLUDED.bloque;
 
+        DELETE FROM respuestas_formulario WHERE formulario_id = 'form-auto-2026';
+
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-sal-1', 'form-eval-2026', 'est-1', 'doc-salazar', 'Excelente docente, su dominio de los temas de cálculo y paciencia para resolver dudas complejas es insuperable.', NOW() - INTERVAL '5 days'),
           ('rf-sal-2', 'form-eval-2026', 'est-2', 'doc-salazar', 'Clases muy ordenadas, rúbricas transparentes y retroalimentación constante que motiva a aprender.', NOW() - INTERVAL '4 days'),
-          ('rf-sal-3', 'form-eval-2026', 'est-3', 'doc-salazar', 'Gran metodología práctica, siempre propone talleres contextualizados a la ingeniería.', NOW() - INTERVAL '3 days'),
-          ('rf-sal-auto', 'form-auto-2026', 'doc-salazar', 'doc-salazar', 'Compromiso riguroso con la formación matemática y diseño de guías paso a paso.', NOW() - INTERVAL '2 days')
+          ('rf-sal-3', 'form-eval-2026', 'est-3', 'doc-salazar', 'Gran metodología práctica, siempre propone talleres contextualizados a la ingeniería.', NOW() - INTERVAL '3 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-nav-1', 'form-eval-2026', 'est-1', 'doc-navarro', 'Muy buen profesor en programación, explica conceptos abstractos con ejemplos reales.', NOW() - INTERVAL '5 days'),
           ('rf-nav-2', 'form-eval-2026', 'est-2', 'doc-navarro', 'Excelente dinamismo en clase. Podría otorgar más margen de tiempo en los laboratorios prácticos.', NOW() - INTERVAL '4 days'),
-          ('rf-nav-3', 'form-eval-2026', 'est-4', 'doc-navarro', 'Gran apoyo durante el desarrollo de los proyectos de aula integradores.', NOW() - INTERVAL '2 days'),
-          ('rf-nav-auto', 'form-auto-2026', 'doc-navarro', 'doc-navarro', 'Fomento continuo del aprendizaje basado en problemas de desarrollo de software.', NOW() - INTERVAL '1 days')
+          ('rf-nav-3', 'form-eval-2026', 'est-4', 'doc-navarro', 'Gran apoyo durante el desarrollo de los proyectos de aula integradores.', NOW() - INTERVAL '2 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-cif-1', 'form-eval-2026', 'est-2', 'doc-cifuentes', 'Propicia debates éticos muy constructivos y analiza dilemas profesionales de ingeniería.', NOW() - INTERVAL '6 days'),
           ('rf-cif-2', 'form-eval-2026', 'est-3', 'doc-cifuentes', 'Cumplimiento impecable del cronograma y respeto mutuo en todas las sesiones.', NOW() - INTERVAL '4 days'),
-          ('rf-cif-3', 'form-eval-2026', 'est-5', 'doc-cifuentes', 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', NOW() - INTERVAL '2 days'),
-          ('rf-cif-auto', 'form-auto-2026', 'doc-cifuentes', 'doc-cifuentes', 'Promoción constante de la responsabilidad social universitaria bajo el MEDIT.', NOW() - INTERVAL '1 days')
+          ('rf-cif-3', 'form-eval-2026', 'est-5', 'doc-cifuentes', 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', NOW() - INTERVAL '2 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-prie-1', 'form-eval-2026', 'est-1', 'doc-prieto', 'Tiene sólido conocimiento lingüístico, pero los tiempos de devolución de ensayos son algo extensos.', NOW() - INTERVAL '7 days'),
           ('rf-prie-2', 'form-eval-2026', 'est-3', 'doc-prieto', 'Las lecturas seleccionadas son buenas. Se sugiere mayor dinamismo y participación oral en clase.', NOW() - INTERVAL '5 days'),
-          ('rf-prie-3', 'form-eval-2026', 'est-4', 'doc-prieto', 'Falta publicar las calificaciones intermedias con mayor anticipación a los cortes oficiales.', NOW() - INTERVAL '3 days'),
-          ('rf-prie-auto', 'form-auto-2026', 'doc-prieto', 'doc-prieto', 'Reflexión pedagógica orientada a optimizar tiempos de corrección escrita.', NOW() - INTERVAL '2 days')
+          ('rf-prie-3', 'form-eval-2026', 'est-4', 'doc-prieto', 'Falta publicar las calificaciones intermedias con mayor anticipación a los cortes oficiales.', NOW() - INTERVAL '3 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
         INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
         VALUES
           ('rf-men-1', 'form-eval-2026', 'est-2', 'doc-mendoza', 'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas.', NOW() - INTERVAL '6 days'),
           ('rf-men-2', 'form-eval-2026', 'est-4', 'doc-mendoza', 'Las rúbricas de evaluación no son claras y las retroalimentaciones de los circuitos son muy breves.', NOW() - INTERVAL '4 days'),
-          ('rf-men-3', 'form-eval-2026', 'est-5', 'doc-mendoza', 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', NOW() - INTERVAL '2 days'),
-          ('rf-men-auto', 'form-auto-2026', 'doc-mendoza', 'doc-mendoza', 'Reconozco la necesidad de incorporar simulaciones virtuales para fortalecer el componente práctico.', NOW() - INTERVAL '1 days')
+          ('rf-men-3', 'form-eval-2026', 'est-5', 'doc-mendoza', 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', NOW() - INTERVAL '2 days')
         ON CONFLICT (formulario_id, usuario_id, docente_id) DO NOTHING;
 
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-sal-1', 'q-claridad', '5'), ('rf-sal-1', 'q-organizacion', '5'), ('rf-sal-1', 'q-retro', '5'), ('rf-sal-1', 'q-metodologia', '5'),
           ('rf-sal-2', 'q-claridad', '5'), ('rf-sal-2', 'q-organizacion', '5'), ('rf-sal-2', 'q-retro', '4'), ('rf-sal-2', 'q-metodologia', '5'),
-          ('rf-sal-3', 'q-claridad', '5'), ('rf-sal-3', 'q-organizacion', '4'), ('rf-sal-3', 'q-retro', '5'), ('rf-sal-3', 'q-metodologia', '5'),
-          ('rf-sal-auto', 'q-auto-1', '5'), ('rf-sal-auto', 'q-auto-2', '5'), ('rf-sal-auto', 'q-auto-3', '4'), ('rf-sal-auto', 'q-auto-4', '5')
+          ('rf-sal-3', 'q-claridad', '5'), ('rf-sal-3', 'q-organizacion', '4'), ('rf-sal-3', 'q-retro', '5'), ('rf-sal-3', 'q-metodologia', '5')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-nav-1', 'q-claridad', '5'), ('rf-nav-1', 'q-organizacion', '4'), ('rf-nav-1', 'q-retro', '4'), ('rf-nav-1', 'q-metodologia', '5'),
           ('rf-nav-2', 'q-claridad', '4'), ('rf-nav-2', 'q-organizacion', '5'), ('rf-nav-2', 'q-retro', '4'), ('rf-nav-2', 'q-metodologia', '4'),
-          ('rf-nav-3', 'q-claridad', '5'), ('rf-nav-3', 'q-organizacion', '4'), ('rf-nav-3', 'q-retro', '4'), ('rf-nav-3', 'q-metodologia', '4'),
-          ('rf-nav-auto', 'q-auto-1', '4'), ('rf-nav-auto', 'q-auto-2', '5'), ('rf-nav-auto', 'q-auto-3', '4'), ('rf-nav-auto', 'q-auto-4', '5')
+          ('rf-nav-3', 'q-claridad', '5'), ('rf-nav-3', 'q-organizacion', '4'), ('rf-nav-3', 'q-retro', '4'), ('rf-nav-3', 'q-metodologia', '4')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-cif-1', 'q-claridad', '4'), ('rf-cif-1', 'q-organizacion', '5'), ('rf-cif-1', 'q-retro', '4'), ('rf-cif-1', 'q-metodologia', '4'),
           ('rf-cif-2', 'q-claridad', '4'), ('rf-cif-2', 'q-organizacion', '4'), ('rf-cif-2', 'q-retro', '4'), ('rf-cif-2', 'q-metodologia', '4'),
-          ('rf-cif-3', 'q-claridad', '4'), ('rf-cif-3', 'q-organizacion', '5'), ('rf-cif-3', 'q-retro', '4'), ('rf-cif-3', 'q-metodologia', '4'),
-          ('rf-cif-auto', 'q-auto-1', '4'), ('rf-cif-auto', 'q-auto-2', '4'), ('rf-cif-auto', 'q-auto-3', '4'), ('rf-cif-auto', 'q-auto-4', '5')
+          ('rf-cif-3', 'q-claridad', '4'), ('rf-cif-3', 'q-organizacion', '5'), ('rf-cif-3', 'q-retro', '4'), ('rf-cif-3', 'q-metodologia', '4')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-prie-1', 'q-claridad', '4'), ('rf-prie-1', 'q-organizacion', '4'), ('rf-prie-1', 'q-retro', '3'), ('rf-prie-1', 'q-metodologia', '4'),
           ('rf-prie-2', 'q-claridad', '4'), ('rf-prie-2', 'q-organizacion', '4'), ('rf-prie-2', 'q-retro', '3'), ('rf-prie-2', 'q-metodologia', '4'),
-          ('rf-prie-3', 'q-claridad', '4'), ('rf-prie-3', 'q-organizacion', '4'), ('rf-prie-3', 'q-retro', '3'), ('rf-prie-3', 'q-metodologia', '4'),
-          ('rf-prie-auto', 'q-auto-1', '4'), ('rf-prie-auto', 'q-auto-2', '4'), ('rf-prie-auto', 'q-auto-3', '4'), ('rf-prie-auto', 'q-auto-4', '4')
+          ('rf-prie-3', 'q-claridad', '4'), ('rf-prie-3', 'q-organizacion', '4'), ('rf-prie-3', 'q-retro', '3'), ('rf-prie-3', 'q-metodologia', '4')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
 
         INSERT INTO detalle_respuesta (respuesta_id, pregunta_id, valor)
         VALUES
           ('rf-men-1', 'q-claridad', '3'), ('rf-men-1', 'q-organizacion', '3'), ('rf-men-1', 'q-retro', '3'), ('rf-men-1', 'q-metodologia', '4'),
           ('rf-men-2', 'q-claridad', '3'), ('rf-men-2', 'q-organizacion', '4'), ('rf-men-2', 'q-retro', '3'), ('rf-men-2', 'q-metodologia', '3'),
-          ('rf-men-3', 'q-claridad', '3'), ('rf-men-3', 'q-organizacion', '3'), ('rf-men-3', 'q-retro', '3'), ('rf-men-3', 'q-metodologia', '4'),
-          ('rf-men-auto', 'q-auto-1', '4'), ('rf-men-auto', 'q-auto-2', '3'), ('rf-men-auto', 'q-auto-3', '3'), ('rf-men-auto', 'q-auto-4', '4')
+          ('rf-men-3', 'q-claridad', '3'), ('rf-men-3', 'q-organizacion', '3'), ('rf-men-3', 'q-retro', '3'), ('rf-men-3', 'q-metodologia', '4')
         ON CONFLICT (respuesta_id, pregunta_id) DO NOTHING;
       `)
       console.log('✓ Esquema PostgreSQL verificado y sincronizado correctamente con docentes y evaluaciones.')
