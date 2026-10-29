@@ -5,6 +5,23 @@ import { UsuarioFactory } from '../models/index.js'
 
 export const memoryUpdatedPasswords = new Map()
 
+export const INSTITUTIONAL_SEED_USERS = [
+  { id: 'usr-admin-uber', nombre: 'Ubeimar Laguna Cárdenas', correo: 'uberadmin.siard@ucundinamarca.edu.co', contrasena: 'Uber1019', rol: 'admin', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'usr-admin-dani', nombre: 'Daniel Moreno', correo: 'danidirec.siard@ucundinamarca.edu.co', contrasena: 'siardVd3', rol: 'admin', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'usr-coord-jaime', nombre: 'Jaime Parra', correo: 'jaimeparra.siard@ucundinamarca.edu.co', contrasena: 'CoordParra2026*', rol: 'coordinador', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'usr-coord-1', nombre: 'Coordinación Académica', correo: 'coordinador@ucundinamarca.edu.co', contrasena: 'CoordParra2026*', rol: 'coordinador', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'doc-mendoza', nombre: 'Javier Mendoza', correo: 'prof.mendoza.siard@ucundinamarca.edu.co', contrasena: 'ProfMen2026*', rol: 'docente', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'doc-salazar', nombre: 'Diana Salazar', correo: 'prof.salazar.siard@ucundinamarca.edu.co', contrasena: 'ProfSal2026*', rol: 'docente', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'doc-navarro', nombre: 'Andrés Navarro', correo: 'prof.navarro.siard@ucundinamarca.edu.co', contrasena: 'ProfNav2026*', rol: 'docente', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'doc-prieto', nombre: 'Gabriel Prieto', correo: 'prof.prieto.siard@ucundinamarca.edu.co', contrasena: 'ProfPri2026*', rol: 'docente', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'doc-cifuentes', nombre: 'Mariana Cifuentes', correo: 'prof.cifuentes.siard@ucundinamarca.edu.co', contrasena: 'ProfCif2026*', rol: 'docente', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'est-carlos', nombre: 'Carlos Peña', correo: 'carlospena.siard@ucundinamarca.edu.co', contrasena: 'Carl8742*', rol: 'estudiante', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'est-1', nombre: 'Laura Quintero', correo: 'lauraquintero.siard@ucundinamarca.edu.co', contrasena: 'Laur5193*', rol: 'estudiante', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'est-2', nombre: 'Mateo Rincón', correo: 'mateorincon.siard@ucundinamarca.edu.co', contrasena: 'Mate6381*', rol: 'estudiante', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'est-3', nombre: 'Camila Torres', correo: 'camilatorres.siard@ucundinamarca.edu.co', contrasena: 'Cami9240*', rol: 'estudiante', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+  { id: 'est-4', nombre: 'Julián Morales', correo: 'julianmorales.siard@ucundinamarca.edu.co', contrasena: 'Juli1835*', rol: 'estudiante', activo: true, sede: 'Sede Facatativá', carrera: 'Ingeniería de Sistemas y Computación' },
+]
+
 export class AuthService {
   async crearUsuario({ name, email, password, role, sede, carrera }) {
     if (!name?.trim() || !email?.trim() || !password || !role) {
@@ -67,75 +84,129 @@ export class AuthService {
     }
 
     let row = null
+    let dbConnected = false
     try {
       const result = await pool.query(
-        'SELECT id, nombre AS name, correo AS email, contrasena AS password, contrasena_hash, rol AS role, activo AS active, sede, carrera FROM usuarios WHERE LOWER(correo) = $1',
+        `SELECT id, nombre, nombre AS name, correo, correo AS email, 
+                contrasena, contrasena AS password, contrasena_hash, 
+                rol, rol AS role, activo, activo AS active, sede, carrera 
+         FROM usuarios 
+         WHERE LOWER(TRIM(correo)) = LOWER(TRIM($1)) 
+            OR (LOWER(TRIM(COALESCE(email, ''))) = LOWER(TRIM($1)))
+            OR ($1 LIKE '%uberadmin%' AND LOWER(TRIM(correo)) LIKE '%uberadmin%')
+         LIMIT 1`,
         [searchEmail]
       )
+      dbConnected = true
       if (result.rows.length > 0) {
         row = result.rows[0]
       }
     } catch (dbErr) {
-      console.warn('Aviso en autenticar (PostgreSQL no disponible):', dbErr.message)
-    }
-
-    if (!row) {
-      const INSTITUTIONAL_SEED_USERS = [
-        { id: 'usr-admin-uber', nombre: 'Ubeimar Laguna Cárdenas', correo: 'uberadmin.siard@ucundinamarca.edu.co', contrasena: 'Uber1019', rol: 'admin', activo: true },
-        { id: 'usr-coord-dani', nombre: 'Daniel Moreno', correo: 'danidirec.siard@ucundinamarca.edu.co', contrasena: 'siardVd3', rol: 'admin', activo: true },
-        { id: 'usr-coord-1', nombre: 'Coordinación Académica', correo: 'coordinador@ucundinamarca.edu.co', contrasena: 'CoordParra2026*', rol: 'coordinador', activo: true },
-        { id: 'doc-mendoza', nombre: 'Javier Mendoza', correo: 'javier.mendoza@ucundinamarca.edu.co', contrasena: 'ProfMen2026*', rol: 'docente', activo: true },
-        { id: 'doc-salazar', nombre: 'Diana Salazar', correo: 'diana.salazar@ucundinamarca.edu.co', contrasena: 'ProfSal2026*', rol: 'docente', activo: true },
-        { id: 'doc-navarro', nombre: 'Andrés Navarro', correo: 'andres.navarro@ucundinamarca.edu.co', contrasena: 'ProfNav2026*', rol: 'docente', activo: true },
-        { id: 'doc-prieto', nombre: 'Gabriel Prieto', correo: 'gabriel.prieto@ucundinamarca.edu.co', contrasena: 'ProfPri2026*', rol: 'docente', activo: true },
-        { id: 'doc-cifuentes', nombre: 'Mariana Cifuentes', correo: 'mariana.cifuentes@ucundinamarca.edu.co', contrasena: 'ProfCif2026*', rol: 'docente', activo: true },
-        { id: 'est-carlos', nombre: 'Carlos Peña', correo: 'carlospena.siard@ucundinamarca.edu.co', contrasena: 'Carl8742*', rol: 'estudiante', activo: true },
-        { id: 'est-1', nombre: 'Laura Quintero', correo: 'lauraquintero.siard@ucundinamarca.edu.co', contrasena: 'Laur5193*', rol: 'estudiante', activo: true },
-        { id: 'est-2', nombre: 'Mateo Rincón', correo: 'mateorincon.siard@ucundinamarca.edu.co', contrasena: 'Mate6381*', rol: 'estudiante', activo: true },
-        { id: 'est-3', nombre: 'Camila Torres', correo: 'camilatorres.siard@ucundinamarca.edu.co', contrasena: 'Cami9240*', rol: 'estudiante', activo: true },
-        { id: 'est-4', nombre: 'Julián Morales', correo: 'julianmorales.siard@ucundinamarca.edu.co', contrasena: 'Juli1835*', rol: 'estudiante', activo: true },
-      ]
-      const foundSeed = INSTITUTIONAL_SEED_USERS.find(
-        (u) => u.correo.toLowerCase() === searchEmail || (searchEmail.includes('uberadmin') && u.correo.includes('uberadmin'))
-      )
-      if (foundSeed) {
-        row = {
-          id: foundSeed.id,
-          name: foundSeed.nombre,
-          email: foundSeed.correo,
-          password: foundSeed.contrasena,
-          role: foundSeed.rol,
-          activo: foundSeed.activo,
-          sede: 'Sede Facatativá',
-          carrera: 'Ingeniería de Sistemas y Computación',
+      try {
+        const result2 = await pool.query(
+          `SELECT id, nombre AS name, correo AS email, contrasena AS password, contrasena_hash, rol AS role, activo AS active, sede, carrera 
+           FROM usuarios 
+           WHERE LOWER(TRIM(correo)) = LOWER(TRIM($1)) 
+              OR ($1 LIKE '%uberadmin%' AND LOWER(TRIM(correo)) LIKE '%uberadmin%')
+           LIMIT 1`,
+          [searchEmail]
+        )
+        dbConnected = true
+        if (result2.rows.length > 0) {
+          row = result2.rows[0]
         }
+      } catch (err2) {
+        console.warn('Aviso en autenticar (PostgreSQL no disponible):', err2.message)
+        dbConnected = false
       }
     }
 
-    if (!row) {
-      const error = new Error('Credenciales inválidas.')
-      error.statusCode = 401
-      throw error
+    // 1. SI EL USUARIO EXISTE EN NEON POSTGRESQL:
+    if (row) {
+      if (row.active === false || row.activo === false) {
+        const error = new Error('Esta cuenta fue dada de baja. Contacte al administrador.')
+        error.statusCode = 403
+        throw error
+      }
+
+      // Comparar la contraseña ingresada con la almacenada (soportando texto plano o bcrypt)
+      const storedHash = row.contrasena_hash
+      const storedPlain = row.contrasena || row.password
+
+      let passwordMatch = false
+      if (storedHash) {
+        passwordMatch = await bcrypt.compare(password, storedHash)
+      }
+      if (!passwordMatch && storedPlain) {
+        passwordMatch = (storedPlain === password)
+      }
+
+      // SI NO COINCIDE (incluyendo si el usuario escribe la contraseña vieja): RETORNAR ESTRICTAMENTE 401 Unauthorized con "Contraseña incorrecta."
+      if (!passwordMatch) {
+        const error = new Error('Contraseña incorrecta.')
+        error.statusCode = 401
+        throw error
+      }
+
+      const usuario = UsuarioFactory.crearUsuario(row)
+      return usuario.toJSON()
     }
 
-    const memOverride = memoryUpdatedPasswords.get(row.id) || memoryUpdatedPasswords.get(searchEmail)
-    if (memOverride) {
-      row.password = memOverride.password
-      row.contrasena_hash = memOverride.hash
+    // 2. SI NO EXISTE EN NEON (o contingencia offline):
+    const foundSeed = INSTITUTIONAL_SEED_USERS.find(
+      (u) => u.correo.toLowerCase() === searchEmail || (searchEmail.includes('uberadmin') && u.correo.includes('uberadmin'))
+    )
+
+    if (foundSeed) {
+      if (dbConnected) {
+        const seedHash = await bcrypt.hash(foundSeed.contrasena, 10)
+        try {
+          await pool.query(
+            `INSERT INTO usuarios (id, nombre, correo, contrasena, contrasena_hash, rol, activo, sede, carrera, email, password)
+             VALUES ($1, $2, LOWER(TRIM($3)), $4, $5, $6, true, 'Sede Facatativá', 'Ingeniería de Sistemas y Computación', LOWER(TRIM($3)), $4)
+             ON CONFLICT (correo) DO NOTHING`,
+            [foundSeed.id, foundSeed.nombre, foundSeed.correo, foundSeed.contrasena, seedHash, foundSeed.rol]
+          )
+        } catch {}
+      }
+
+      const memOverride =
+        memoryUpdatedPasswords.get(foundSeed.id) ||
+        memoryUpdatedPasswords.get(foundSeed.correo.toLowerCase()) ||
+        memoryUpdatedPasswords.get(searchEmail)
+      const expectedPassword = memOverride ? memOverride.password : foundSeed.contrasena
+      const expectedHash = memOverride ? memOverride.hash : null
+
+      let seedMatch = false
+      if (expectedHash) {
+        seedMatch = await bcrypt.compare(password, expectedHash)
+      }
+      if (!seedMatch) {
+        seedMatch = (expectedPassword === password)
+      }
+
+      if (!seedMatch) {
+        const error = new Error('Contraseña incorrecta.')
+        error.statusCode = 401
+        throw error
+      }
+
+      const usuario = UsuarioFactory.crearUsuario({
+        id: foundSeed.id,
+        name: foundSeed.nombre,
+        email: foundSeed.correo,
+        password: expectedPassword,
+        role: foundSeed.rol,
+        activo: foundSeed.activo,
+        sede: 'Sede Facatativá',
+        carrera: 'Ingeniería de Sistemas y Computación',
+      })
+      return usuario.toJSON()
     }
 
-    const passwordMatch = row.contrasena_hash
-      ? await bcrypt.compare(password, row.contrasena_hash)
-      : row.password === password
-
-    if (!passwordMatch) {
-      const error = new Error('Credenciales inválidas.')
-      error.statusCode = 401
-      throw error
-    }
-
-    const usuario = UsuarioFactory.crearUsuario(row)
-    return usuario.toJSON()
+    const error = new Error('No existe una cuenta registrada con este correo electrónico.')
+    error.statusCode = 401
+    throw error
   }
 
   async eliminarUsuario(id) {
@@ -214,22 +285,6 @@ export class AuthService {
 
     // Fallback híbrido institucional si no se encontró en PostgreSQL
     if (!row) {
-      const INSTITUTIONAL_SEED_USERS = [
-        { id: 'usr-admin-uber', correo: 'uberadmin.siard@ucundinamarca.edu.co', contrasena: 'Uber1019' },
-        { id: 'usr-coord-dani', correo: 'danidirec.siard@ucundinamarca.edu.co', contrasena: 'siardVd3' },
-        { id: 'usr-coord-1', correo: 'coordinador@ucundinamarca.edu.co', contrasena: 'CoordParra2026*' },
-        { id: 'doc-mendoza', correo: 'javier.mendoza@ucundinamarca.edu.co', contrasena: 'ProfMen2026*' },
-        { id: 'doc-salazar', correo: 'diana.salazar@ucundinamarca.edu.co', contrasena: 'ProfSal2026*' },
-        { id: 'doc-navarro', correo: 'andres.navarro@ucundinamarca.edu.co', contrasena: 'ProfNav2026*' },
-        { id: 'doc-prieto', correo: 'gabriel.prieto@ucundinamarca.edu.co', contrasena: 'ProfPri2026*' },
-        { id: 'doc-cifuentes', correo: 'mariana.cifuentes@ucundinamarca.edu.co', contrasena: 'ProfCif2026*' },
-        { id: 'est-carlos', correo: 'carlospena.siard@ucundinamarca.edu.co', contrasena: 'Carl8742*' },
-        { id: 'est-1', correo: 'lauraquintero.siard@ucundinamarca.edu.co', contrasena: 'Laur5193*' },
-        { id: 'est-2', correo: 'mateorincon.siard@ucundinamarca.edu.co', contrasena: 'Mate6381*' },
-        { id: 'est-3', correo: 'camilatorres.siard@ucundinamarca.edu.co', contrasena: 'Cami9240*' },
-        { id: 'est-4', correo: 'julianmorales.siard@ucundinamarca.edu.co', contrasena: 'Juli1835*' },
-      ]
-
       const foundSeed = INSTITUTIONAL_SEED_USERS.find(
         (u) =>
           (userId && u.id === userId) ||
@@ -248,9 +303,10 @@ export class AuthService {
     }
 
     const targetUserId = row.id
+    const targetEmail = row.correo || row.email || userEmail
     const memOverride =
       memoryUpdatedPasswords.get(targetUserId) ||
-      (row.correo && memoryUpdatedPasswords.get(row.correo.toLowerCase())) ||
+      (targetEmail && memoryUpdatedPasswords.get(targetEmail.toLowerCase())) ||
       (userEmail && memoryUpdatedPasswords.get(userEmail))
     if (memOverride) {
       row.contrasena = memOverride.password
@@ -269,18 +325,53 @@ export class AuthService {
 
     const nuevoHash = await bcrypt.hash(nuevaContrasena, 10)
     memoryUpdatedPasswords.set(targetUserId, { password: nuevaContrasena, hash: nuevoHash })
-    if (row.correo) {
-      memoryUpdatedPasswords.set(row.correo.toLowerCase(), { password: nuevaContrasena, hash: nuevoHash })
+    if (targetEmail) {
+      memoryUpdatedPasswords.set(targetEmail.toLowerCase(), { password: nuevaContrasena, hash: nuevoHash })
     }
     if (userEmail) {
       memoryUpdatedPasswords.set(userEmail, { password: nuevaContrasena, hash: nuevoHash })
     }
 
     try {
-      await pool.query(
+      const updateRes = await pool.query(
         'UPDATE usuarios SET contrasena = $1, contrasena_hash = $2 WHERE id = $3',
         [nuevaContrasena, nuevoHash, targetUserId]
       )
+
+      if (updateRes.rowCount === 0) {
+        const seedUser = INSTITUTIONAL_SEED_USERS.find(
+          (u) =>
+            (targetUserId && u.id === targetUserId) ||
+            (targetEmail && u.correo.toLowerCase() === targetEmail.toLowerCase()) ||
+            (userEmail && u.correo.toLowerCase() === userEmail.toLowerCase())
+        ) || {
+          id: targetUserId || crypto.randomUUID(),
+          nombre: row.nombre || row.name || 'Usuario Institucional',
+          correo: targetEmail || userEmail,
+          rol: row.rol || row.role || 'admin',
+          sede: row.sede || 'Sede Facatativá',
+          carrera: row.carrera || 'Ingeniería de Sistemas y Computación',
+        }
+
+        await pool.query(
+          `INSERT INTO usuarios (id, nombre, correo, contrasena, contrasena_hash, rol, carrera, sede, activo, email, password)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $3, $4)
+           ON CONFLICT (correo) DO UPDATE
+           SET contrasena = EXCLUDED.contrasena,
+               contrasena_hash = EXCLUDED.contrasena_hash,
+               password = EXCLUDED.password`,
+          [
+            seedUser.id,
+            seedUser.nombre,
+            seedUser.correo,
+            nuevaContrasena,
+            nuevoHash,
+            seedUser.rol,
+            seedUser.carrera || 'Ingeniería de Sistemas y Computación',
+            seedUser.sede || 'Sede Facatativá',
+          ]
+        )
+      }
     } catch (updateErr) {
       console.warn('Aviso al actualizar en PostgreSQL (modo contingencia):', updateErr.message)
     }

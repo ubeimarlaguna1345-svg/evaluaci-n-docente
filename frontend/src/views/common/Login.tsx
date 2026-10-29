@@ -112,6 +112,7 @@ export function Login({ onLogin }: { onLogin?: (u: User) => void }) {
         if (
           errMsg.includes('credenciales') ||
           errMsg.includes('contraseña') ||
+          errMsg.includes('contrasena') ||
           errMsg.includes('incorrect') ||
           apiErr?.status === 401 ||
           apiErr?.statusCode === 401
