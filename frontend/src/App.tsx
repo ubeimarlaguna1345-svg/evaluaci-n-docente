@@ -1,15 +1,33 @@
-import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useDB, initDB, actions } from './store'
+import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { useDB, initDB, actions, useAppStore, setCurrentUser, type User } from './store'
 import { Shell } from './views/common/Shell'
+import { Login } from './views/common/Login'
 import { Msg } from './views/common/Components'
 import { ProtectedRoute } from './ProtectedRoute'
 
+const getInitialUser = (): User | null => {
+  try {
+    const item = typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null
+    return item ? JSON.parse(item) : null
+  } catch {
+    return null
+  }
+}
+
 export function AppContent() {
   const db = useDB()
+  const storeUser = useAppStore((state) => state.currentUser)
+  const [currentUser, setLocalUser] = useState<User | null>(getInitialUser())
+  const navigate = useNavigate()
+
   useEffect(() => {
     initDB()
   }, [])
+
+  useEffect(() => {
+    setLocalUser(storeUser || getInitialUser())
+  }, [storeUser])
 
   if (db.loading) {
     return (
@@ -51,7 +69,23 @@ export function AppContent() {
 
   return (
     <Routes>
-      <Route path="/" element={<Shell />} />
+      {/* Si currentUser es null: La ruta raíz / DEBE renderizar obligatoriamente el componente <Login /> */}
+      <Route
+        path="/"
+        element={
+          currentUser ? (
+            <Navigate to={`/${currentUser.role || (currentUser as any).rol || 'estudiante'}`} replace />
+          ) : (
+            <Login
+              onLogin={(u) => {
+                setCurrentUser(u)
+                setLocalUser(u)
+                navigate(`/${u.role || (u as any).rol || 'estudiante'}`)
+              }}
+            />
+          )
+        }
+      />
       <Route
         path="/admin"
         element={

@@ -1414,22 +1414,24 @@ export function useDB() {
   return val
 }
 
-function getStoredUser(): (User & { rol: string }) | null {
+export const getInitialUser = (): (User & { rol: string }) | null => {
   try {
-    const raw =
-      (typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null) ||
-      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('siard_user') || sessionStorage.getItem('currentUser') : null)
-    if (raw) {
-      const u = JSON.parse(raw)
+    const item = typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null
+    if (item) {
+      const u = JSON.parse(item)
       if (u && u.id && (u.role || u.rol) && u.active !== false) {
         return { ...u, role: u.role || u.rol, rol: u.rol || u.role }
       }
     }
-  } catch {}
-  return null
+    return null
+  } catch {
+    return null
+  }
 }
 
-let currentUser: (User & { rol: string }) | null = getStoredUser()
+export const getStoredUser = getInitialUser
+
+let currentUser: (User & { rol: string }) | null = getInitialUser()
 
 export function setCurrentUser(u: User | null) {
   if (u) {
@@ -1469,6 +1471,17 @@ export function getCurrentUser(): (User & { rol: string }) | null {
 }
 
 export function logout() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('siard_user')
+      localStorage.removeItem('siard_token')
+      localStorage.removeItem('currentUser')
+      localStorage.removeItem('siard-me')
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear()
+    }
+  } catch {}
   setCurrentUser(null)
 }
 

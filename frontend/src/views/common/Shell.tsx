@@ -82,6 +82,23 @@ export function Shell() {
   const [view, setView] = useState('')
   const [showProfile, setShowProfile] = useState(false)
 
+  const handleLogout = () => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('siard_user')
+        localStorage.removeItem('siard_token')
+        localStorage.removeItem('currentUser')
+        localStorage.removeItem('siard-me')
+      }
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.clear()
+      }
+    } catch {}
+    setCurrentUser(null)
+    logout()
+    navigate('/')
+  }
+
   useEffect(() => {
     initDB()
   }, [location.pathname])
@@ -164,10 +181,7 @@ export function Shell() {
             <button
               type="button"
               className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper transition text-left cursor-pointer"
-              onClick={() => {
-                logout()
-                navigate('/')
-              }}
+              onClick={handleLogout}
             >
               <LogOut size={14} />
               <span>Salir</span>
@@ -187,10 +201,7 @@ export function Shell() {
           <button
             type="button"
             className="flex items-center gap-1.5 text-xs text-paper/75 hover:text-paper cursor-pointer"
-            onClick={() => {
-              logout()
-              navigate('/')
-            }}
+            onClick={handleLogout}
           >
             <LogOut size={14} />
             <span>Salir ({me.name})</span>
