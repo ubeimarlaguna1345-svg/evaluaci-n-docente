@@ -31,10 +31,51 @@ export function Accounts({ me }: { me: User }) {
     }
   }
 
-  // Ocultar únicamente al administrador para evitar auto-eliminación; mostrar coordinador, docentes y estudiantes
-  const usuarios = db.users
-  const usuariosVisibles = usuarios.filter((u) => (u.rol || u.role)?.toLowerCase() !== 'admin')
-  const list = usuariosVisibles.filter((u) =>
+  const currentUser = me
+  const currentRole = (currentUser.rol || currentUser.role)?.toLowerCase()
+
+  // 2. Asegurar el registro del Coordinador en la lista si no estuviera
+  const tieneJaimeParra = db.users.some(
+    (u) =>
+      u.email?.toLowerCase().includes('jaime.parra') ||
+      u.email?.toLowerCase().includes('jaimeparra') ||
+      (u.nombre || u.name)?.toLowerCase().includes('jaime parra')
+  )
+
+  const listaBase = tieneJaimeParra
+    ? db.users
+    : [
+        ...db.users,
+        {
+          id: 'coord-01',
+          name: 'Jaime Parra',
+          nombre: 'Jaime Parra',
+          email: 'jaime.parra.siard@ucundinamarca.edu.co',
+          password: 'CoordParra2026*',
+          role: 'coordinador' as Role,
+          rol: 'Coordinador',
+          active: true,
+          estado: 'Activo',
+          sede: 'Sede Facatativá',
+          carrera: 'Ingeniería de Sistemas y Computación',
+        },
+      ]
+
+  const usuarios = listaBase.map((u) => ({
+    ...u,
+    nombre: u.nombre || u.name,
+    rol: u.rol || u.role,
+    estado: u.estado || (u.active ? 'Activo' : 'Bloqueada'),
+  }))
+
+  // 1. Renderizado diferenciado por rol en la tabla de cuentas:
+  const usuariosAMostrar = currentRole === 'admin'
+    ? usuarios.filter((u) => u.rol?.toLowerCase() !== 'admin')
+    : usuarios.filter((u) => u.rol?.toLowerCase() === 'docente' || u.rol?.toLowerCase() === 'estudiante')
+
+  const usuariosVisibles = usuariosAMostrar
+
+  const list = usuariosAMostrar.filter((u) =>
     ((u.nombre || u.name || '') + (u.email || '') + (u.sede || '') + (u.carrera || '')).toLowerCase().includes(search.toLowerCase())
   )
 
