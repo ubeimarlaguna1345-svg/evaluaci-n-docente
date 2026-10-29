@@ -307,7 +307,7 @@ export const CONTINGENCY_FORMS: Form[] = [
     description: 'Instrumento de reflexión pedagógica y autoevaluación.',
     period: '2026-I',
     start: '2026-01-15T00:00:00Z',
-    end: '2026-06-30T23:59:59Z',
+    end: '2026-12-31T23:59:59Z',
     questions: [
       { id: 'q-auto-1', text: 'Autoevaluación: Claridad didáctica y mediación pedagógica', type: 'escala', dimension: 'Claridad conceptual y explicación', required: true, bloque: 'docente', options: [] },
       { id: 'q-auto-2', text: 'Autoevaluación: Cumplimiento de planeación y rúbricas', type: 'escala', dimension: 'Organización y cumplimiento del programa', required: true, bloque: 'docente', options: [] },
@@ -519,6 +519,13 @@ export function sanitizeForms(forms: Form[]): Form[] {
           start: f.start || '2026-01-15T00:00:00Z',
           end: f.end && isOpen(f.start, f.end) ? f.end : '2026-12-31T23:59:59Z',
           questions: allQuestions.length >= 15 ? allQuestions : f.questions,
+        }
+      }
+      if (f.kind === 'autoevaluacion') {
+        return {
+          ...f,
+          start: f.start || '2026-01-15T00:00:00Z',
+          end: f.end && isOpen(f.start, f.end) ? f.end : '2026-12-31T23:59:59Z',
         }
       }
       return f
@@ -1021,6 +1028,106 @@ export const actions = {
     notify()
     return { forms: freshForms, studentResponses }
   },
+
+  syncDocenteAutoevaluationData: async (docenteId: string) => {
+    let freshForms: Form[] = state.forms
+    let docenteResponses: FormResponse[] = []
+
+    try {
+      const formsRes = await evaluacionService.getEvaluaciones()
+      if (formsRes?.forms && Array.isArray(formsRes.forms) && formsRes.forms.length > 0) {
+        freshForms = sanitizeForms(formsRes.forms)
+        state.forms = freshForms
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(freshForms))
+          }
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Aviso al consultar /api/evaluaciones para autoevaluación:', err)
+    }
+
+    try {
+      const respData = await evaluacionService.getRespuestas({ userId: docenteId })
+      const rawList = respData?.formResponses || respData?.responses
+      if (Array.isArray(rawList)) {
+        docenteResponses = rawList.map((r: any) => ({
+          ...r,
+          docenteId: r.docenteId || r.teacherId || '',
+          teacherId: r.docenteId || r.teacherId || '',
+        }))
+      }
+    } catch (err) {
+      try {
+        const bootstrap = await reporteService.getBootstrap()
+        if (bootstrap?.formResponses && Array.isArray(bootstrap.formResponses)) {
+          docenteResponses = bootstrap.formResponses
+            .filter((r) => r.userId === docenteId || r.docenteId === docenteId)
+            .map((r: any) => ({
+              ...r,
+              docenteId: r.docenteId || r.teacherId || '',
+              teacherId: r.docenteId || r.teacherId || '',
+            }))
+        }
+      } catch (bootErr) {
+        console.warn('Aviso al consultar respuestas de autoevaluación:', bootErr)
+      }
+    }
+
+    const otherResponses = state.formResponses.filter((r) => r.userId !== docenteId && r.docenteId !== docenteId)
+    state.formResponses = [...otherResponses, ...docenteResponses]
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
+      }
+    } catch {}
+
+    notify()
+    return { forms: freshForms, docenteResponses }
+  },
+
+  syncGlobalData: async () => {
+    try {
+      await initDB()
+      const [evalsRes, cadisRes, respRes] = await Promise.allSettled([
+        evaluacionService.getEvaluaciones(),
+        evaluacionService.getCadis(),
+        evaluacionService.getRespuestas(),
+      ])
+      if (evalsRes.status === 'fulfilled' && evalsRes.value?.forms && evalsRes.value.forms.length > 0) {
+        const clean = sanitizeForms(evalsRes.value.forms)
+        state.forms = clean
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(clean))
+          }
+        } catch {}
+      }
+      if (cadisRes.status === 'fulfilled' && cadisRes.value?.cadis && cadisRes.value.cadis.length > 0) {
+        state.cadis = cadisRes.value.cadis
+      }
+      if (respRes.status === 'fulfilled') {
+        const rawList = respRes.value?.formResponses || respRes.value?.responses
+        if (Array.isArray(rawList) && rawList.length > 0) {
+          const freshResp = rawList.map((r: any) => ({
+            ...r,
+            docenteId: r.docenteId || r.teacherId || '',
+            teacherId: r.docenteId || r.teacherId || '',
+          }))
+          state.formResponses = freshResp
+          try {
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(freshResp))
+            }
+          } catch {}
+        }
+      }
+      notify()
+    } catch (err) {
+      console.warn('Aviso en sincronización global:', err)
+    }
+  },
 }
 
 export async function execRaw(query: string): Promise<{ columns: string[]; values: unknown[][] }> {
@@ -1096,6 +1203,9 @@ export function setCurrentUser(u: User | null) {
     } catch {}
   }
   notify()
+  if (u && typeof window !== 'undefined') {
+    actions.syncGlobalData().catch(() => {})
+  }
 }
 
 export function getCurrentUser(): (User & { rol: string }) | null {

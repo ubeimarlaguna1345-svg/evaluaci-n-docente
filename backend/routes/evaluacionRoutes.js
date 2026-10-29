@@ -1,5 +1,6 @@
 import express from 'express'
 import {
+  getCadis,
   createCadi,
   updateCadi,
   deleteCadi,
@@ -17,6 +18,7 @@ import {
 
 export const evaluacionRoutes = express.Router()
 
+evaluacionRoutes.get('/cadis', getCadis)
 evaluacionRoutes.post('/cadis', createCadi)
 evaluacionRoutes.put('/cadis/:id', updateCadi)
 evaluacionRoutes.patch('/cadis/:id', updateCadi)

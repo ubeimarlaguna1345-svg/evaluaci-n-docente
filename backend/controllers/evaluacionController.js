@@ -10,6 +10,16 @@ function sendJson(res, statusCode, payload) {
 }
 
 export class EvaluacionController {
+  static async getCadis(_req, res) {
+    try {
+      const cadis = await evaluacionService.obtenerCadis()
+      return sendJson(res, 200, { ok: true, cadis })
+    } catch (error) {
+      const status = error.statusCode || 500
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al obtener CADIs.', detail: error.message })
+    }
+  }
+
   static async createCadi(req, res) {
     try {
       const id = await evaluacionService.crearCadi(req.body || {})
@@ -160,6 +170,7 @@ export class EvaluacionController {
   }
 }
 
+export const getCadis = EvaluacionController.getCadis
 export const createCadi = EvaluacionController.createCadi
 export const updateCadi = EvaluacionController.updateCadi
 export const deleteCadi = EvaluacionController.deleteCadi

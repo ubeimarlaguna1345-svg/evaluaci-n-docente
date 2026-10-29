@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   FileText,
   CheckCircle2,
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import {
   useDB,
+  actions,
   stats,
   getDocenteConsolidatedGrade,
   getTeacherConsolidatedGrade,
@@ -173,6 +174,13 @@ export function Report({
   const db = useDB()
   const effectiveInitialDocenteId = initialDocenteId ?? initialTeacherId
   const effectiveIsDocenteView = isDocenteView ?? isTeacherView ?? false
+
+  useEffect(() => {
+    actions.syncGlobalData().catch(console.error)
+    if (effectiveIsDocenteView && me?.id) {
+      actions.syncDocenteAutoevaluationData(me.id).catch(console.error)
+    }
+  }, [effectiveIsDocenteView, me?.id])
 
   const allDocentes = useMemo(() => db.users.filter((u) => u.role === 'docente' && u.active), [db.users])
   const evals = useMemo(() => db.forms.filter((f) => f.kind === 'evaluacion'), [db.forms])

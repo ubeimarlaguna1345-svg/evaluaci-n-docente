@@ -311,6 +311,13 @@ export class EvaluacionService {
     }
   }
 
+  async obtenerCadis() {
+    const cadisRes = await pool.query(
+      'SELECT id, codigo, nombre, semestre, COALESCE(tipo, \'CADI\') AS tipo, COALESCE(es_articulador, false) AS "esArticulador", docente_id AS "docenteId" FROM cadis ORDER BY semestre, nombre'
+    )
+    return cadisRes.rows
+  }
+
   async crearCadi({ codigo, nombre, semestre, tipo, esArticulador, docenteId }) {
     const cadiModelo = new Cadi({ codigo, nombre, semestre, tipo, esArticulador, docenteId })
     if (!cadiModelo.esValido()) {

@@ -2,6 +2,10 @@ import { apiFetch } from './api'
 import type { Form, FormResponse, CADI, Feedback, Question } from '../store'
 
 export const evaluacionService = {
+  getCadis: async (): Promise<{ ok: boolean; cadis: CADI[] }> => {
+    return apiFetch<{ ok: boolean; cadis: CADI[] }>('/api/cadis')
+  },
+
   createCADI: async (c: Omit<CADI, 'id'>): Promise<{ ok: boolean; id: string }> => {
     return apiFetch<{ ok: boolean; id: string }>('/api/cadis', {
       method: 'POST',
