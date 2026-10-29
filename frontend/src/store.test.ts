@@ -889,16 +889,16 @@ describe('4. Gestión de Perfil y Cambio de Contraseña (Frontend)', () => {
 })
 
 describe('6. Restricción Normativa del Menú y Accesos para el Rol Docente', () => {
-  it('el menú del docente debe contener estrictamente las 3 opciones normativas institucionales', () => {
+  it('el menú del docente debe contener estrictamente las 2 opciones normativas institucionales', () => {
     const docenteViews = VIEWS.docente
-    expect(docenteViews.length).toBe(3)
+    expect(docenteViews.length).toBe(2)
 
     const ids = docenteViews.map((v) => v.id)
-    expect(ids).toEqual(['auto', 'reporte-docente', 'normativa'])
+    expect(ids).toEqual(['auto', 'normativa'])
 
     const labels = docenteViews.map((v) => v.label)
     expect(labels).toContain('Autoevaluación')
-    expect(labels).toContain('Mis Resultados / Reporte')
+    expect(labels).not.toContain('Mis Resultados / Reporte')
     expect(labels).toContain('Normativa y MEDIT')
   })
 

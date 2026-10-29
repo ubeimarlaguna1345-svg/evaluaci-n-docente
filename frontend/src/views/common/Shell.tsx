@@ -46,7 +46,6 @@ export const VIEWS: Record<Role, View[]> = (() => {
     coordinador: mgmt,
     docente: [
       { id: 'auto', label: 'Autoevaluación', icon: ClipboardList, render: (me) => <SelfEvaluation me={me} /> },
-      { id: 'reporte-docente', label: 'Mis Resultados / Reporte', icon: FileText, render: (me) => <Report me={me} initialDocenteId={me.id} initialTeacherId={me.id} isDocenteView isTeacherView /> },
       normativaView,
     ],
     estudiante: [
@@ -128,7 +127,11 @@ export function Shell() {
 
   const userRole: Role = (me.role || (me as any).rol || 'estudiante') as Role
   const views = VIEWS[userRole] || VIEWS.estudiante
-  const current = views.find((v) => v.id === view) ?? views[0]
+  const activeViewId =
+    userRole === 'docente' && (view === 'resultados' || view === 'reporte' || view === 'reporte-docente')
+      ? 'auto'
+      : view
+  const current = views.find((v) => v.id === activeViewId) ?? views[0]
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
