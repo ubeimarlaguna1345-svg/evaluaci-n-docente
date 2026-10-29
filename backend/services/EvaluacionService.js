@@ -109,8 +109,18 @@ export class EvaluacionService {
     }
   }
 
-  async crearFormulario({ kind, title, description, period, cadiId, start, end, questions }) {
-    if (!kind || !title?.trim() || !period?.trim() || !start || !end) {
+  async crearFormulario(data = {}) {
+    const kind = data.kind || data.tipo || 'evaluacion'
+    const title = (data.title || data.titulo || '').trim()
+    const description = data.description || data.descripcion || ''
+    const period = (data.period || data.periodo || '2026-I').trim()
+    const cadiId = data.cadiId || data.cadi_id || null
+    const start = data.start || data.fecha_inicio || data.fechaInicio
+    const end = data.end || data.fecha_cierre || data.fechaCierre
+    const questions = data.questions || data.preguntas || []
+    const formId = data.id || crypto.randomUUID()
+
+    if (!kind || !title || !period || !start || !end) {
       const error = new Error('Datos incompletos para crear el formulario.')
       error.statusCode = 400
       throw error
@@ -119,12 +129,15 @@ export class EvaluacionService {
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
-      const formId = crypto.randomUUID()
 
       await client.query(
         `INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [formId, kind, title.trim(), description || '', period.trim(), cadiId || null, start, end]
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (id) DO UPDATE
+         SET tipo = EXCLUDED.tipo, titulo = EXCLUDED.titulo, descripcion = EXCLUDED.descripcion,
+             periodo = EXCLUDED.periodo, cadi_id = EXCLUDED.cadi_id,
+             fecha_inicio = EXCLUDED.fecha_inicio, fecha_cierre = EXCLUDED.fecha_cierre`,
+        [formId, kind, title, description, period, cadiId, start, end]
       )
 
       if (Array.isArray(questions)) {
@@ -141,8 +154,17 @@ export class EvaluacionService {
     }
   }
 
-  async actualizarFormulario(id, { kind, title, description, period, cadiId, start, end, questions }) {
-    if (!kind || !title?.trim() || !period?.trim() || !start || !end) {
+  async actualizarFormulario(id, data = {}) {
+    const kind = data.kind || data.tipo || 'evaluacion'
+    const title = (data.title || data.titulo || '').trim()
+    const description = data.description || data.descripcion || ''
+    const period = (data.period || data.periodo || '2026-I').trim()
+    const cadiId = data.cadiId || data.cadi_id || null
+    const start = data.start || data.fecha_inicio || data.fechaInicio
+    const end = data.end || data.fecha_cierre || data.fechaCierre
+    const questions = data.questions || data.preguntas || []
+
+    if (!kind || !title || !period || !start || !end) {
       const error = new Error('Datos incompletos para actualizar el formulario.')
       error.statusCode = 400
       throw error
@@ -156,14 +178,15 @@ export class EvaluacionService {
         `UPDATE formularios
          SET tipo = $1, titulo = $2, descripcion = $3, periodo = $4, cadi_id = $5, fecha_inicio = $6, fecha_cierre = $7
          WHERE id = $8`,
-        [kind, title.trim(), description || '', period.trim(), cadiId || null, start, end, id]
+        [kind, title, description, period, cadiId, start, end, id]
       )
 
       if (updateRes.rowCount === 0) {
-        await client.query('ROLLBACK')
-        const error = new Error('Formulario no encontrado.')
-        error.statusCode = 404
-        throw error
+        await client.query(
+          `INSERT INTO formularios (id, tipo, titulo, descripcion, periodo, cadi_id, fecha_inicio, fecha_cierre)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [id, kind, title, description, period, cadiId, start, end]
+        )
       }
 
       if (Array.isArray(questions)) {

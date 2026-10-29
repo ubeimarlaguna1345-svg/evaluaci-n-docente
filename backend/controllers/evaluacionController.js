@@ -120,6 +120,14 @@ export class EvaluacionController {
     }
   }
 
+  static async createEvaluacion(req, res) {
+    return EvaluacionController.createForm(req, res)
+  }
+
+  static async getEvaluaciones(req, res) {
+    return EvaluacionController.getForms(req, res)
+  }
+
   static async updateForm(req, res) {
     const { id } = req.params
     try {
@@ -209,8 +217,11 @@ export const getForms = EvaluacionController.getForms
 export const getEvaluaciones = EvaluacionController.getForms
 export const getFormById = EvaluacionController.getFormById
 export const createForm = EvaluacionController.createForm
+export const createEvaluacion = EvaluacionController.createForm
 export const updateForm = EvaluacionController.updateForm
+export const updateEvaluacion = EvaluacionController.updateForm
 export const deleteForm = EvaluacionController.deleteForm
+export const deleteEvaluacion = EvaluacionController.deleteForm
 export const updateFormDates = EvaluacionController.updateFormDates
 export const getFormResponses = EvaluacionController.getFormResponses
 export const createFormResponse = EvaluacionController.createFormResponse

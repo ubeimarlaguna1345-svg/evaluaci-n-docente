@@ -76,9 +76,42 @@ const USERS_STORAGE_KEY = 'siard_users_storage'
 const memoryDeletedUsers = new Set<string>()
 
 const DELETED_FORMS_KEY = 'siard_deleted_forms'
-const FORMS_STORAGE_KEY = 'siard_forms_storage'
+export const EVALUACIONES_STORAGE_KEY = 'siard_evaluaciones'
+export const FORMS_STORAGE_KEY = 'siard_evaluaciones'
+export const LEGACY_FORMS_STORAGE_KEY = 'siard_forms_storage'
 const RESPONSES_STORAGE_KEY = 'siard_responses_storage'
 const memoryDeletedForms = new Set<string>()
+
+export function getStoredEvaluaciones(): Form[] {
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const raw = storage.getItem(EVALUACIONES_STORAGE_KEY) || storage.getItem(LEGACY_FORMS_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const deleted = getDeletedFormIds()
+          const sanitized = sanitizeForms(parsed.filter((f: Form) => !deleted.has(f.id)))
+          if (sanitized.length > 0) {
+            return sanitized
+          }
+        }
+      }
+    }
+  } catch {}
+  return []
+}
+
+export function saveStoredEvaluaciones(forms: Form[]): void {
+  try {
+    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
+    if (storage) {
+      const serialized = JSON.stringify(forms)
+      storage.setItem(EVALUACIONES_STORAGE_KEY, serialized)
+      storage.setItem(LEGACY_FORMS_STORAGE_KEY, serialized)
+    }
+  } catch {}
+}
 
 export function getDeletedFormIds(): Set<string> {
   try {
@@ -567,23 +600,13 @@ export function sanitizeForms(forms: Form[]): Form[] {
 
 function getInitialForms(): Form[] {
   try {
-    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
-    if (storage) {
-      const raw = storage.getItem(FORMS_STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const sanitized = sanitizeForms(parsed)
-          if (sanitized.length > 0) {
-            storage.setItem(FORMS_STORAGE_KEY, JSON.stringify(sanitized))
-            return sanitized
-          }
-        }
-      }
-      const initial = sanitizeForms(CONTINGENCY_FORMS)
-      storage.setItem(FORMS_STORAGE_KEY, JSON.stringify(initial))
-      return initial
+    const stored = getStoredEvaluaciones()
+    if (stored.length > 0) {
+      return stored
     }
+    const initial = sanitizeForms(CONTINGENCY_FORMS)
+    saveStoredEvaluaciones(initial)
+    return initial
   } catch {}
   return sanitizeForms(CONTINGENCY_FORMS)
 }
@@ -627,11 +650,7 @@ export function activateDemoMode() {
 
   const cleanUsers = sanitizeUsers(CONTINGENCY_USERS).filter((u) => !deletedIds.has(u.id))
   
-  let existingForms: Form[] = []
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(FORMS_STORAGE_KEY) : null
-    if (raw) existingForms = JSON.parse(raw)
-  } catch {}
+  let existingForms = getStoredEvaluaciones()
   if (!existingForms.length && state.forms.length) {
     existingForms = state.forms
   }
@@ -648,10 +667,10 @@ export function activateDemoMode() {
   try {
     if (typeof window !== 'undefined') {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleanUsers))
-      localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(cleanForms))
       localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(cleanResponses))
     }
   } catch {}
+  saveStoredEvaluaciones(cleanForms)
 
   state = {
     users: cleanUsers,
@@ -690,7 +709,21 @@ export async function initDB() {
     const cleanUsers = sanitizeUsers(activeRawUsers).filter((u) => !deletedIds.has(u.id))
 
     const deletedFormIds = getDeletedFormIds()
-    const cleanForms = sanitizeForms((data.forms || []).filter((f) => !deletedFormIds.has(f.id)))
+    const serverForms = sanitizeForms((data.forms || []).filter((f) => !deletedFormIds.has(f.id)))
+    const localForms = getStoredEvaluaciones()
+    const formMap = new Map<string, Form>()
+    for (const f of localForms) {
+      if (!deletedFormIds.has(f.id)) formMap.set(f.id, f)
+    }
+    for (const f of serverForms) {
+      if (!deletedFormIds.has(f.id)) formMap.set(f.id, f)
+    }
+    let cleanForms = Array.from(formMap.values())
+    if (cleanForms.length === 0) {
+      cleanForms = sanitizeForms(CONTINGENCY_FORMS)
+    }
+    saveStoredEvaluaciones(cleanForms)
+
     const cleanResponses = (data.formResponses || [])
       .filter((r) => !deletedFormIds.has(r.formId) && !r.id.startsWith('rf-'))
       .map((r) => ({
@@ -708,7 +741,6 @@ export async function initDB() {
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleanUsers))
-        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(cleanForms))
         localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(cleanResponses))
       }
     } catch {}
@@ -734,7 +766,19 @@ export async function initDB() {
         evaluacionService.getCadis(),
       ])
       if (evalsRes.status === 'fulfilled' && evalsRes.value?.forms && evalsRes.value.forms.length > 0) {
-        state.forms = sanitizeForms(evalsRes.value.forms)
+        const serverForms = sanitizeForms(evalsRes.value.forms)
+        const localForms = getStoredEvaluaciones()
+        const deletedIds = getDeletedFormIds()
+        const formMap = new Map<string, Form>()
+        for (const f of localForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        for (const f of serverForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        const clean = Array.from(formMap.values())
+        state.forms = clean
+        saveStoredEvaluaciones(clean)
         if (cadisRes.status === 'fulfilled' && cadisRes.value?.cadis) {
           state.cadis = sanitizeCadis(cadisRes.value.cadis)
         }
@@ -841,53 +885,53 @@ export const actions = {
   createForm: async (f: Omit<Form, 'id'>) => {
     const tempId = 'form-' + uid()
     const newForm: Form = { ...f, id: tempId }
-    state.forms = [newForm, ...state.forms]
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
-      }
-    } catch {}
+    // 1. Guardar de inmediato en el estado de React
+    const updatedForms = [newForm, ...state.forms.filter((x) => x.id !== tempId)]
+    state.forms = updatedForms
+    // 2. Guardar en localStorage ('siard_evaluaciones')
+    saveStoredEvaluaciones(updatedForms)
     notify()
 
+    // 3. Enviar la petición POST /api/evaluaciones a Neon PostgreSQL
     try {
-      const res = await evaluacionService.createForm(f)
+      const res = await evaluacionService.createEvaluacion(newForm)
       if (res?.id && res.id !== tempId) {
         state.forms = state.forms.map((item) => (item.id === tempId ? { ...item, id: res.id } : item))
-        try {
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
-          }
-        } catch {}
+        saveStoredEvaluaciones(state.forms)
         notify()
       }
-      await initDB()
     } catch (err) {
-      console.warn('Aviso al crear formulario en backend:', err)
-      if (!demoModeActive && !(typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'))) {
-        throw err
-      }
+      console.warn('Aviso al sincronizar evaluación con Neon PostgreSQL (permanece en persistencia local):', err)
     }
+    return newForm
+  },
+
+  createEvaluacion: async (f: Omit<Form, 'id'> | Form) => {
+    return actions.createForm(f as Omit<Form, 'id'>)
+  },
+
+  saveEvaluacion: async (f: Form | Omit<Form, 'id'>) => {
+    if ('id' in f && f.id) {
+      return actions.updateForm(f.id, f)
+    }
+    return actions.createForm(f)
   },
 
   updateForm: async (id: string, f: Omit<Form, 'id'>) => {
     const updatedForm: Form = { ...f, id }
     state.forms = state.forms.map((item) => (item.id === id ? updatedForm : item))
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
-      }
-    } catch {}
+    saveStoredEvaluaciones(state.forms)
     notify()
 
     try {
       await evaluacionService.updateForm(id, f)
-      await initDB()
     } catch (err) {
-      console.warn('Aviso al actualizar formulario en backend:', err)
-      if (!demoModeActive && !(typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'))) {
-        throw err
-      }
+      console.warn('Aviso al actualizar formulario en backend (guardado en persistencia local):', err)
     }
+  },
+
+  updateEvaluacion: async (id: string, f: Omit<Form, 'id'>) => {
+    return actions.updateForm(id, f)
   },
 
   deleteForm: async (id: string) => {
@@ -895,10 +939,10 @@ export const actions = {
 
     state.formResponses = [...state.formResponses.filter((r) => r.formId !== id)]
     state.forms = [...state.forms.filter((f) => f.id !== id)]
+    saveStoredEvaluaciones(state.forms)
 
     try {
       if (typeof window !== 'undefined') {
-        localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(state.forms))
         localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
       }
     } catch {}
@@ -910,6 +954,10 @@ export const actions = {
     } catch (err) {
       console.warn('Aviso al eliminar formulario en backend:', err)
     }
+  },
+
+  deleteEvaluacion: async (id: string) => {
+    return actions.deleteForm(id)
   },
 
   eliminarFormulario: async (id: string) => {
@@ -1030,13 +1078,19 @@ export const actions = {
     try {
       const formsRes = await evaluacionService.getEvaluaciones()
       if (formsRes?.forms && Array.isArray(formsRes.forms) && formsRes.forms.length > 0) {
-        freshForms = sanitizeForms(formsRes.forms)
+        const serverForms = sanitizeForms(formsRes.forms)
+        const localForms = getStoredEvaluaciones()
+        const deletedIds = getDeletedFormIds()
+        const formMap = new Map<string, Form>()
+        for (const f of localForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        for (const f of serverForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        freshForms = Array.from(formMap.values())
         state.forms = freshForms
-        try {
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(freshForms))
-          }
-        } catch {}
+        saveStoredEvaluaciones(freshForms)
       }
     } catch (err) {
       console.warn('Aviso al consultar /api/evaluaciones:', err)
@@ -1088,13 +1142,19 @@ export const actions = {
     try {
       const formsRes = await evaluacionService.getEvaluaciones()
       if (formsRes?.forms && Array.isArray(formsRes.forms) && formsRes.forms.length > 0) {
-        freshForms = sanitizeForms(formsRes.forms)
+        const serverForms = sanitizeForms(formsRes.forms)
+        const localForms = getStoredEvaluaciones()
+        const deletedIds = getDeletedFormIds()
+        const formMap = new Map<string, Form>()
+        for (const f of localForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        for (const f of serverForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        freshForms = Array.from(formMap.values())
         state.forms = freshForms
-        try {
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(freshForms))
-          }
-        } catch {}
+        saveStoredEvaluaciones(freshForms)
       }
     } catch (err) {
       console.warn('Aviso al consultar /api/evaluaciones para autoevaluación:', err)
@@ -1142,19 +1202,40 @@ export const actions = {
   fetchEvaluaciones: async () => {
     try {
       const res = await evaluacionService.getEvaluaciones()
-      if (res?.forms && Array.isArray(res.forms)) {
-        const clean = sanitizeForms(res.forms)
+      const rawForms = res?.forms
+      const localForms = getStoredEvaluaciones()
+      const deletedIds = getDeletedFormIds()
+
+      if (Array.isArray(rawForms) && rawForms.length > 0) {
+        const serverForms = sanitizeForms(rawForms)
+        const formMap = new Map<string, Form>()
+        for (const f of localForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        for (const f of serverForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        const clean = Array.from(formMap.values())
         state.forms = clean
-        try {
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(clean))
-          }
-        } catch {}
+        saveStoredEvaluaciones(clean)
         notify()
         return clean
+      } else {
+        // Si el servidor responde un arreglo vacío o nulo pero en localStorage ya existen evaluaciones, PRESERVAR las de localStorage
+        if (localForms.length > 0) {
+          state.forms = localForms
+          notify()
+          return localForms
+        }
       }
     } catch (err) {
       console.warn('Aviso al consultar evaluaciones en backend:', err)
+      const localForms = getStoredEvaluaciones()
+      if (localForms.length > 0) {
+        state.forms = localForms
+        notify()
+        return localForms
+      }
     }
     await initDB()
     return state.forms
@@ -1169,13 +1250,19 @@ export const actions = {
         evaluacionService.getRespuestas(),
       ])
       if (evalsRes.status === 'fulfilled' && evalsRes.value?.forms && evalsRes.value.forms.length > 0) {
-        const clean = sanitizeForms(evalsRes.value.forms)
+        const serverForms = sanitizeForms(evalsRes.value.forms)
+        const localForms = getStoredEvaluaciones()
+        const deletedIds = getDeletedFormIds()
+        const formMap = new Map<string, Form>()
+        for (const f of localForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        for (const f of serverForms) {
+          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+        }
+        const clean = Array.from(formMap.values())
         state.forms = clean
-        try {
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(clean))
-          }
-        } catch {}
+        saveStoredEvaluaciones(clean)
       }
       if (cadisRes.status === 'fulfilled' && cadisRes.value?.cadis && cadisRes.value.cadis.length > 0) {
         state.cadis = cadisRes.value.cadis

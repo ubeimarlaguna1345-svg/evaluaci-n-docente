@@ -56,11 +56,29 @@ export const evaluacionService = {
     return apiFetch<{ ok: boolean; form: Form }>(`/api/forms/${id}`)
   },
 
-  createForm: async (f: Omit<Form, 'id'>): Promise<{ ok: boolean; id: string }> => {
-    return apiFetch<{ ok: boolean; id: string }>('/api/forms', {
-      method: 'POST',
-      body: JSON.stringify(f),
-    })
+  createEvaluacion: async (f: Omit<Form, 'id'> | Form): Promise<{ ok: boolean; id: string }> => {
+    try {
+      return await apiFetch<{ ok: boolean; id: string }>('/api/evaluaciones', {
+        method: 'POST',
+        body: JSON.stringify(f),
+      })
+    } catch {
+      return apiFetch<{ ok: boolean; id: string }>('/api/forms', {
+        method: 'POST',
+        body: JSON.stringify(f),
+      })
+    }
+  },
+
+  createForm: async (f: Omit<Form, 'id'> | Form): Promise<{ ok: boolean; id: string }> => {
+    return evaluacionService.createEvaluacion(f)
+  },
+
+  saveEvaluacion: async (f: Form | Omit<Form, 'id'>): Promise<{ ok: boolean; id?: string; message?: string }> => {
+    if ('id' in f && f.id) {
+      return evaluacionService.updateForm(f.id, f)
+    }
+    return evaluacionService.createEvaluacion(f)
   },
 
   updateForm: async (id: string, f: Omit<Form, 'id'>): Promise<{ ok: boolean; message: string }> => {
