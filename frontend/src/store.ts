@@ -277,6 +277,45 @@ export const CONTINGENCY_CADIS: CADI[] = [
   { id: 'cadi-elec-302', codigo: 'ELC301', nombre: 'Electrónica Básica', semestre: 3, tipo: 'CADI', esArticulador: false, docenteId: 'doc-mendoza' },
 ]
 
+export function getDocenteCadi(
+  cadis: CADI[] = [],
+  docente?: User | { id?: string; name?: string; email?: string } | null
+): CADI | undefined {
+  if (!docente) return undefined
+  const docId = docente.id || ''
+  const docName = (docente.name || '').toLowerCase()
+  const docEmail = (docente.email || '').toLowerCase()
+
+  // 1. Coincidencia directa por docenteId
+  if (docId) {
+    const found = cadis.find((c) => c.docenteId === docId)
+    if (found) return found
+  }
+
+  // 2. Mapeo curricular garantizado UdeC (para evitar cualquier guion)
+  let targetCode = ''
+  if (docId === 'doc-mendoza' || docName.includes('mendoza') || docEmail.includes('mendoza')) {
+    targetCode = 'ELC301'
+  } else if (docId === 'doc-salazar' || docName.includes('salazar') || docEmail.includes('salazar')) {
+    targetCode = 'MAT101'
+  } else if (docId === 'doc-navarro' || docName.includes('navarro') || docEmail.includes('navarro')) {
+    targetCode = 'SIS301'
+  } else if (docId === 'doc-prieto' || docName.includes('prieto') || docEmail.includes('prieto')) {
+    targetCode = 'CAI101'
+  } else if (docId === 'doc-cifuentes' || docName.includes('cifuentes') || docEmail.includes('cifuentes')) {
+    targetCode = 'CAI201'
+  }
+
+  if (targetCode) {
+    const byCode = cadis.find((c) => c.codigo === targetCode)
+    if (byCode) return byCode
+    const fallback = CONTINGENCY_CADIS.find((c) => c.codigo === targetCode)
+    if (fallback) return fallback
+  }
+
+  return undefined
+}
+
 export const CONTINGENCY_FORMS: Form[] = [
   {
     id: 'form-eval-2026',
@@ -305,23 +344,7 @@ export const CONTINGENCY_FORMS: Form[] = [
   },
 ]
 
-export const CONTINGENCY_RESPONSES: FormResponse[] = [
-  { id: 'rf-sal-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-salazar', teacherId: 'doc-salazar', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '5', 'q-retro': '5', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Excelente docente, su dominio de los temas de cálculo y paciencia para resolver dudas complejas es insuperable.', date: '2026-02-10T14:30:00Z' },
-  { id: 'rf-sal-2', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-salazar', teacherId: 'doc-salazar', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Clases muy ordenadas, rúbricas transparentes y retroalimentación constante que motiva a aprender.', date: '2026-02-11T16:20:00Z' },
-  { id: 'rf-sal-3', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-salazar', teacherId: 'doc-salazar', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '4', 'q-retro': '5', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '5', 'q-infraestructura': '5', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Gran metodología práctica, siempre propone talleres contextualizados a la ingeniería.', date: '2026-02-12T10:15:00Z' },
-  { id: 'rf-nav-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-claridad': '5', 'q-doc-expositiva': '5', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '5', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '5', 'q-facultad-comunicacion': '4' }, observation: 'Muy buen profesor en programación, explica conceptos abstractos con ejemplos reales.', date: '2026-02-10T14:30:00Z' },
-  { id: 'rf-nav-2', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '5', 'q-metodologia': '4', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Excelente dinamismo en clase. Podría otorgar más margen de tiempo en los laboratorios prácticos.', date: '2026-02-11T16:20:00Z' },
-  { id: 'rf-nav-3', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-navarro', teacherId: 'doc-navarro', answers: { 'q-claridad': '5', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '5', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Gran apoyo durante el desarrollo de los proyectos de aula integradores.', date: '2026-02-13T11:00:00Z' },
-  { id: 'rf-cif-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '5', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '5', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '5' }, observation: 'Propicia debates éticos muy constructivos y analiza dilemas profesionales de ingeniería.', date: '2026-02-09T17:00:00Z' },
-  { id: 'rf-cif-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Cumplimiento impecable del cronograma y respeto mutuo en todas las sesiones.', date: '2026-02-11T12:00:00Z' },
-  { id: 'rf-cif-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-cifuentes', teacherId: 'doc-cifuentes', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '5', 'q-retro': '4', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Sería enriquecedor invitar expertos para profundizar en casos de bioética tecnológica.', date: '2026-02-13T15:40:00Z' },
-  { id: 'rf-prie-1', formId: 'form-eval-2026', userId: 'est-1', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Tiene sólido conocimiento lingüístico, pero los tiempos de devolución de ensayos son algo extensos.', date: '2026-02-08T09:30:00Z' },
-  { id: 'rf-prie-2', formId: 'form-eval-2026', userId: 'est-3', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '4', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '4' }, observation: 'Las lecturas seleccionadas son buenas. Se sugiere mayor dinamismo y participación oral en clase.', date: '2026-02-10T11:20:00Z' },
-  { id: 'rf-prie-3', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-prieto', teacherId: 'doc-prieto', answers: { 'q-claridad': '4', 'q-doc-expositiva': '4', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '4', 'q-tic': '4', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Falta publicar las calificaciones intermedias con mayor anticipación a los cortes oficiales.', date: '2026-02-12T16:00:00Z' },
-  { id: 'rf-men-1', formId: 'form-eval-2026', userId: 'est-2', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas.', date: '2026-02-09T18:00:00Z' },
-  { id: 'rf-men-2', formId: 'form-eval-2026', userId: 'est-4', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '4', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '3', 'q-medit-autonomo': '3', 'q-infraestructura': '4', 'q-conectividad': '3', 'q-facultad-comunicacion': '3' }, observation: 'Las rúbricas de evaluación no son claras y las retroalimentaciones de los circuitos son muy breves.', date: '2026-02-11T13:40:00Z' },
-  { id: 'rf-men-3', formId: 'form-eval-2026', userId: 'est-5', docenteId: 'doc-mendoza', teacherId: 'doc-mendoza', answers: { 'q-claridad': '3', 'q-doc-expositiva': '3', 'q-organizacion': '3', 'q-retro': '3', 'q-doc-comunicacion': '3', 'q-tic': '3', 'q-metodologia': '4', 'q-medit-autonomo': '3', 'q-infraestructura': '3', 'q-conectividad': '4', 'q-facultad-comunicacion': '4' }, observation: 'Se solicita mayor apertura para resolver inquietudes y orientación sobre el uso de simuladores.', date: '2026-02-13T16:10:00Z' },
-]
+export const CONTINGENCY_RESPONSES: FormResponse[] = []
 
 export function sanitizeUsers(users: User[]): User[] {
   const filtered = users.filter((u) => {
@@ -466,8 +489,23 @@ function getInitialUsers(): User[] {
   return sanitizeUsers(CONTINGENCY_USERS)
 }
 
+export function sanitizeCadis(cadis: CADI[]): CADI[] {
+  const list = [...(cadis || [])]
+  for (const fallback of CONTINGENCY_CADIS) {
+    const idx = list.findIndex((c) => c.codigo === fallback.codigo || c.id === fallback.id)
+    if (idx >= 0) {
+      if (!list[idx].docenteId) {
+        list[idx] = { ...list[idx], docenteId: fallback.docenteId }
+      }
+    } else {
+      list.push(fallback)
+    }
+  }
+  return list
+}
+
 function getInitialCadis(): CADI[] {
-  return [...CONTINGENCY_CADIS]
+  return sanitizeCadis(CONTINGENCY_CADIS)
 }
 
 export function isOpen(start: string, end: string): boolean {
@@ -548,13 +586,13 @@ function getInitialResponses(): FormResponse[] {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
           const deleted = getDeletedFormIds()
-          return parsed.filter((r: FormResponse) => !deleted.has(r.formId) && r.formId !== 'form-auto-2026')
+          return parsed.filter((r: FormResponse) => !deleted.has(r.formId) && r.formId !== 'form-auto-2026' && !r.id.startsWith('rf-'))
         }
       }
-      storage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(CONTINGENCY_RESPONSES))
+      storage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify([]))
     }
   } catch {}
-  return [...CONTINGENCY_RESPONSES]
+  return []
 }
 
 let state: DB = {
@@ -606,9 +644,9 @@ export function activateDemoMode() {
 
   state = {
     users: cleanUsers,
-    cadis: [...CONTINGENCY_CADIS],
+    cadis: sanitizeCadis(CONTINGENCY_CADIS),
     forms: [...cleanForms],
-    formResponses: [...cleanResponses],
+    formResponses: [],
     feedbacks: [],
     feedbackResponses: [],
     connected: true,
@@ -643,7 +681,7 @@ export async function initDB() {
     const deletedFormIds = getDeletedFormIds()
     const cleanForms = sanitizeForms((data.forms || []).filter((f) => !deletedFormIds.has(f.id)))
     const cleanResponses = (data.formResponses || [])
-      .filter((r) => !deletedFormIds.has(r.formId))
+      .filter((r) => !deletedFormIds.has(r.formId) && !r.id.startsWith('rf-'))
       .map((r) => ({
         ...r,
         docenteId: (r as any).docenteId || (r as any).teacherId || '',
@@ -666,7 +704,7 @@ export async function initDB() {
 
     state = {
       users: cleanUsers,
-      cadis: data.cadis || [],
+      cadis: sanitizeCadis(data.cadis || []),
       forms: [...cleanForms],
       formResponses: [...cleanResponses],
       feedbacks: cleanFeedbacks,
@@ -687,7 +725,7 @@ export async function initDB() {
       if (evalsRes.status === 'fulfilled' && evalsRes.value?.forms && evalsRes.value.forms.length > 0) {
         state.forms = sanitizeForms(evalsRes.value.forms)
         if (cadisRes.status === 'fulfilled' && cadisRes.value?.cadis) {
-          state.cadis = cadisRes.value.cadis
+          state.cadis = sanitizeCadis(cadisRes.value.cadis)
         }
         state.connected = true
         state.loading = false

@@ -34,11 +34,15 @@ export class ReporteController {
       const data = await reporteService.obtenerBootstrap()
       return sendJson(res, 200, { ok: true, connected: true, ...data })
     } catch (error) {
-      return sendJson(res, 500, {
-        ok: false,
+      console.warn('Aviso en /api/bootstrap (PostgreSQL no disponible, devolviendo datos institucionales seguros):', error.message)
+      const fallback = typeof reporteService.obtenerFallbackBootstrap === 'function'
+        ? reporteService.obtenerFallbackBootstrap()
+        : { users: [], cadis: [], forms: [], formResponses: [], feedbacks: [], feedbackResponses: [] }
+      return sendJson(res, 200, {
+        ok: true,
         connected: false,
-        message: 'Error al sincronizar datos desde PostgreSQL.',
-        detail: error.message,
+        message: 'Modo seguro institucional activo.',
+        ...fallback,
       })
     }
   }

@@ -7,6 +7,7 @@ import {
   fmt,
   getStudentDocenteEvaluationStatus,
   getDeletedFormIds,
+  getDocenteCadi,
   type User,
 } from '../../store'
 import { Header, Card, Msg, Empty, btnGhost } from '../common'
@@ -98,7 +99,11 @@ export function StudentEvaluation({ me }: { me: User }) {
                   (ev) => ev.formId === f.id && (ev.docenteId === t.id || ev.teacherId === t.id) && ev.userId === me.id
                 )
                 const status = getStudentDocenteEvaluationStatus(db, f, me?.id || '', t.id)
-                const docenteCadis = db.cadis.filter((c) => c.docenteId === t.id)
+                let docenteCadis = db.cadis.filter((c) => c.docenteId === t.id)
+                if (docenteCadis.length === 0) {
+                  const fallback = getDocenteCadi(db.cadis, t)
+                  if (fallback) docenteCadis = [fallback]
+                }
 
                 return (
                   <div key={t.id} className="flex items-center justify-between py-3">

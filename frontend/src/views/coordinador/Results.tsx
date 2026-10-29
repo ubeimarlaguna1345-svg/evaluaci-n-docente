@@ -5,6 +5,7 @@ import {
   stats,
   getDocenteConsolidatedGrade,
   isEvaluationConsolidated,
+  getDocenteCadi,
   type Form,
   type FormKind,
 } from '../../store'
@@ -102,7 +103,7 @@ export function Results() {
       return {
         docente: t,
         grade,
-        cadi: db.cadis.find((c) => c.docenteId === t.id),
+        cadi: getDocenteCadi(db.cadis, t),
         ...statusInfo,
       }
     })

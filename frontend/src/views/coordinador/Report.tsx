@@ -36,6 +36,7 @@ import {
   getDocenteConsolidatedGrade,
   getTeacherConsolidatedGrade,
   isEvaluationConsolidated,
+  getDocenteCadi,
   type DB,
   type User,
   type CADI,
@@ -200,7 +201,11 @@ export function Report({
   const teachersWithGrades = useMemo(() => {
     return allDocentes.map((t) => {
       const grade = getDocenteConsolidatedGrade(db, t.id, selectedPeriod)
-      const cadis = db.cadis.filter((c) => c.docenteId === t.id)
+      let cadis = db.cadis.filter((c) => c.docenteId === t.id)
+      if (cadis.length === 0) {
+        const fallback = getDocenteCadi(db.cadis, t)
+        if (fallback) cadis = [fallback]
+      }
       const primaryCadi = cadis[0] || null
       const statusInfo = isEvaluationConsolidated(grade, selectedForm)
       const desempeno = statusInfo.estaConsolidado
