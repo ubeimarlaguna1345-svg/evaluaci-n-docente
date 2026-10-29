@@ -289,35 +289,46 @@ export function Report({
 
   const dimensionesCalculadas = useMemo(() => {
     if (!activeDetail) return []
-    const final = activeDetail.grade.finalScore
+    const hasResponses = (activeDetail.grade.studentResponsesCount || 0) > 0
 
     return DIMENSIONES_MEDIT.map((dim) => {
       let score: number | null = null
 
-      if (activeStats?.porDimension) {
-        if (activeStats.porDimension[dim.dimensionDb]?.avg > 0) {
-          score = activeStats.porDimension[dim.dimensionDb].avg
-        } else if (activeStats.porDimension[dim.titulo]?.avg > 0) {
-          score = activeStats.porDimension[dim.titulo].avg
+      if (hasResponses) {
+        if (activeStats?.porDimension) {
+          if (activeStats.porDimension[dim.dimensionDb]?.avg > 0) {
+            score = activeStats.porDimension[dim.dimensionDb].avg
+          } else if (activeStats.porDimension[dim.titulo]?.avg > 0) {
+            score = activeStats.porDimension[dim.titulo].avg
+          }
+        }
+
+        if (score === null && activeStats?.perQ) {
+          const found = activeStats.perQ.find(
+            (p) =>
+              p.question.dimension?.toLowerCase().includes(dim.dimensionDb.toLowerCase()) ||
+              p.question.text.toLowerCase().includes(dim.dimensionDb.toLowerCase().slice(0, 10))
+          )
+          if (found && found.n > 0) score = found.avg
+        }
+
+        if (score === null && activeDetail.grade.studentAvg !== null) {
+          score = Number(activeDetail.grade.studentAvg.toFixed(2))
         }
       }
 
-      if (score === null && activeStats?.perQ) {
-        const found = activeStats.perQ.find(
-          (p) =>
-            p.question.dimension?.toLowerCase().includes(dim.dimensionDb.toLowerCase()) ||
-            p.question.text.toLowerCase().includes(dim.dimensionDb.toLowerCase().slice(0, 10))
-        )
-        if (found && found.n > 0) score = found.avg
-      }
-
-      if (score === null) {
-        const base = final > 0 ? final : 4.0
-        score = Math.min(5.0, Math.max(1.0, Number((base + dim.offset).toFixed(2))))
-      }
-
-      const des = getNivelDesempeno(score)
-      const porcentaje = Math.round((score / 5) * 100)
+      const des = score !== null
+        ? getNivelDesempeno(score)
+        : {
+            nivel: 'En Curso' as NivelDesempeno,
+            label: 'Pendiente',
+            badgeClass: 'bg-paper text-ink/70 border border-line',
+            borderClass: 'border-line',
+            bgSoft: 'bg-paper/50',
+            textColor: 'text-ink/60',
+            tag: 'Pendiente',
+          }
+      const porcentaje = score !== null ? Math.round((score / 5) * 100) : 0
 
       return {
         ...dim,
@@ -330,11 +341,15 @@ export function Report({
 
   const diagnosticoPedagogico = useMemo(() => {
     if (!activeDetail || !dimensionesCalculadas.length) return null
+    const hasResponses = (activeDetail.grade.studentResponsesCount || 0) > 0
+    if (!hasResponses) return null
 
-    const fortalezas = dimensionesCalculadas.filter((d) => d.score > 4.2)
-    const mejorDimension = [...dimensionesCalculadas].sort((a, b) => b.score - a.score)[0]
-    const dimensionMasBaja = [...dimensionesCalculadas].sort((a, b) => a.score - b.score)[0]
-    const esSobresaliente = activeDetail.grade.finalScore >= 4.0
+    const fortalezas = dimensionesCalculadas.filter((d) => (d.score ?? 0) > 4.2)
+    const conScore = dimensionesCalculadas.filter((d) => d.score !== null)
+    if (conScore.length === 0) return null
+    const mejorDimension = [...conScore].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0]
+    const dimensionMasBaja = [...conScore].sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0]
+    const esSobresaliente = (activeDetail.grade.finalScore || 0) >= 4.0
 
     const consejosDidacticos: string[] = []
 
@@ -424,96 +439,24 @@ export function Report({
       : []
 
     if (reales.length > 0) return reales
-
-    const nivel = activeDetail.desempeno.nivel
-    if (nivel === 'Satisfactorio' || nivel === 'Sobresaliente' || nivel === 'Destacado') {
-      return [
-        {
-          texto:
-            'Excelente docente, su dominio de los temas de cálculo y paciencia para resolver dudas complejas es insuperable.',
-          tipo: 'fortaleza',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-        {
-          texto:
-            'Clases muy ordenadas, rúbricas transparentes y retroalimentación constante que motiva a aprender con rigor científico.',
-          tipo: 'fortaleza',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-        {
-          texto:
-            'Gran metodología activa; siempre propone talleres contextualizados a la ingeniería y proyectos prácticos de aula.',
-          tipo: 'fortaleza',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-      ]
-    }
-    if (nivel === 'Aceptable' || nivel === 'Aceptable / Atención Preventiva') {
-      return [
-        {
-          texto:
-            'Tiene sólido conocimiento lingüístico y conceptual, pero los tiempos de devolución de ensayos y notas son algo extensos.',
-          tipo: 'oportunidad',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-        {
-          texto:
-            'Las lecturas seleccionadas son pertinentes. Se sugiere mayor dinamismo y participación interactiva en cada sesión.',
-          tipo: 'oportunidad',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-        {
-          texto:
-            'Se solicita publicar las calificaciones intermedias con mayor anticipación a las fechas oficiales de cierre de corte.',
-          tipo: 'oportunidad',
-          autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-          periodo: selectedPeriod,
-        },
-      ]
-    }
-    return [
-      {
-        texto:
-          'Las clases son predominantemente teóricas; requerimos más acompañamiento práctico en banco de pruebas y laboratorios.',
-        tipo: 'oportunidad',
-        autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-        periodo: selectedPeriod,
-      },
-      {
-        texto:
-          'Las rúbricas de evaluación de talleres no son del todo claras y la retroalimentación de los circuitos entregados es muy breve.',
-        tipo: 'oportunidad',
-        autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-        periodo: selectedPeriod,
-      },
-      {
-        texto:
-          'Se solicita mayor apertura para resolver inquietudes en clase y orientación continua sobre el uso de simuladores virtuales.',
-        tipo: 'oportunidad',
-        autor: 'Estudiante de Ingeniería de Sistemas y Computación',
-        periodo: selectedPeriod,
-      },
-    ]
+    return []
   }, [activeDetail, activeStats, selectedPeriod])
 
   const metricasParticipacion = useMemo(() => {
-    if (!activeDetail) return { respondieron: 26, total: 30, porcentaje: 86.7 }
-    const cantResp = activeDetail.grade.studentResponsesCount
+    if (!activeDetail) return { respondieron: 0, total: 30, porcentaje: 0 }
+    const cantResp = activeDetail.grade.studentResponsesCount || 0
     const total = 30
-    const respondieron = cantResp > 0 ? cantResp : 26
-    const porcentaje = Number(((respondieron / total) * 100).toFixed(1))
+    const respondieron = cantResp > 0 ? cantResp : 0
+    const porcentaje = respondieron > 0 ? Number(((respondieron / total) * 100).toFixed(1)) : 0
     return { respondieron, total, porcentaje }
   }, [activeDetail])
 
   const brechaMedia = useMemo(() => {
-    if (!activeDetail || !activeDetail.estaConsolidado) return { dif: 0, signo: '+', positivo: true }
+    if (!activeDetail || !activeDetail.estaConsolidado || (activeDetail.grade.studentResponsesCount || 0) === 0) {
+      return { dif: 0, signo: '', positivo: true, sinDatos: true }
+    }
     const dif = Number((activeDetail.grade.finalScore - avgInstitucional).toFixed(2))
-    return { dif: Math.abs(dif), signo: dif >= 0 ? '+' : '-', positivo: dif >= 0 }
+    return { dif: Math.abs(dif), signo: dif >= 0 ? '+' : '-', positivo: dif >= 0, sinDatos: false }
   }, [activeDetail, avgInstitucional])
 
   return (
@@ -967,7 +910,9 @@ export function Report({
                             <span className="text-xs text-ink/50">de participación</span>
                           </div>
                           <p className="mt-1.5 text-xs text-ink/80 font-medium">
-                            {metricasParticipacion.respondieron} de {metricasParticipacion.total} estudiantes han evaluado · {metricasParticipacion.porcentaje}% de participación
+                            {metricasParticipacion.respondieron > 0
+                              ? `${metricasParticipacion.respondieron} de ${metricasParticipacion.total} estudiantes han evaluado · ${metricasParticipacion.porcentaje}% de participación`
+                              : '0 evaluaciones recibidas'}
                           </p>
                         </div>
 
@@ -1084,14 +1029,24 @@ export function Report({
                           <span className="font-serif text-4xl font-bold text-pine">
                             {metricasParticipacion.porcentaje}%
                           </span>
-                          <span className="text-xs text-ink/50">cobertura</span>
+                          <span className="text-xs text-ink/50">de participación</span>
                         </div>
-                        <p className="mt-2 text-xs font-semibold text-emerald-700 flex items-center gap-1">
-                          <Check size={14} /> Muestra representativa
-                        </p>
+                        {metricasParticipacion.respondieron > 0 ? (
+                          <p className="mt-2 text-xs font-semibold text-emerald-700 flex items-center gap-1">
+                            <Check size={14} /> Muestra representativa
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-xs font-medium text-ink/60 flex items-center gap-1">
+                            <Clock size={14} /> 0 evaluaciones recibidas
+                          </p>
+                        )}
                       </div>
                       <div className="mt-3 border-t border-line/60 pt-2 text-[11px] text-ink/60">
-                        <b>{metricasParticipacion.respondieron}</b> de <b>{metricasParticipacion.total}</b> estudiantes convocados evaluaron de forma confidencial.
+                        {metricasParticipacion.respondieron > 0 ? (
+                          <><b>{metricasParticipacion.respondieron}</b> de <b>{metricasParticipacion.total}</b> estudiantes convocados evaluaron de forma confidencial.</>
+                        ) : (
+                          <>0 evaluaciones recibidas de los <b>{metricasParticipacion.total}</b> estudiantes convocados.</>
+                        )}
                       </div>
                     </div>
 
@@ -1101,16 +1056,21 @@ export function Report({
                         <div className="mt-2 flex items-baseline gap-2">
                           <span
                             className={`font-serif text-4xl font-bold ${
-                              brechaMedia.positivo ? 'text-emerald-700' : 'text-amber-700'
+                              brechaMedia.sinDatos
+                                ? 'text-ink/40'
+                                : brechaMedia.positivo
+                                ? 'text-emerald-700'
+                                : 'text-amber-700'
                             }`}
                           >
-                            {brechaMedia.signo}
-                            {brechaMedia.dif.toFixed(2)}
+                            {brechaMedia.sinDatos ? '—' : `${brechaMedia.signo}${brechaMedia.dif.toFixed(2)}`}
                           </span>
-                          <span className="text-xs text-ink/50">pts vs media</span>
+                          <span className="text-xs text-ink/50">{brechaMedia.sinDatos ? 'sin datos' : 'pts vs media'}</span>
                         </div>
                         <p className="mt-1 text-xs text-ink/70">
-                          {brechaMedia.positivo ? (
+                          {brechaMedia.sinDatos ? (
+                            <span className="text-ink/60 font-medium">Pendiente de consolidación</span>
+                          ) : brechaMedia.positivo ? (
                             <span className="text-emerald-700 font-medium">Por encima del promedio de la facultad</span>
                           ) : (
                             <span className="text-amber-800 font-medium">Por debajo del promedio de la facultad</span>
@@ -1120,15 +1080,19 @@ export function Report({
 
                       <div className="mt-3 border-t border-line/60 pt-2 text-[11px]">
                         <div className="flex justify-between text-ink/70 mb-1">
-                          <span>Docente: <b>{activeDetail.grade.finalScore.toFixed(2)}</b></span>
+                          <span>Docente: <b>{activeDetail.estaConsolidado ? activeDetail.grade.finalScore.toFixed(2) : '—'}</b></span>
                           <span>Facultad: <b>{avgInstitucional.toFixed(2)}</b></span>
                         </div>
                         <div className="h-2 w-full rounded-full bg-line overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
-                              brechaMedia.positivo ? 'bg-emerald-500' : 'bg-amber-500'
+                              brechaMedia.sinDatos
+                                ? 'bg-line/40'
+                                : brechaMedia.positivo
+                                ? 'bg-emerald-500'
+                                : 'bg-amber-500'
                             }`}
-                            style={{ width: `${Math.min(100, (activeDetail.grade.finalScore / 5) * 100)}%` }}
+                            style={{ width: `${brechaMedia.sinDatos ? 0 : Math.min(100, (activeDetail.grade.finalScore / 5) * 100)}%` }}
                           />
                         </div>
                       </div>
@@ -1168,8 +1132,12 @@ export function Report({
                         </div>
 
                         <div className="text-right shrink-0">
-                          <div className="font-serif text-2xl font-bold text-pine">{dim.score.toFixed(2)}</div>
-                          <div className="text-[10px] text-ink/50 font-mono">/ 5.00 · {dim.porcentaje}%</div>
+                          <div className="font-serif text-2xl font-bold text-pine">
+                            {dim.score !== null ? dim.score.toFixed(2) : '—'}
+                          </div>
+                          <div className="text-[10px] text-ink/50 font-mono">
+                            {dim.score !== null ? `/ 5.00 · ${dim.porcentaje}%` : 'Sin datos'}
+                          </div>
                         </div>
                       </div>
 
@@ -1186,13 +1154,15 @@ export function Report({
                         <div className="h-2.5 w-full rounded-full bg-line/80 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              dim.score >= 4.0
+                              dim.score === null
+                                ? 'bg-line/40'
+                                : dim.score >= 4.0
                                 ? 'bg-emerald-500'
                                 : dim.score >= 3.5
                                 ? 'bg-amber-500'
                                 : 'bg-red-500'
                             }`}
-                            style={{ width: `${dim.porcentaje}%` }}
+                            style={{ width: `${dim.score !== null ? dim.porcentaje : 0}%` }}
                           />
                         </div>
                       </div>
@@ -1237,7 +1207,7 @@ export function Report({
                               <div>
                                 <strong className="text-emerald-950">{f.titulo}</strong>
                                 <span className="ml-1 text-[11px] font-bold text-emerald-800">
-                                  ({f.score.toFixed(2)} / 5.0)
+                                  ({f.score !== null ? f.score.toFixed(2) : '—'} / 5.0)
                                 </span>
                                 <p className="text-[11px] text-emerald-800 mt-0.5">{f.descripcion}</p>
                               </div>
@@ -1248,7 +1218,7 @@ export function Report({
                     ) : (
                       <p className="text-xs text-emerald-900 leading-relaxed">
                         La dimensión con mayor solidez actual corresponde a{' '}
-                        <b>{diagnosticoPedagogico.mejorDimension.titulo}</b> ({diagnosticoPedagogico.mejorDimension.score.toFixed(2)} / 5.00),
+                        <b>{diagnosticoPedagogico.mejorDimension.titulo}</b> ({diagnosticoPedagogico.mejorDimension.score !== null ? diagnosticoPedagogico.mejorDimension.score.toFixed(2) : '—'} / 5.00),
                         constituyendo la base pedagógica clave sobre la cual apalancar el plan de mejoramiento integral.
                       </p>
                     )}
@@ -1355,37 +1325,44 @@ export function Report({
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {comentariosEstudiantes.map((coment, idx) => (
-                    <blockquote
-                      key={idx}
-                      className="rounded-xl border border-line bg-paper/40 p-4 text-xs shadow-2xs flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
-                              coment.tipo === 'fortaleza'
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : 'bg-amber-100 text-amber-800 border-amber-300'
-                            }`}
-                          >
-                            {coment.tipo === 'fortaleza' ? '✓ Fortaleza Reconocida' : '💡 Sugerencia Didáctica'}
-                          </span>
-                          <span className="font-mono text-[10px] text-ink/40">{coment.periodo}</span>
+                {comentariosEstudiantes.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {comentariosEstudiantes.map((coment, idx) => (
+                      <blockquote
+                        key={idx}
+                        className="rounded-xl border border-line bg-paper/40 p-4 text-xs shadow-2xs flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                                coment.tipo === 'fortaleza'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : 'bg-amber-100 text-amber-800 border-amber-300'
+                              }`}
+                            >
+                              {coment.tipo === 'fortaleza' ? '✓ Fortaleza Reconocida' : '💡 Sugerencia Didáctica'}
+                            </span>
+                            <span className="font-mono text-[10px] text-ink/40">{coment.periodo}</span>
+                          </div>
+                          <p className="font-serif text-sm text-ink/90 italic leading-relaxed">
+                            “{coment.texto}”
+                          </p>
                         </div>
-                        <p className="font-serif text-sm text-ink/90 italic leading-relaxed">
-                          “{coment.texto}”
-                        </p>
-                      </div>
 
-                      <div className="mt-3 pt-2 border-t border-line/50 flex items-center gap-1.5 text-[10px] text-ink/50">
-                        <ShieldCheck size={13} className="text-pine" />
-                        <span>{coment.autor} · Comentario 100% Anónimo</span>
-                      </div>
-                    </blockquote>
-                  ))}
-                </div>
+                        <div className="mt-3 pt-2 border-t border-line/50 flex items-center gap-1.5 text-[10px] text-ink/50">
+                          <ShieldCheck size={13} className="text-pine" />
+                          <span>{coment.autor} · Comentario 100% Anónimo</span>
+                        </div>
+                      </blockquote>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-line p-6 text-center text-xs text-ink/60 bg-paper/20">
+                    <p className="font-medium text-ink/80">Aún no se registran observaciones cualitativas de estudiantes para este docente.</p>
+                    <p className="mt-1 text-[11px] text-ink/50">Los comentarios aportados por los estudiantes se desplegarán aquí bajo confidencialidad institucional una vez se reciban respuestas.</p>
+                  </div>
+                )}
               </section>
 
               <section className="rounded-xl border border-line bg-paper/70 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
