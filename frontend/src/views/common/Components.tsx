@@ -41,41 +41,269 @@ export function Empty({ text }: { text: string }) {
   return <p className="rounded-md border border-dashed border-line p-8 text-center text-sm text-ink/50">{text}</p>
 }
 
+export interface ScaleItem {
+  value: string
+  label: string
+  descriptor: string
+  bgInactive: string
+  borderInactive: string
+  textInactive: string
+  bgActive: string
+  borderActive: string
+  textActive: string
+  ringActive: string
+}
+
+export const SCALE_CONFIG: ScaleItem[] = [
+  {
+    value: '1',
+    label: 'Deficiente',
+    descriptor: 'Nivel crítico',
+    bgInactive: 'bg-red-50/50 hover:bg-red-50',
+    borderInactive: 'border-red-200 hover:border-red-300',
+    textInactive: 'text-red-900',
+    bgActive: 'bg-red-100',
+    borderActive: 'border-2 border-red-600',
+    textActive: 'text-red-950 font-bold',
+    ringActive: 'ring-2 ring-red-500/20',
+  },
+  {
+    value: '2',
+    label: 'Insuficiente',
+    descriptor: 'Por debajo de la expectativa',
+    bgInactive: 'bg-amber-50/50 hover:bg-amber-50',
+    borderInactive: 'border-amber-200 hover:border-amber-300',
+    textInactive: 'text-amber-900',
+    bgActive: 'bg-amber-100',
+    borderActive: 'border-2 border-amber-600',
+    textActive: 'text-amber-950 font-bold',
+    ringActive: 'ring-2 ring-amber-500/20',
+  },
+  {
+    value: '3',
+    label: 'Aceptable',
+    descriptor: 'Cumplimiento básico',
+    bgInactive: 'bg-yellow-50/50 hover:bg-yellow-50',
+    borderInactive: 'border-yellow-200 hover:border-yellow-300',
+    textInactive: 'text-yellow-900',
+    bgActive: 'bg-yellow-100',
+    borderActive: 'border-2 border-yellow-600',
+    textActive: 'text-yellow-950 font-bold',
+    ringActive: 'ring-2 ring-yellow-500/20',
+  },
+  {
+    value: '4',
+    label: 'Bueno',
+    descriptor: 'Cumplimiento satisfactorio',
+    bgInactive: 'bg-emerald-50/50 hover:bg-emerald-50',
+    borderInactive: 'border-emerald-200 hover:border-emerald-300',
+    textInactive: 'text-emerald-900',
+    bgActive: 'bg-emerald-100',
+    borderActive: 'border-2 border-emerald-600',
+    textActive: 'text-emerald-950 font-bold',
+    ringActive: 'ring-2 ring-emerald-500/20',
+  },
+  {
+    value: '5',
+    label: 'Excelente',
+    descriptor: 'Desempeño sobresaliente',
+    bgInactive: 'bg-emerald-50/70 hover:bg-emerald-100/60',
+    borderInactive: 'border-emerald-300/80 hover:border-emerald-400',
+    textInactive: 'text-pine',
+    bgActive: 'bg-pine text-white',
+    borderActive: 'border-2 border-pine',
+    textActive: 'text-white font-bold',
+    ringActive: 'ring-2 ring-pine/30 shadow-xs',
+  },
+]
+
 export function Scale({ value, onChange }: { value?: string; onChange: (v: string) => void }) {
+  const selectedItem = SCALE_CONFIG.find((item) => item.value === value)
+
   return (
-    <div className="flex gap-2">
-      {['1', '2', '3', '4', '5'].map((v) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(v)}
-          className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${value === v ? 'border-pine bg-pine text-white' : 'border-line bg-white hover:border-pine'}`}
-        >
-          {v}
-        </button>
-      ))}
+    <div className="space-y-2">
+      <div className="min-h-[22px] flex items-center justify-between text-xs">
+        {selectedItem ? (
+          <div className="flex items-center gap-1.5 font-medium text-ink/80 transition-all">
+            <span className="inline-block h-2 w-2 rounded-full bg-pine shrink-0" />
+            <span>
+              Selección: <strong className="text-pine font-bold">{selectedItem.value} - {selectedItem.label}</strong> / {selectedItem.descriptor}
+            </span>
+          </div>
+        ) : (
+          <span className="text-ink/40 text-[11px] italic">
+            Seleccione una valoración en la escala institucional (1 a 5)
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-5 gap-2 sm:gap-3">
+        {SCALE_CONFIG.map((item) => {
+          const isActive = value === item.value
+          return (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => onChange(item.value)}
+              className={`flex flex-col items-center justify-center rounded-xl p-2.5 sm:p-3 text-center transition-all cursor-pointer border ${
+                isActive
+                  ? `${item.bgActive} ${item.borderActive} ${item.textActive} ${item.ringActive} shadow-xs scale-[1.02]`
+                  : `${item.bgInactive} ${item.borderInactive} ${item.textInactive}`
+              }`}
+            >
+              <span className="font-serif text-xl sm:text-2xl font-bold leading-none">{item.value}</span>
+              <span className="mt-1.5 text-[10px] sm:text-xs font-semibold tracking-tight uppercase sm:capitalize truncate max-w-full">
+                {item.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export interface TriStateOption {
+  rawMatches: string[]
+  emitValue: string
+  title: string
+  subtitle: string
+  bgInactive: string
+  borderInactive: string
+  textInactive: string
+  bgActive: string
+  borderActive: string
+  textActive: string
+  ringActive: string
+  indicatorActive: string
+}
+
+export const TRI_STATE_OPTIONS: TriStateOption[] = [
+  {
+    rawMatches: ['si', 'sí', 'yes', 'totalmente de acuerdo'],
+    emitValue: 'si',
+    title: 'Sí',
+    subtitle: 'Totalmente de acuerdo',
+    bgInactive: 'bg-emerald-50/40 hover:bg-emerald-50/70',
+    borderInactive: 'border-emerald-200 hover:border-emerald-300',
+    textInactive: 'text-emerald-950',
+    bgActive: 'bg-emerald-50/90',
+    borderActive: 'border-2 border-pine',
+    textActive: 'text-pine font-semibold',
+    ringActive: 'ring-2 ring-pine/20',
+    indicatorActive: 'bg-pine border-pine',
+  },
+  {
+    rawMatches: ['tal_vez', 'tal vez', 'parcialmente', 'en observación', 'a veces'],
+    emitValue: 'tal_vez',
+    title: 'Tal vez',
+    subtitle: 'Parcialmente / En observación',
+    bgInactive: 'bg-amber-50/40 hover:bg-amber-50/70',
+    borderInactive: 'border-amber-200 hover:border-amber-300',
+    textInactive: 'text-amber-950',
+    bgActive: 'bg-amber-50/90',
+    borderActive: 'border-2 border-amber-600',
+    textActive: 'text-amber-950 font-semibold',
+    ringActive: 'ring-2 ring-amber-500/20',
+    indicatorActive: 'bg-amber-600 border-amber-600',
+  },
+  {
+    rawMatches: ['no', 'desacuerdo', 'en desacuerdo'],
+    emitValue: 'no',
+    title: 'No',
+    subtitle: 'En desacuerdo',
+    bgInactive: 'bg-red-50/40 hover:bg-red-50/70',
+    borderInactive: 'border-red-200 hover:border-red-300',
+    textInactive: 'text-red-950',
+    bgActive: 'bg-red-50/90',
+    borderActive: 'border-2 border-red-600',
+    textActive: 'text-red-950 font-semibold',
+    ringActive: 'ring-2 ring-red-500/20',
+    indicatorActive: 'bg-red-600 border-red-600',
+  },
+]
+
+export function SelectionControl({ q, value, onChange }: { q: Question; value?: string; onChange: (v: string) => void }) {
+  const isTriState =
+    !q.options ||
+    q.options.length === 0 ||
+    q.options.some((o) =>
+      ['si', 'sí', 'no', 'tal_vez', 'tal vez', 'parcialmente'].includes(o.trim().toLowerCase())
+    )
+
+  if (isTriState) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {TRI_STATE_OPTIONS.map((opt) => {
+          const lowerVal = (value || '').trim().toLowerCase()
+          const active = opt.rawMatches.includes(lowerVal) || opt.emitValue === lowerVal
+          const foundExact = q.options?.find((o) => opt.rawMatches.includes(o.trim().toLowerCase()))
+          const emitVal = foundExact || opt.emitValue
+
+          return (
+            <button
+              key={opt.title}
+              type="button"
+              onClick={() => onChange(emitVal)}
+              className={`flex flex-col justify-between rounded-xl p-3 sm:p-3.5 text-left transition-all cursor-pointer border ${
+                active
+                  ? `${opt.bgActive} ${opt.borderActive} ${opt.textActive} ${opt.ringActive} shadow-xs scale-[1.01]`
+                  : `${opt.bgInactive} ${opt.borderInactive} ${opt.textInactive}`
+              }`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-base sm:text-lg font-bold tracking-tight">{opt.title}</span>
+                <span
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-all ${
+                    active ? opt.indicatorActive : 'border-line bg-white'
+                  }`}
+                >
+                  {active && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                </span>
+              </div>
+              <span className="mt-1 text-xs leading-snug opacity-80">
+                {opt.subtitle}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+      {q.options.map((opt) => {
+        const isSelected = value === opt
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={`flex items-center justify-between rounded-xl border p-3.5 text-left text-sm transition-all cursor-pointer ${
+              isSelected
+                ? 'border-2 border-pine bg-pine/10 text-pine ring-2 ring-pine/20 font-semibold shadow-xs'
+                : 'border-line bg-paper/30 text-ink/80 hover:bg-white hover:border-line'
+            }`}
+          >
+            <span className="font-medium">{opt}</span>
+            <span
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-all ${
+                isSelected ? 'border-pine bg-pine' : 'border-line bg-white'
+              }`}
+            >
+              {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
 
 export function AnswerInput({ q, value, onChange }: { q: Question; value?: string; onChange: (v: string) => void }) {
   if (q.type === 'escala') return <Scale value={value} onChange={onChange} />
-  if (q.type === 'seleccion') {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {q.options.map((o) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onChange(o)}
-            className={`rounded-full border px-4 py-1.5 text-sm ${value === o ? 'border-pine bg-pine text-white' : 'border-line bg-white hover:border-pine'}`}
-          >
-            {o}
-          </button>
-        ))}
-      </div>
-    )
-  }
+  if (q.type === 'seleccion') return <SelectionControl q={q} value={value} onChange={onChange} />
   return <textarea className={input} rows={3} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
 }
 

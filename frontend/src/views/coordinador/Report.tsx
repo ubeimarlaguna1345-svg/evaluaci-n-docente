@@ -1257,8 +1257,9 @@ export function Report({
                       </div>
 
                       <div className="rounded-lg bg-white/80 p-3 border border-red-200 text-xs text-red-950 leading-relaxed">
-                        <p className="font-semibold text-red-900 mb-1">
-                          ⚠️ Alerta de Umbral Institucional MEDIT Activada
+                        <p className="font-semibold text-red-900 mb-1 flex items-center gap-1.5">
+                          <AlertTriangle size={14} className="text-red-700" />
+                          <span>Alerta de Umbral Institucional MEDIT Activada</span>
                         </p>
                         La calificación consolidada ({activeDetail.grade.finalScore.toFixed(2)} / 5.00) se sitúa por debajo del límite de satisfacción institucional (4.00). Se establecen con carácter obligatorio los siguientes tres compromisos con la Coordinación del Programa de Ingeniería de Sistemas:
                       </div>
@@ -1341,7 +1342,7 @@ export function Report({
                                   : 'bg-amber-100 text-amber-800 border-amber-300'
                               }`}
                             >
-                              {coment.tipo === 'fortaleza' ? '✓ Fortaleza Reconocida' : '💡 Sugerencia Didáctica'}
+                              {coment.tipo === 'fortaleza' ? 'Fortaleza Reconocida' : 'Sugerencia Didáctica'}
                             </span>
                             <span className="font-mono text-[10px] text-ink/40">{coment.periodo}</span>
                           </div>
