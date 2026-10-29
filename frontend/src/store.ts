@@ -12,7 +12,7 @@ export type FormKind = 'evaluacion' | 'autoevaluacion'
 export type TipoCampo = 'CADI' | 'CAI'
 export type BloquePregunta = 'docente' | 'medit' | 'institucional'
 
-export interface User { id: string; name: string; email: string; password: string; role: Role; active: boolean; sede?: string; carrera?: string }
+export interface User { id: string; name: string; email: string; password: string; role: Role; active: boolean; sede?: string; carrera?: string; nombre?: string; rol?: string; estado?: string }
 export interface CADI { id: string; codigo: string; nombre: string; semestre: number; tipo?: 'CADI' | 'CAI'; esArticulador?: boolean; docenteId?: string | null }
 export interface Question { id: string; text: string; type: AnswerType; options: string[]; required: boolean; dimension?: string; bloque?: BloquePregunta }
 export interface Feedback { id: string; docenteId?: string; teacherId?: string; course: string; question: Question; start: string; end: string; createdAt: string }
@@ -230,10 +230,26 @@ export const CONTINGENCY_USERS: User[] = [
   {
     id: 'usr-coord-jaime',
     name: 'Jaime Parra',
+    nombre: 'Jaime Parra',
     email: 'jaimeparra.siard@ucundinamarca.edu.co',
     password: 'CoordParra2026*',
     role: 'coordinador',
+    rol: 'coordinador',
     active: true,
+    estado: 'Activo',
+    sede: 'Sede Facatativá',
+    carrera: 'Ingeniería de Sistemas y Computación',
+  },
+  {
+    id: 'coord-01',
+    name: 'Jaime Parra',
+    nombre: 'Jaime Parra',
+    email: 'jaime.parra.siard@ucundinamarca.edu.co',
+    password: 'CoordParra2026*',
+    role: 'coordinador',
+    rol: 'coordinador',
+    active: true,
+    estado: 'Activo',
     sede: 'Sede Facatativá',
     carrera: 'Ingeniería de Sistemas y Computación',
   },
@@ -424,6 +440,7 @@ export function sanitizeUsers(users: User[]): User[] {
   })
 
   const seenDocentes = new Set<string>()
+  const seenCoordinadores = new Set<string>()
   const result: User[] = []
 
   for (const u of filtered) {
@@ -433,6 +450,13 @@ export function sanitizeUsers(users: User[]): User[] {
         continue
       }
       seenDocentes.add(normName)
+    }
+
+    if (u.role === 'coordinador' && (u.name.toLowerCase().includes('jaime parra') || ((u as any).nombre && (u as any).nombre.toLowerCase().includes('jaime parra')))) {
+      if (seenCoordinadores.has('jaime parra')) {
+        continue
+      }
+      seenCoordinadores.add('jaime parra')
     }
 
     const emailLower = (u.email || '').toLowerCase().trim()
@@ -451,10 +475,13 @@ export function sanitizeUsers(users: User[]): User[] {
       updated.email = 'danidirec.siard@ucundinamarca.edu.co'
       updated.password = changedPass || u.password || 'siardVd3'
       updated.role = 'admin'
-    } else if (emailLower.includes('jaimeparra') || nameLower.includes('jaime parra')) {
-      updated.email = 'jaimeparra.siard@ucundinamarca.edu.co'
+    } else if (emailLower.includes('jaimeparra') || emailLower.includes('jaime.parra') || nameLower.includes('jaime parra')) {
+      updated.email = u.email || 'jaime.parra.siard@ucundinamarca.edu.co'
       updated.password = changedPass || u.password || 'CoordParra2026*'
       updated.role = 'coordinador'
+      updated.rol = 'coordinador'
+      updated.nombre = updated.nombre || updated.name || 'Jaime Parra'
+      updated.estado = updated.estado || (updated.active ? 'Activo' : 'Inactivo')
     } else if (emailLower.includes('prof.mendoza') || emailLower.includes('javier.mendoza') || nameLower.includes('javier mendoza')) {
       updated.email = 'prof.mendoza.siard@ucundinamarca.edu.co'
       updated.password = changedPass || u.password || 'ProfMen2026*'
@@ -498,6 +525,9 @@ export function sanitizeUsers(users: User[]): User[] {
     } else if (changedPass) {
       updated.password = changedPass
     }
+    updated.nombre = updated.nombre || updated.name
+    updated.rol = updated.rol || updated.role
+    updated.estado = updated.estado || (updated.active ? 'Activo' : 'Inactivo')
     result.push(updated)
   }
 

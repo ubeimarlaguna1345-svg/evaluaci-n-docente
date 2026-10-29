@@ -31,7 +31,12 @@ export function Accounts({ me }: { me: User }) {
     }
   }
 
-  const list = db.users.filter((u) => (u.name + u.email + (u.sede || '') + (u.carrera || '')).toLowerCase().includes(search.toLowerCase()))
+  // Ocultar únicamente al administrador para evitar auto-eliminación; mostrar coordinador, docentes y estudiantes
+  const usuarios = db.users
+  const usuariosVisibles = usuarios.filter((u) => (u.rol || u.role)?.toLowerCase() !== 'admin')
+  const list = usuariosVisibles.filter((u) =>
+    ((u.nombre || u.name || '') + (u.email || '') + (u.sede || '') + (u.carrera || '')).toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <>
@@ -100,21 +105,21 @@ export function Accounts({ me }: { me: User }) {
                 list.map((u) => (
                   <tr key={u.id} className="border-t border-line">
                     <td className="p-4">
-                      <div className="font-medium">{u.name}</div>
+                      <div className="font-medium">{u.nombre || u.name}</div>
                       <div className="font-mono text-xs text-ink/50">{u.email}</div>
                     </td>
-                    <td>{ROLE_LABEL[u.role]}</td>
+                    <td>{ROLE_LABEL[(u.role || u.rol) as Role] || u.role || u.rol}</td>
                     <td>
                       <div className="text-xs font-medium text-ink/80">{u.sede || 'Sede Facatativá'}</div>
                       <div className="text-xs text-ink/50">{u.carrera || 'Ingeniería de Sistemas y Computación'}</div>
                     </td>
                     <td>
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${u.active ? 'bg-moss/10 text-pine' : 'bg-red-50 text-red-700'}`}>
-                        {u.active ? 'Activa' : 'Bloqueada'}
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${(u.active || u.estado === 'Activo') ? 'bg-moss/10 text-pine' : 'bg-red-50 text-red-700'}`}>
+                        {(u.active || u.estado === 'Activo') ? 'Activa' : 'Bloqueada'}
                       </span>
                     </td>
                     <td className="pr-4 text-right">
-                      {u.active && u.id !== me.id && (me.role === 'admin' || roles.includes(u.role)) && (
+                      {(u.active || u.estado === 'Activo') && u.id !== me.id && (me.role === 'admin' || roles.includes((u.role || u.rol) as Role)) && (
                         <button onClick={() => setConfirm(u)} className="rounded p-2 text-red-700 hover:bg-red-50" title="Eliminar cuenta">
                           <Trash2 size={16} />
                         </button>
@@ -130,7 +135,7 @@ export function Accounts({ me }: { me: User }) {
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
           <Card className="max-w-sm space-y-4">
-            <h3 className="font-serif text-2xl">¿Eliminar la cuenta de {confirm.name}?</h3>
+            <h3 className="font-serif text-2xl">¿Eliminar la cuenta de {confirm.name || confirm.nombre}?</h3>
             <p className="text-sm text-ink/60">La cuenta se eliminará permanentemente de PostgreSQL y de la plataforma.</p>
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setConfirm(null)}>Cancelar</button>
@@ -154,3 +159,6 @@ export function Accounts({ me }: { me: User }) {
     </>
   )
 }
+
+export const Cuentas = Accounts
+export default Accounts

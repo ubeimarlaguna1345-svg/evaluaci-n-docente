@@ -5,6 +5,7 @@ import {
   stats,
   getDocenteConsolidatedGrade,
   isEvaluationConsolidated,
+  getDocenteCadi,
 } from '../../store'
 import { Header, Card, Empty, Bar, input } from '../common'
 
@@ -30,7 +31,7 @@ export function Statistics() {
     return {
       docente: t,
       grade,
-      cadi: db.cadis.find((c) => c.docenteId === t.id),
+      cadi: getDocenteCadi(db.cadis, t) || db.cadis.find((c) => c.docenteId === t.id),
       ...statusInfo,
     }
   })
@@ -188,3 +189,6 @@ export function Statistics() {
     </>
   )
 }
+
+export const Estadisticas = Statistics
+export default Statistics
