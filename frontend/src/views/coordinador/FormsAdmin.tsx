@@ -130,7 +130,7 @@ export function FormRow({
 
 export function FormsAdmin({ me }: { me?: User }) {
   const db = useDB()
-  const activeUser = me || getCurrentUser() || (typeof sessionStorage !== 'undefined' ? db.users.find((u) => u.id === sessionStorage.getItem('siard-me')) : null)
+  const activeUser = me || getCurrentUser()
   const blank = { kind: '' as FormKind | '', title: '', description: '', period: '2026-I', cadiId: '', start: '', end: '', questions: [] as Question[] }
   const [f, setF] = useState(blank)
   const [editingId, setEditingId] = useState<string | null>(null)

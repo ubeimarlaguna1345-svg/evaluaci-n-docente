@@ -59,24 +59,6 @@ export function Shell() {
   const db = useDB()
   const navigate = useNavigate()
   const location = useLocation()
-  const [meId, setMeId] = useState<string | null>(() => {
-    try {
-      const stored =
-        sessionStorage.getItem('siard-me') ||
-        sessionStorage.getItem('siard_user') ||
-        localStorage.getItem('siard_user')
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          if (parsed?.id) return parsed.id
-        } catch {}
-        return stored
-      }
-      return null
-    } catch {
-      return null
-    }
-  })
   const currentAppUser = getCurrentUser()
   const storedUserObj: User | null = (() => {
     try {
@@ -89,16 +71,14 @@ export function Shell() {
           return {
             ...parsed,
             role: (parsed.role || parsed.rol || 'estudiante') as Role,
+            rol: parsed.rol || parsed.role || 'estudiante',
           } as User
         }
       }
     } catch {}
     return null
   })()
-  const me: User | null =
-    (meId ? db.users.find((u) => u.id === meId && u.active) || CONTINGENCY_USERS.find((u) => u.id === meId && u.active) : null) ||
-    currentAppUser ||
-    storedUserObj
+  const me: User | null = currentAppUser || storedUserObj
   const [view, setView] = useState('')
   const [showProfile, setShowProfile] = useState(false)
 
@@ -108,7 +88,7 @@ export function Shell() {
 
   useEffect(() => {
     if (me && location.pathname === '/') {
-      navigate(`/${me.role}`, { replace: true })
+      navigate(`/${me.role || (me as any).rol}`, { replace: true })
     }
   }, [me, location.pathname, navigate])
 
@@ -117,7 +97,6 @@ export function Shell() {
       <Login
         onLogin={(u) => {
           setCurrentUser(u)
-          setMeId(u.id)
           setView('')
           navigate(`/${u.role}`)
         }}
@@ -187,7 +166,6 @@ export function Shell() {
               className="flex items-center gap-2 text-xs text-paper/70 hover:text-paper transition text-left cursor-pointer"
               onClick={() => {
                 logout()
-                setMeId(null)
                 navigate('/')
               }}
             >
@@ -211,7 +189,6 @@ export function Shell() {
             className="flex items-center gap-1.5 text-xs text-paper/75 hover:text-paper cursor-pointer"
             onClick={() => {
               logout()
-              setMeId(null)
               navigate('/')
             }}
           >
