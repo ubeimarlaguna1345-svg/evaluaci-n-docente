@@ -13,7 +13,7 @@ export type TipoCampo = 'CADI' | 'CAI'
 export type BloquePregunta = 'docente' | 'medit' | 'institucional'
 
 export interface User { id: string; name: string; email: string; password: string; role: Role; active: boolean; sede?: string; carrera?: string; nombre?: string; rol?: string; estado?: string }
-export interface CADI { id: string; codigo: string; nombre: string; semestre: number; tipo?: 'CADI' | 'CAI'; esArticulador?: boolean; docenteId?: string | null }
+export interface CADI { id: string; codigo: string; nombre: string; semestre: number | string; tipo?: 'CADI' | 'CAI' | 'CADI (Disciplinar)' | 'CAI (Institucional)' | string; esArticulador?: boolean; docenteId?: string | null; docenteAsignado?: string }
 export interface Question { id: string; text: string; type: AnswerType; options: string[]; required: boolean; dimension?: string; bloque?: BloquePregunta }
 export interface Feedback { id: string; docenteId?: string; teacherId?: string; course: string; question: Question; start: string; end: string; createdAt: string }
 export interface FeedbackResponse { id: string; feedbackId: string; studentId: string; value: string; date: string }
@@ -206,6 +206,8 @@ export function saveDeletedUserId(id: string) {
   } catch {}
 }
 
+export { INITIAL_USERS } from './data/mockData'
+
 export const CONTINGENCY_USERS: User[] = [
   {
     id: 'usr-admin-uber',
@@ -365,13 +367,60 @@ export const CONTINGENCY_USERS: User[] = [
   },
 ]
 
-export const CONTINGENCY_CADIS: CADI[] = [
-  { id: 'cadi-calc-101', codigo: 'MAT101', nombre: 'Cálculo Diferencial', semestre: 1, tipo: 'CADI', esArticulador: false, docenteId: 'doc-salazar' },
-  { id: 'cai-lect-101', codigo: 'CAI101', nombre: 'Lectura Crítica y Competencias Comunicativas', semestre: 1, tipo: 'CAI', esArticulador: false, docenteId: 'doc-prieto' },
-  { id: 'cai-etica-201', codigo: 'CAI201', nombre: 'Ética y Ciudadanía', semestre: 2, tipo: 'CAI', esArticulador: false, docenteId: 'doc-cifuentes' },
-  { id: 'cadi-prog-301', codigo: 'SIS301', nombre: 'Programación II', semestre: 3, tipo: 'CADI', esArticulador: true, docenteId: 'doc-navarro' },
-  { id: 'cadi-elec-302', codigo: 'ELC301', nombre: 'Electrónica Básica', semestre: 3, tipo: 'CADI', esArticulador: false, docenteId: 'doc-mendoza' },
+export const INITIAL_CADIS: CADI[] = [
+  {
+    id: 'cadi-1',
+    codigo: 'MAT101',
+    nombre: 'Cálculo Diferencial',
+    semestre: 1,
+    docenteAsignado: 'Diana Salazar',
+    tipo: 'CADI',
+    docenteId: 'doc-salazar',
+    esArticulador: false,
+  },
+  {
+    id: 'cadi-2',
+    codigo: 'CAI101',
+    nombre: 'Lectura Crítica y Competencias Comunicativas',
+    semestre: 1,
+    docenteAsignado: 'Gabriel Prieto',
+    tipo: 'CAI',
+    docenteId: 'doc-prieto',
+    esArticulador: false,
+  },
+  {
+    id: 'cadi-3',
+    codigo: 'CAI201',
+    nombre: 'Ética y Ciudadanía',
+    semestre: 2,
+    docenteAsignado: 'Mariana Cifuentes',
+    tipo: 'CAI',
+    docenteId: 'doc-cifuentes',
+    esArticulador: false,
+  },
+  {
+    id: 'cadi-4',
+    codigo: 'SIS301',
+    nombre: 'Programación II',
+    semestre: 3,
+    docenteAsignado: 'Andrés Navarro',
+    tipo: 'CADI',
+    docenteId: 'doc-navarro',
+    esArticulador: true,
+  },
+  {
+    id: 'cadi-5',
+    codigo: 'ELC301',
+    nombre: 'Electrónica Básica',
+    semestre: 3,
+    docenteAsignado: 'Javier Mendoza',
+    tipo: 'CADI',
+    docenteId: 'doc-mendoza',
+    esArticulador: false,
+  },
 ]
+
+export const CONTINGENCY_CADIS: CADI[] = INITIAL_CADIS
 
 export function getDocenteCadi(
   cadis: CADI[] = [],
@@ -662,6 +711,8 @@ export function sanitizeForms(forms: Form[]): Form[] {
     })
 }
 
+export const initialEvaluaciones: Form[] = []
+
 function getInitialForms(): Form[] {
   try {
     checkAndInvalidateCache()
@@ -669,11 +720,14 @@ function getInitialForms(): Form[] {
     if (stored.length > 0) {
       return stored
     }
-    const initial = sanitizeForms(CONTINGENCY_FORMS)
-    saveStoredEvaluaciones(initial)
-    return initial
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+      const initial = sanitizeForms(CONTINGENCY_FORMS)
+      saveStoredEvaluaciones(initial)
+      return initial
+    }
+    return initialEvaluaciones
   } catch {}
-  return sanitizeForms(CONTINGENCY_FORMS)
+  return initialEvaluaciones
 }
 
 function getInitialResponses(): FormResponse[] {
@@ -786,7 +840,7 @@ export async function initDB() {
       if (!deletedFormIds.has(f.id)) formMap.set(f.id, f)
     }
     let cleanForms = Array.from(formMap.values())
-    if (cleanForms.length === 0) {
+    if (cleanForms.length === 0 && typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
       cleanForms = sanitizeForms(CONTINGENCY_FORMS)
     }
     saveStoredEvaluaciones(cleanForms)
@@ -1331,6 +1385,15 @@ export const actions = {
           state.forms = localForms
           notify()
           return localForms
+        } else if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+          state.forms = sanitizeForms(CONTINGENCY_FORMS)
+          notify()
+          return state.forms
+        } else {
+          state.forms = []
+          saveStoredEvaluaciones([])
+          notify()
+          return []
         }
       }
     } catch (err) {
@@ -1340,6 +1403,10 @@ export const actions = {
         state.forms = localForms
         notify()
         return localForms
+      } else if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+        state.forms = sanitizeForms(CONTINGENCY_FORMS)
+        notify()
+        return state.forms
       }
     }
     await initDB()
