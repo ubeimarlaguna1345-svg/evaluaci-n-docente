@@ -768,7 +768,7 @@ function getInitialForms(): Form[] {
   return INITIAL_EVALUACIONES
 }
 
-function getInitialResponses(): FormResponse[] {
+export function getInitialResponses(): FormResponse[] {
   try {
     const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
     if (storage) {
@@ -777,10 +777,9 @@ function getInitialResponses(): FormResponse[] {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
           const deleted = getDeletedFormIds()
-          return parsed.filter((r: FormResponse) => !deleted.has(r.formId) && r.formId !== 'form-auto-2026' && !r.id.startsWith('rf-'))
+          return parsed.filter((r: FormResponse) => !deleted.has(r.formId))
         }
       }
-      storage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify([]))
     }
   } catch {}
   return []
@@ -1544,6 +1543,47 @@ export const actions = {
     return state.forms
   },
 
+  syncAllResponses: async () => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem(RESPONSES_STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const currentMap = new Map<string, FormResponse>()
+            for (const r of state.formResponses) currentMap.set(r.id, r)
+            for (const r of parsed) currentMap.set(r.id, r)
+            state.formResponses = Array.from(currentMap.values())
+          }
+        }
+      }
+    } catch {}
+
+    try {
+      const res = await evaluacionService.getRespuestas()
+      const rawList = res?.formResponses || res?.responses
+      if (Array.isArray(rawList) && rawList.length > 0) {
+        const currentMap = new Map<string, FormResponse>()
+        for (const r of state.formResponses) currentMap.set(r.id, r)
+        for (const r of rawList) {
+          const cleanR: FormResponse = {
+            ...r,
+            docenteId: r.docenteId || r.teacherId || '',
+            teacherId: r.docenteId || r.teacherId || '',
+          }
+          currentMap.set(cleanR.id, cleanR)
+        }
+        state.formResponses = Array.from(currentMap.values())
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
+        }
+      }
+    } catch {}
+
+    notify()
+    return state.formResponses
+  },
+
   syncGlobalData: async () => {
     try {
       await initDB()
@@ -2214,3 +2254,25 @@ export function getStudentDocenteEvaluationStatus(
 }
 
 export const getStudentTeacherEvaluationStatus = getStudentDocenteEvaluationStatus
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === RESPONSES_STORAGE_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue)
+        if (Array.isArray(parsed)) {
+          state.formResponses = parsed
+          notify()
+        }
+      } catch {}
+    } else if (e.key === EVALUACIONES_STORAGE_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue)
+        if (Array.isArray(parsed)) {
+          state.forms = parsed
+          notify()
+        }
+      } catch {}
+    }
+  })
+}

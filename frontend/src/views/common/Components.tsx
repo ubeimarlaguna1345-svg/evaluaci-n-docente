@@ -307,14 +307,25 @@ export function AnswerInput({ q, value, onChange }: { q: Question; value?: strin
   return <textarea className={input} rows={3} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
 }
 
-export function Bar({ label, value, max = 5 }: { label: string; value: number; max?: number }) {
-  const color = value >= 4 ? 'bg-moss' : value >= 3 ? 'bg-ochre' : 'bg-red-600'
+export function Bar({
+  label,
+  value,
+  max = 5,
+  displayValue,
+}: {
+  label: string
+  value: number
+  max?: number
+  displayValue?: string
+}) {
+  const color = value >= 4 ? 'bg-moss' : value >= 3 ? 'bg-ochre' : value > 0 ? 'bg-red-600' : 'bg-line'
+  const textDisplay = displayValue || (value > 0 ? `${value.toFixed(1)} / 5.0` : 'Sin respuestas')
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1">
       <span className="text-sm">{label}</span>
-      <span className="font-mono text-sm font-semibold">{value ? value.toFixed(2) : '—'}</span>
+      <span className="font-mono text-sm font-semibold">{textDisplay}</span>
       <div className="col-span-2 h-2 rounded-full bg-paper">
-        <div className={`h-2 rounded-full ${color}`} style={{ width: `${(value / max) * 100}%` }} />
+        <div className={`h-2 rounded-full ${color}`} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
       </div>
     </div>
   )
