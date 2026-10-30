@@ -1176,28 +1176,84 @@ export const actions = {
     notify()
   },
 
-  respondForm: async (r: Omit<FormResponse, 'id' | 'date'>) => {
-    try {
-      await evaluacionService.respondForm(r)
-      await initDB()
-    } catch (err) {
-      const newResp: FormResponse = {
-        id: 'rf-' + uid(),
-        formId: r.formId,
-        userId: r.userId,
-        docenteId: (r as any).docenteId || (r as any).teacherId || '',
-        teacherId: (r as any).docenteId || (r as any).teacherId || '',
-        answers: r.answers,
-        observation: r.observation,
-        date: new Date().toISOString(),
+  respondForm: async (
+    r: Omit<FormResponse, 'id' | 'date'> & {
+      evaluadorId?: string
+      docente?: string
+      docenteId?: string
+      teacherId?: string
+      cadiCodigo?: string
+      cadiId?: string
+      respuestas?: Record<string, any>
+      fecha?: string
+    }
+  ) => {
+    const targetDocenteId = (r as any).docenteId || (r as any).teacherId || ''
+    const targetUserId = r.userId || (r as any).evaluadorId || ''
+    const answersObj = r.answers || (r as any).respuestas || {}
+    const nowIso = new Date().toISOString()
+
+    const newResp: FormResponse & {
+      evaluadorId?: string
+      docente?: string
+      cadiCodigo?: string
+      cadiId?: string
+      respuestas?: Record<string, any>
+      fecha?: string
+    } = {
+      id: 'rf-' + uid(),
+      formId: r.formId,
+      userId: targetUserId,
+      docenteId: targetDocenteId,
+      teacherId: targetDocenteId,
+      answers: answersObj,
+      observation: r.observation || '',
+      date: nowIso,
+      evaluadorId: (r as any).evaluadorId || targetUserId,
+      docente: (r as any).docente || targetDocenteId,
+      cadiCodigo: (r as any).cadiCodigo || '',
+      cadiId: (r as any).cadiId || '',
+      respuestas: answersObj,
+      fecha: (r as any).fecha || nowIso,
+    }
+
+    const existingIndex = state.formResponses.findIndex(
+      (item) =>
+        (item.formId === r.formId || (r.formId.startsWith('auto-') && item.formId === r.formId.replace('auto-', ''))) &&
+        (item.userId === targetUserId || (item as any).evaluadorId === targetUserId) &&
+        (item.docenteId === targetDocenteId || item.teacherId === targetDocenteId)
+    )
+
+    if (existingIndex >= 0) {
+      state.formResponses[existingIndex] = {
+        ...state.formResponses[existingIndex],
+        ...newResp,
       }
-      state.formResponses = [...state.formResponses, newResp]
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
-        }
-      } catch {}
-      notify()
+    } else {
+      state.formResponses = [newResp, ...state.formResponses]
+    }
+
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
+      }
+    } catch {}
+    notify()
+
+    try {
+      await evaluacionService.respondForm({
+        ...r,
+        evaluadorId: newResp.evaluadorId,
+        docente: newResp.docente,
+        docenteId: newResp.docenteId,
+        teacherId: newResp.teacherId,
+        cadiCodigo: newResp.cadiCodigo,
+        respuestas: newResp.respuestas,
+        answers: newResp.answers,
+        fecha: newResp.fecha,
+      })
+    } catch (err) {
+      console.warn('Aviso al persistir respuesta en backend:', err)
     }
   },
 
@@ -1325,8 +1381,20 @@ export const actions = {
       }
     }
 
-    const otherResponses = state.formResponses.filter((r) => r.userId !== studentId)
-    state.formResponses = [...otherResponses, ...studentResponses]
+    const otherResponses = state.formResponses.filter((r) => r.userId !== studentId && (r as any).evaluadorId !== studentId)
+    const localStudentResponses = state.formResponses.filter(
+      (r) => r.userId === studentId || (r as any).evaluadorId === studentId
+    )
+    const mergedMap = new Map<string, FormResponse>()
+    for (const r of localStudentResponses) {
+      const key = `${r.formId}_${r.docenteId || r.teacherId}`
+      mergedMap.set(key, r)
+    }
+    for (const r of studentResponses) {
+      const key = `${r.formId}_${r.docenteId || r.teacherId}`
+      mergedMap.set(key, r)
+    }
+    state.formResponses = [...otherResponses, ...Array.from(mergedMap.values())]
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
@@ -1389,8 +1457,28 @@ export const actions = {
       }
     }
 
-    const otherResponses = state.formResponses.filter((r) => r.userId !== docenteId && r.docenteId !== docenteId)
-    state.formResponses = [...otherResponses, ...docenteResponses]
+    const otherResponses = state.formResponses.filter(
+      (r) =>
+        r.userId !== docenteId &&
+        (r as any).evaluadorId !== docenteId &&
+        r.docenteId !== docenteId &&
+        r.teacherId !== docenteId
+    )
+    const localDocenteResponses = state.formResponses.filter(
+      (r) =>
+        (r.userId === docenteId || (r as any).evaluadorId === docenteId) &&
+        (r.docenteId === docenteId || r.teacherId === docenteId)
+    )
+    const mergedDocMap = new Map<string, FormResponse>()
+    for (const r of localDocenteResponses) {
+      const key = `${r.formId}_${r.docenteId || r.teacherId}`
+      mergedDocMap.set(key, r)
+    }
+    for (const r of docenteResponses) {
+      const key = `${r.formId}_${r.docenteId || r.teacherId}`
+      mergedDocMap.set(key, r)
+    }
+    state.formResponses = [...otherResponses, ...Array.from(mergedDocMap.values())]
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
@@ -1664,7 +1752,14 @@ export function stats(db: DB, formId: string, docenteId?: string) {
   const perQ = scaleQuestions.map((q) => {
     const values: number[] = []
     rs.forEach((r) => {
-      const val = Number(r.answers[q.id])
+      const answersObj = r.answers || (r as any).respuestas || {}
+      let val = Number(answersObj[q.id])
+      if (isNaN(val)) {
+        const lower = String(answersObj[q.id] || '').trim().toLowerCase()
+        if (lower === 'si' || lower === 'sí') val = 5
+        else if (lower === 'tal_vez' || lower === 'tal vez' || lower === 'parcialmente') val = 3
+        else if (lower === 'no') val = 1
+      }
       if (!isNaN(val) && val > 0) values.push(val)
     })
     const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0
@@ -1834,7 +1929,7 @@ export function isEvaluationConsolidated(
 
   const cantResp = grade.studentResponsesCount
   const total = totalStudents > 0 ? totalStudents : 30
-  const respondieron = cantResp > 0 ? cantResp : 26
+  const respondieron = typeof cantResp === 'number' && cantResp > 0 ? cantResp : 0
   const participacionPorcentaje = total > 0 ? Number(((respondieron / total) * 100).toFixed(1)) : 0
 
   const fechaCierreVencida = form?.end
@@ -1867,8 +1962,9 @@ export function getDocenteConsolidatedGrade(
   const evalResponses = db.formResponses.filter(
     (r) =>
       (r.docenteId === docenteId || r.teacherId === docenteId) &&
-      evalFormIds.has(r.formId) &&
+      (evalFormIds.has(r.formId) || (!period && (r.formId === 'form-eval-2026' || r.formId.startsWith('form-')))) &&
       r.userId !== docenteId &&
+      (r as any).evaluadorId !== docenteId &&
       !r.formId.startsWith('auto-') &&
       r.formId !== 'form-auto-2026'
   )
@@ -1876,11 +1972,7 @@ export function getDocenteConsolidatedGrade(
   const studentValues: number[] = []
   evalResponses.forEach((r) => {
     const form = evalForms.find((f) => f.id === r.formId)
-    if (!form) return
-    const scaleQuestionIds = new Set(
-      form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
-    )
-    Object.entries(r.answers).forEach(([qId, val]) => {
+    Object.entries(r.answers || (r as any).respuestas || {}).forEach(([qId, val]) => {
       let num = Number(val)
       if (isNaN(num)) {
         const lower = String(val).trim().toLowerCase()
@@ -1906,7 +1998,7 @@ export function getDocenteConsolidatedGrade(
       (autoFormIds.has(r.formId) ||
         r.formId.startsWith('auto-') ||
         r.formId === 'form-auto-2026' ||
-        (r.userId === docenteId && (r.docenteId === docenteId || r.teacherId === docenteId)))
+        ((r.userId === docenteId || (r as any).evaluadorId === docenteId) && (r.docenteId === docenteId || r.teacherId === docenteId)))
   )
 
   const autoValues: number[] = []
@@ -1920,7 +2012,7 @@ export function getDocenteConsolidatedGrade(
     const scaleQuestionIds = new Set(
       questions.filter((q) => q.type === 'escala' || !q.type).map((q) => q.id)
     )
-    Object.entries(r.answers).forEach(([qId, val]) => {
+    Object.entries(r.answers || (r as any).respuestas || {}).forEach(([qId, val]) => {
       let num = Number(val)
       if (isNaN(num)) {
         const lower = String(val).trim().toLowerCase()
@@ -2038,7 +2130,10 @@ export function getStudentDocenteEvaluationStatus(
   }
 
   const userResp = db.formResponses.find(
-    (r) => r.formId === form.id && r.userId === studentId && (r.docenteId === docenteId || r.teacherId === docenteId)
+    (r) =>
+      (r.formId === form.id || r.formId === 'form-eval-2026') &&
+      (r.userId === studentId || (r as any).evaluadorId === studentId) &&
+      (r.docenteId === docenteId || r.teacherId === docenteId)
   )
 
   if (!userResp) {
@@ -2055,9 +2150,18 @@ export function getStudentDocenteEvaluationStatus(
   const scaleQuestionIds = new Set(
     form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
   )
-  const values = Object.entries(userResp.answers || {})
+  const values = Object.entries(userResp.answers || (userResp as any).respuestas || {})
     .filter(([qId]) => scaleQuestionIds.has(qId))
-    .map(([_, val]) => Number(val))
+    .map(([_, val]) => {
+      let num = Number(val)
+      if (isNaN(num)) {
+        const lower = String(val).trim().toLowerCase()
+        if (lower === 'si' || lower === 'sí') num = 5
+        else if (lower === 'tal_vez' || lower === 'tal vez' || lower === 'parcialmente') num = 3
+        else if (lower === 'no') num = 1
+      }
+      return num
+    })
     .filter((v) => !isNaN(v) && v > 0)
 
   const avg = values.length

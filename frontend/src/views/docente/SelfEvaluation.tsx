@@ -573,26 +573,29 @@ export function SelfEvaluation({ me }: { me: User }) {
           onCancel={() => setActive(null)}
           onSubmit={async (answers, observation) => {
             const formIdToSend = activeForm.id
-            await actions.respondForm({
+            const nowIso = new Date().toISOString()
+            const payload = {
               formId: formIdToSend,
               userId: me.id,
+              evaluadorId: me.id,
               docenteId: me.id,
               teacherId: me.id,
+              docente: me.name,
               answers,
+              respuestas: answers,
               observation,
-            })
+              fecha: nowIso,
+              date: nowIso,
+            }
+            await actions.respondForm(payload)
 
             // Compatibilidad si la tabla relacional usa el ID base de la evaluación
             if (formIdToSend.startsWith('auto-')) {
               const rawId = formIdToSend.replace('auto-', '')
               try {
                 await actions.respondForm({
+                  ...payload,
                   formId: rawId,
-                  userId: me.id,
-                  docenteId: me.id,
-                  teacherId: me.id,
-                  answers,
-                  observation,
                 })
               } catch {}
             }

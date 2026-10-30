@@ -297,9 +297,11 @@ export class EvaluacionService {
     }))
   }
 
-  async registrarRespuesta({ formId, userId, docenteId, teacherId, answers, observation }) {
+  async registrarRespuesta({ formId, userId, evaluadorId, docenteId, teacherId, answers, respuestas, observation }) {
     const targetDocenteId = docenteId || teacherId
-    if (!formId || !userId || !targetDocenteId || !answers) {
+    const targetUserId = userId || evaluadorId;
+    const targetAnswers = answers || respuestas;
+    if (!formId || !targetUserId || !targetDocenteId || !targetAnswers) {
       const error = new Error('Faltan parámetros obligatorios de evaluación.')
       error.statusCode = 400
       throw error
@@ -325,7 +327,7 @@ export class EvaluacionService {
       await client.query(
         `INSERT INTO respuestas_formulario (id, formulario_id, usuario_id, docente_id, observacion, fecha)
          VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [respId, formId, userId, targetDocenteId, evaluacion.getObservacion()]
+        [respId, formId, targetUserId, targetDocenteId, evaluacion.getObservacion()]
       )
 
       for (const [pregId, val] of Object.entries(evaluacion.getRespuestas())) {

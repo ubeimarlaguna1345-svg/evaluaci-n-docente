@@ -50,17 +50,63 @@ export function StudentEvaluation({ me }: { me: User }) {
       <Header title="Evaluación docente" sub="Valore el desempeño de sus docentes. Sus respuestas son confidenciales." />
       {ok && <div className="mb-4"><Msg kind="ok" text="Evaluación enviada correctamente." /></div>}
       {form && sel ? (() => {
-        const docenteObj = db.users.find((u) => u.id === (sel.docenteId || sel.teacherId))
+        const targetDocenteId = sel.docenteId || sel.teacherId || ''
+        const docenteObj = db.users.find((u) => u.id === targetDocenteId)
         if (!docenteObj) return null
+
+        const yaFueEvaluado = Boolean(me?.id) && db.formResponses.some(
+          (ev) =>
+            (ev.formId === form.id || ev.formId === 'form-eval-2026') &&
+            (ev.docenteId === targetDocenteId || ev.teacherId === targetDocenteId) &&
+            (ev.userId === me.id || (ev as any).evaluadorId === me.id)
+        )
+
+        if (yaFueEvaluado) {
+          return (
+            <Card className="mb-4 space-y-3">
+              <Msg kind="ok" text="Ya has completado la evaluación para este docente. Las respuestas han sido registradas de forma definitiva." />
+              <button
+                type="button"
+                className={btnGhost}
+                onClick={() => setSel(null)}
+              >
+                Volver a la lista de docentes
+              </button>
+            </Card>
+          )
+        }
+
         return (
           <StudentEvaluationForm
-            key={`${form.id}-${sel.docenteId || sel.teacherId}`}
+            key={`${form.id}-${targetDocenteId}`}
             form={form}
             docente={docenteObj}
             onCancel={() => setSel(null)}
             onSubmit={async (answers, observation) => {
-              const targetDocenteId = sel.docenteId || sel.teacherId || ''
-              await actions.respondForm({ formId: form.id, userId: me.id, docenteId: targetDocenteId, teacherId: targetDocenteId, answers, observation })
+              let docenteCadis = db.cadis.filter((c) => c.docenteId === targetDocenteId)
+              if (docenteCadis.length === 0) {
+                const fallback = getDocenteCadi(db.cadis, docenteObj)
+                if (fallback) docenteCadis = [fallback]
+              }
+              const cadiCodigo = docenteCadis[0]?.codigo || ''
+              const cadiId = docenteCadis[0]?.id || ''
+              const nowIso = new Date().toISOString()
+              const payload = {
+                formId: form.id,
+                userId: me.id,
+                evaluadorId: me.id,
+                docenteId: targetDocenteId,
+                teacherId: targetDocenteId,
+                docente: docenteObj.name,
+                cadiCodigo,
+                cadiId,
+                respuestas: answers,
+                answers,
+                observation,
+                fecha: nowIso,
+                date: nowIso,
+              }
+              await actions.respondForm(payload)
               if (me?.id) {
                 await actions.syncStudentEvaluationData(me.id)
               }
@@ -96,7 +142,10 @@ export function StudentEvaluation({ me }: { me: User }) {
             <div className="divide-y divide-line">
               {distinctDocentes.map((t) => {
                 const yaRespondio = Boolean(me?.id) && db.formResponses.some(
-                  (ev) => ev.formId === f.id && (ev.docenteId === t.id || ev.teacherId === t.id) && ev.userId === me.id
+                  (ev) =>
+                    (ev.formId === f.id || ev.formId === 'form-eval-2026') &&
+                    (ev.docenteId === t.id || ev.teacherId === t.id) &&
+                    (ev.userId === me.id || (ev as any).evaluadorId === me.id)
                 )
                 const status = getStudentDocenteEvaluationStatus(db, f, me?.id || '', t.id)
                 let docenteCadis = db.cadis.filter((c) => c.docenteId === t.id)
@@ -136,8 +185,12 @@ export function StudentEvaluation({ me }: { me: User }) {
                       )}
                     </div>
                     {yaRespondio ? (
-                      <span className="flex items-center gap-1 text-sm text-moss font-medium">
-                        <Check size={16} />Respondida
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md border border-moss/40 bg-moss/10 px-3 py-1.5 text-xs font-semibold text-pine cursor-default select-none shadow-2xs"
+                        title="Evaluación completada para este docente"
+                      >
+                        <Check size={14} className="text-moss font-bold" />
+                        <span>✓ Completada</span>
                       </span>
                     ) : (
                       <button

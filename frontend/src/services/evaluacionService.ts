@@ -101,7 +101,7 @@ export const evaluacionService = {
     })
   },
 
-  respondForm: async (r: Omit<FormResponse, 'id' | 'date'>): Promise<{ ok: boolean; id: string }> => {
+  respondForm: async (r: Omit<FormResponse, 'id' | 'date'> & Record<string, any>): Promise<{ ok: boolean; id: string }> => {
     return apiFetch<{ ok: boolean; id: string }>('/api/form-responses', {
       method: 'POST',
       body: JSON.stringify(r),

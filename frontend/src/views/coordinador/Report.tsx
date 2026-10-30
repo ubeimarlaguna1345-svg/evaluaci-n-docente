@@ -665,7 +665,7 @@ export function Report({
                                 {grade.studentAvg.toFixed(2)}
                               </span>
                               <span className="text-[11px] text-ink/50"> / 5.00</span>
-                              <div className="text-[10px] text-ink/50">70%: {grade.studentWeighted?.toFixed(2)} pts</div>
+                              <div className="text-[10px] text-ink/50">70%: {grade.studentWeighted?.toFixed(2)} pts ({grade.studentResponsesCount} resp.)</div>
                             </div>
                           ) : (
                             <span className="rounded bg-paper px-2 py-0.5 text-ink/50 border border-line">Pendiente</span>

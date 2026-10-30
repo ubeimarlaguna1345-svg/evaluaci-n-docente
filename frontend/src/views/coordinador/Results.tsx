@@ -136,7 +136,7 @@ export function Results() {
             </p>
             <p className="mt-1 text-xs text-ink/60">
               {consolidated.studentWeighted !== null
-                ? `Aporte ponderado: ${consolidated.studentWeighted.toFixed(2)} / 3.50 pts`
+                ? `Aporte ponderado: ${consolidated.studentWeighted.toFixed(2)} / 3.50 pts · ${consolidated.studentResponsesCount} respuesta${consolidated.studentResponsesCount === 1 ? '' : 's'}`
                 : 'Sin evaluaciones de estudiantes registradas'}
             </p>
           </div>
@@ -272,7 +272,7 @@ export function Results() {
                         {grade.studentAvg !== null ? (
                           <span>
                             <b className="font-mono">{grade.studentAvg.toFixed(2)}</b>
-                            <span className="text-[11px] text-ink/50"> ({grade.studentWeighted?.toFixed(2)} pts)</span>
+                            <span className="text-[11px] text-ink/50"> ({grade.studentWeighted?.toFixed(2)} pts · {grade.studentResponsesCount} resp.)</span>
                           </span>
                         ) : (
                           <span className="rounded bg-ochre/15 px-2 py-0.5 text-ochre font-medium">Pendiente</span>
