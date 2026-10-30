@@ -228,6 +228,7 @@ export function Report({
   const effectiveIsDocenteView = isDocenteView ?? isTeacherView ?? false
 
   useEffect(() => {
+    actions.syncAllResponses().catch(() => {})
     actions.syncGlobalData().catch(console.error)
     if (effectiveIsDocenteView && me?.id) {
       actions.syncDocenteAutoevaluationData(me.id).catch(console.error)
@@ -259,16 +260,21 @@ export function Report({
       }
       const primaryCadi = cadis[0] || null
       const statusInfo = isEvaluationConsolidated(grade, selectedForm)
-      const desempeno = statusInfo.estaConsolidado
+      const tieneEvaluaciones = Boolean(
+        grade.hasEvaluations ||
+        (grade.studentResponsesCount ?? 0) > 0 ||
+        (grade.autoResponsesCount ?? 0) > 0
+      )
+      const desempeno = tieneEvaluaciones
         ? getNivelDesempeno(grade.finalScore)
         : {
             nivel: 'En Curso' as NivelDesempeno,
-            label: 'En Curso / Pendiente de Consolidación',
-            badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
-            borderClass: 'border-amber-300',
-            bgSoft: 'bg-amber-50/70',
-            textColor: 'text-amber-800',
-            tag: 'Pendiente de Consolidación',
+            label: 'Sin evaluar / En Curso',
+            badgeClass: 'bg-paper text-ink/70 border border-line',
+            borderClass: 'border-line',
+            bgSoft: 'bg-paper/50',
+            textColor: 'text-ink/60',
+            tag: 'Sin evaluar',
           }
       return {
         docente: t,
@@ -283,18 +289,19 @@ export function Report({
   }, [allDocentes, db, selectedPeriod, selectedForm])
 
   const avgInstitucional = useMemo(() => {
-    const valid = teachersWithGrades.filter((x) => x.estaConsolidado && x.grade.hasEvaluations)
+    const valid = teachersWithGrades.filter((x) => (x.grade.hasEvaluations || (x.grade.studentResponsesCount ?? 0) > 0) && x.grade.finalScore > 0)
     if (!valid.length) return 4.18
     const sum = valid.reduce((acc, curr) => acc + curr.grade.finalScore, 0)
     return Number((sum / valid.length).toFixed(2))
   }, [teachersWithGrades])
 
   const countsByTier = useMemo(() => {
+    const hasEval = (x: any) => Boolean(x.grade.hasEvaluations || (x.grade.studentResponsesCount ?? 0) > 0 || (x.grade.autoResponsesCount ?? 0) > 0)
     return {
       total: teachersWithGrades.length,
       satisfactorio: teachersWithGrades.filter(
         (x) =>
-          x.estaConsolidado &&
+          hasEval(x) &&
           (x.desempeno.nivel === 'Excelente' ||
             x.desempeno.nivel === 'Satisfactorio' ||
             x.desempeno.nivel === 'Destacado' ||
@@ -302,13 +309,13 @@ export function Report({
       ).length,
       aceptable: teachersWithGrades.filter(
         (x) =>
-          x.estaConsolidado &&
+          hasEval(x) &&
           (x.desempeno.nivel === 'Aceptable' ||
             x.desempeno.nivel === 'Aceptable / Atención Preventiva')
       ).length,
       seguimiento: teachersWithGrades.filter(
         (x) =>
-          x.estaConsolidado &&
+          hasEval(x) &&
           (x.desempeno.nivel === 'En seguimiento' ||
             x.desempeno.nivel === 'En Seguimiento')
       ).length,
@@ -317,18 +324,20 @@ export function Report({
   }, [teachersWithGrades])
 
   const filteredTeachers = useMemo(() => {
-    return teachersWithGrades.filter(({ teacher, cadis, desempeno, estaConsolidado }) => {
+    return teachersWithGrades.filter(({ teacher, cadis, desempeno, estaConsolidado, grade }) => {
       const cadisText = cadis.map((c) => `${c.codigo} ${c.nombre} ${c.tipo || ''}`).join(' ')
       const matchesSearch =
         teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         cadisText.toLowerCase().includes(searchQuery.toLowerCase())
 
+      const hasEvaluations = Boolean(grade.hasEvaluations || (grade.studentResponsesCount ?? 0) > 0 || (grade.autoResponsesCount ?? 0) > 0)
+
       const matchesTier =
         tierFilter === 'todos' ||
         (tierFilter === 'En Curso'
           ? !estaConsolidado
-          : (estaConsolidado && (
+          : (hasEvaluations && (
               desempeno.nivel === tierFilter ||
               (tierFilter === 'Excelente' && (desempeno.nivel === 'Satisfactorio' || desempeno.nivel === 'Excelente')) ||
               (tierFilter === 'En seguimiento' && (desempeno.nivel === 'En Seguimiento' || desempeno.nivel === 'En seguimiento'))
@@ -834,48 +843,51 @@ export function Report({
                         </td>
 
                         <td className="p-4">
-                          {estaConsolidado ? (
+                          {grade.hasEvaluations ? (
                             <div>
                               <div className="flex items-center gap-1.5">
                                 <span className="font-serif text-base font-bold text-pine">
                                   {grade.finalScore.toFixed(2)}
                                 </span>
                                 <span className="text-[10px] text-ink/40">/ 5.0</span>
+                                {!estaConsolidado && (
+                                  <span className="text-[9px] rounded bg-ochre/15 px-1 py-0.2 text-ochre font-semibold">
+                                    Provisional
+                                  </span>
+                                )}
                               </div>
                               <div className="mt-1 h-1.5 w-20 rounded-full bg-paper overflow-hidden border border-line/40">
                                 <div
                                   className={`h-full rounded-full ${
-                                    grade.finalScore >= 4.6
+                                    grade.finalScore >= 4.0
                                       ? 'bg-emerald-500'
-                                      : grade.finalScore >= 4.0
-                                      ? 'bg-sky-500'
                                       : grade.finalScore >= 3.5
-                                      ? 'bg-amber-500'
-                                      : 'bg-red-500'
+                                      ? 'bg-sky-500'
+                                      : 'bg-amber-500'
                                   }`}
-                                  style={{ width: `${(grade.finalScore / 5) * 100}%` }}
+                                  style={{ width: `${Math.min(100, (grade.finalScore / 5) * 100)}%` }}
                                 />
                               </div>
                             </div>
                           ) : (
-                            <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200">
-                              En Curso
+                            <span className="inline-flex items-center rounded-md bg-paper px-2 py-0.5 text-xs font-medium text-ink/50 border border-line">
+                              Sin evaluar
                             </span>
                           )}
                         </td>
 
                         <td className="p-4">
-                          {estaConsolidado ? (
+                          {grade.hasEvaluations ? (
                             <span
                               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${desempeno.badgeClass}`}
                             >
                               <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                              {desempeno.tag}
+                              {desempeno.tag} {!estaConsolidado && <span className="text-[9px] text-ink/50 font-normal">(En Curso)</span>}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-paper text-ink/50 border border-line">
                               <Clock size={11} />
-                              Pendiente de Consolidación
+                              Sin evaluar
                             </span>
                           )}
                         </td>
