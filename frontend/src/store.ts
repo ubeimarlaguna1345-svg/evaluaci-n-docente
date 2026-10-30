@@ -1865,7 +1865,12 @@ export function getDocenteConsolidatedGrade(
   )
   const evalFormIds = new Set(evalForms.map((f) => f.id))
   const evalResponses = db.formResponses.filter(
-    (r) => (r.docenteId === docenteId || r.teacherId === docenteId) && evalFormIds.has(r.formId)
+    (r) =>
+      (r.docenteId === docenteId || r.teacherId === docenteId) &&
+      evalFormIds.has(r.formId) &&
+      r.userId !== docenteId &&
+      !r.formId.startsWith('auto-') &&
+      r.formId !== 'form-auto-2026'
   )
 
   const studentValues: number[] = []
@@ -1892,18 +1897,27 @@ export function getDocenteConsolidatedGrade(
   )
   const autoFormIds = new Set(autoForms.map((f) => f.id))
   const autoResponses = db.formResponses.filter(
-    (r) => (r.docenteId === docenteId || r.teacherId === docenteId || r.userId === docenteId) && autoFormIds.has(r.formId)
+    (r) =>
+      (r.docenteId === docenteId || r.teacherId === docenteId || r.userId === docenteId) &&
+      (autoFormIds.has(r.formId) ||
+        r.formId.startsWith('auto-') ||
+        r.formId === 'form-auto-2026' ||
+        (r.userId === docenteId && (r.docenteId === docenteId || r.teacherId === docenteId)))
   )
 
   const autoValues: number[] = []
   autoResponses.forEach((r) => {
-    const form = autoForms.find((f) => f.id === r.formId)
-    if (!form) return
+    const form =
+      autoForms.find((f) => f.id === r.formId) ||
+      db.forms.find(
+        (f) => f.id === r.formId || (r.formId.startsWith('auto-') && f.id === r.formId.replace('auto-', ''))
+      )
+    const questions = form?.questions?.length ? form.questions : MEDIT_10_QUESTIONS
     const scaleQuestionIds = new Set(
-      form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
+      questions.filter((q) => q.type === 'escala' || !q.type).map((q) => q.id)
     )
     Object.entries(r.answers).forEach(([qId, val]) => {
-      if (scaleQuestionIds.has(qId)) {
+      if (scaleQuestionIds.has(qId) || questions.some((q) => q.id === qId)) {
         const num = Number(val)
         if (!isNaN(num) && num > 0) autoValues.push(num)
       }
