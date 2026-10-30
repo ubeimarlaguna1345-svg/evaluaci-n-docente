@@ -8,6 +8,7 @@ import {
   OBS_LIMIT,
   MEDIT_10_QUESTIONS,
   CONTINGENCY_FORMS,
+  getCurrentUser,
   type User,
   type Form,
   type Question,
@@ -154,21 +155,27 @@ export function TeacherAutoevaluationForm({
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const safeQuestions: Question[] = useMemo(() => {
+    return Array.isArray(form?.questions) && form.questions.length > 0
+      ? form.questions
+      : MEDIT_10_QUESTIONS
+  }, [form?.questions])
+
   const questionsByBlock = useMemo(() => {
-    const total = form.questions.length
+    const total = safeQuestions.length
     const grouped: Record<'A' | 'B' | 'C', Question[]> = { A: [], B: [], C: [] }
-    form.questions.forEach((rawQ, idx) => {
+    safeQuestions.forEach((rawQ, idx) => {
       const b = categorizarPreguntaDocente(rawQ, idx, total)
       grouped[b].push(rawQ)
     })
     return grouped
-  }, [form.questions])
+  }, [safeQuestions])
 
-  const currentBloque = BLOQUES_AUTOEVALUACION[activeStep]
-  const currentQuestions = questionsByBlock[currentBloque.id]
+  const currentBloque = BLOQUES_AUTOEVALUACION[activeStep] || BLOQUES_AUTOEVALUACION[0]
+  const currentQuestions = questionsByBlock[currentBloque.id] || []
 
-  const totalQuestions = form.questions.length
-  const answeredCount = form.questions.filter((q) => Boolean(answers[q.id]?.trim())).length
+  const totalQuestions = safeQuestions.length
+  const answeredCount = safeQuestions.filter((q) => Boolean(answers[q.id]?.trim())).length
   const percentComplete = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0
 
   const handleNext = () => {
@@ -191,13 +198,13 @@ export function TeacherAutoevaluationForm({
       return
     }
 
-    const m = form.questions.filter((q) => q.required && !answers[q.id]?.trim()).map((q) => q.id)
+    const m = safeQuestions.filter((q) => q.required && !answers[q.id]?.trim()).map((q) => q.id)
     setMissing(m)
     if (m.length > 0) {
       setErr(`Faltan ${m.length} preguntas obligatorias por calificar antes de enviar la autoevaluación.`)
-      const firstMissingQ = form.questions.find((q) => m.includes(q.id))
+      const firstMissingQ = safeQuestions.find((q) => m.includes(q.id))
       if (firstMissingQ) {
-        const targetBlock = categorizarPreguntaDocente(firstMissingQ, 0, form.questions.length)
+        const targetBlock = categorizarPreguntaDocente(firstMissingQ, 0, safeQuestions.length)
         const blockIdx = BLOQUES_AUTOEVALUACION.findIndex((b) => b.id === targetBlock)
         if (blockIdx !== -1) setActiveStep(blockIdx)
       }
@@ -224,10 +231,10 @@ export function TeacherAutoevaluationForm({
       <div className="flex items-center justify-between border-b border-line pb-3">
         <div>
           <p className="text-sm text-ink/80">
-            Autoevaluación de desempeño: <b className="text-pine font-semibold">{me.name}</b>
+            Autoevaluación de desempeño: <b className="text-pine font-semibold">{me?.name || 'Docente'}</b>
           </p>
           <p className="text-xs text-ink/50">
-            Docente Titular · {me.email} · {form.period}
+            Docente Titular · {me?.email || ''} · {form?.period || '2026-II'}
           </p>
         </div>
         <button
@@ -445,22 +452,43 @@ export function FormList({
   done: (id: string) => boolean
   onOpen: (id: string) => void
 }) {
-  if (!forms.length) return <Empty text="No tiene actividades de autoevaluación asignadas en este momento." />
+  const safeForms = Array.isArray(forms)
+    ? forms.filter((f) => Boolean(f && f.id))
+    : []
+
+  if (!safeForms.length) {
+    return <Empty text="No tiene actividades de autoevaluación asignadas en este momento." />
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {forms.map((f) => {
-        const d = done(f.id)
+      {safeForms.map((f) => {
+        const d = typeof done === 'function' ? done(f.id) : false
         const open = isOpen(f.start, f.end) || !d
+        const questionsList = Array.isArray(f.questions) && f.questions.length > 0
+          ? f.questions
+          : MEDIT_10_QUESTIONS
+        const questionsCount = questionsList.length
+        const safeTitle = f.title || 'Autoevaluación Docente'
+        const safePeriod = f.period || '2026-II'
+        const safeDescription = f.description || 'Instrumento de autoevaluación integral del desempeño docente bajo el modelo MEDIT.'
+        let safeEnd = '2026-11-30T23:59:59Z'
+        try {
+          if (f.end) safeEnd = fmt(f.end)
+        } catch {
+          safeEnd = f.end || '2026-11-30'
+        }
+
         return (
           <Card key={f.id} className="flex flex-col gap-3">
-            <p className="text-xs uppercase tracking-wider text-ochre font-semibold">{f.period}</p>
-            <h3 className="font-serif text-2xl text-pine">{f.title}</h3>
-            <p className="text-sm text-ink/70">{f.description}</p>
+            <p className="text-xs uppercase tracking-wider text-ochre font-semibold">{safePeriod}</p>
+            <h3 className="font-serif text-2xl text-pine">{safeTitle}</h3>
+            <p className="text-sm text-ink/70">{safeDescription}</p>
             <p className="text-xs text-ink/50 font-medium">
-              {f.questions.length} preguntas organizadas por dimensiones MEDIT
+              {questionsCount} preguntas organizadas por dimensiones MEDIT
             </p>
             <p className="flex items-center gap-2 text-xs text-ink/50">
-              <CalendarClock size={14} />Cierra {fmt(f.end)}
+              <CalendarClock size={14} />Cierra {safeEnd}
             </p>
             <div className="mt-auto pt-2">
               {d ? (
@@ -478,88 +506,118 @@ export function FormList({
   )
 }
 
-export function SelfEvaluation({ me }: { me: User }) {
+export function SelfEvaluation({ me: propMe }: { me?: User | null }) {
   const db = useDB()
   const [active, setActive] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState('')
 
+  const me: User | null = propMe || getCurrentUser()
+  const meId = me?.id || ''
+
   useEffect(() => {
-    if (me?.id) {
-      actions.syncDocenteAutoevaluationData(me.id).catch(() => {})
+    if (meId) {
+      actions.syncDocenteAutoevaluationData(meId).catch(() => {})
     }
     actions.fetchEvaluaciones().catch(() => {})
-  }, [me?.id])
+  }, [meId])
 
   const forms = useMemo(() => {
+    const rawForms = Array.isArray(db?.forms) ? db.forms : []
+    const rawResponses = Array.isArray(db?.formResponses) ? db.formResponses : []
+
     // 1. Buscar formulario institucional de evaluación general
     const generalForm =
-      db.forms.find((f) => f.kind === 'evaluacion' && !f.cadiId) ||
-      db.forms.find((f) => f.kind === 'evaluacion') ||
+      rawForms.find((f) => f && f.kind === 'evaluacion' && !f.cadiId) ||
+      rawForms.find((f) => f && f.kind === 'evaluacion') ||
       CONTINGENCY_FORMS[0]
 
     // 2. Banco de preguntas institucional / canónico MEDIT respetando sus tipos y opciones
     const canonicalQuestions: Question[] =
-      generalForm?.questions && generalForm.questions.length > 0
+      Array.isArray(generalForm?.questions) && generalForm.questions.length > 0
         ? generalForm.questions
         : MEDIT_10_QUESTIONS
 
     // 3. Buscar formularios explícitos de autoevaluación en la base de datos
-    const rawAutoForms = db.forms.filter((f) => f.kind === 'autoevaluacion')
+    const rawAutoForms = rawForms.filter((f) => f && f.kind === 'autoevaluacion')
     if (rawAutoForms.length > 0) {
       return rawAutoForms.map((f) => {
-        const isDone = db.formResponses.some(
+        const isDone = Boolean(meId) && rawResponses.some(
           (r) =>
             (r.formId === f.id || r.formId === `auto-${f.id}` || r.formId === 'form-auto-2026') &&
-            (r.userId === me.id || r.docenteId === me.id)
+            (r.userId === meId || r.docenteId === meId)
         )
-        const qList = f.questions && f.questions.length > 0
+        const qList = Array.isArray(f.questions) && f.questions.length > 0
           ? f.questions
           : canonicalQuestions
 
         return {
           ...f,
+          title: f.title || 'Autoevaluación Docente',
+          period: f.period || '2026-II',
           start: f.start || '2026-08-01T00:00:00Z',
-          end: isDone && !isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
+          end: isDone && !isOpen(f.start, f.end) ? (f.end || '2026-11-30T23:59:59Z') : '2026-11-30T23:59:59Z',
           questions: qList,
         }
       })
     }
 
     if (generalForm) {
-      const isDone = db.formResponses.some(
+      const isDone = Boolean(meId) && rawResponses.some(
         (r) =>
           (r.formId === generalForm.id ||
             r.formId === `auto-${generalForm.id}` ||
             r.formId === 'form-auto-2026') &&
-          (r.userId === me.id || r.docenteId === me.id)
+          (r.userId === meId || r.docenteId === meId)
       )
       const fallbackAuto: Form = {
         id: `auto-${generalForm.id}`,
         kind: 'autoevaluacion',
-        title: `Autoevaluación Docente · ${generalForm.period || '2026-II'}`,
+        title: generalForm.title
+          ? `Autoevaluación Docente · ${generalForm.period || '2026-II'}`
+          : `Autoevaluación Docente · 2026-II`,
         description: 'Instrumento de autoevaluación integral del desempeño docente bajo el modelo educativo digital transmoderno (MEDIT).',
         period: generalForm.period || '2026-II',
         start: generalForm.start || '2026-08-01T00:00:00Z',
-        end: isDone && !isOpen(generalForm.start, generalForm.end) ? generalForm.end : '2026-11-30T23:59:59Z',
+        end: isDone && !isOpen(generalForm.start, generalForm.end) ? (generalForm.end || '2026-11-30T23:59:59Z') : '2026-11-30T23:59:59Z',
         questions: canonicalQuestions,
       }
       return [fallbackAuto]
     }
 
     return []
-  }, [db.forms, db.formResponses, me.id])
+  }, [db?.forms, db?.formResponses, meId])
 
-  const done = (id: string) =>
-    db.formResponses.some(
+  const done = (id: string) => {
+    if (!meId) return false
+    const rawResponses = Array.isArray(db?.formResponses) ? db.formResponses : []
+    return rawResponses.some(
       (r) =>
         (r.formId === id ||
           (id.startsWith('auto-') && r.formId === id.replace('auto-', '')) ||
           `auto-${r.formId}` === id ||
           r.formId === 'form-auto-2026') &&
-        (r.userId === me.id || r.docenteId === me.id)
+        (r.userId === meId || r.docenteId === meId)
     )
+  }
 
-  const activeForm = forms.find((f) => f.id === active)
+  if (!me) {
+    return (
+      <div className="flex min-h-[300px] flex-col items-center justify-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-pine border-t-transparent" />
+        <p className="text-sm text-ink/60">Cargando perfil docente...</p>
+      </div>
+    )
+  }
+
+  const rawActiveForm = forms.find((f) => f.id === active)
+  const activeForm = rawActiveForm
+    ? {
+        ...rawActiveForm,
+        questions: Array.isArray(rawActiveForm.questions) && rawActiveForm.questions.length > 0
+          ? rawActiveForm.questions
+          : MEDIT_10_QUESTIONS,
+      }
+    : null
 
   return (
     <>

@@ -45,11 +45,43 @@ export const VIEWS: Record<Role, View[]> = (() => {
     admin: mgmt,
     coordinador: mgmt,
     docente: [
-      { id: 'auto', label: 'Autoevaluación', icon: ClipboardList, render: (me) => <SelfEvaluation me={me} /> },
+      {
+        id: 'auto',
+        label: 'Autoevaluación',
+        icon: ClipboardList,
+        render: (me) => {
+          const activeMe = me || getCurrentUser()
+          if (!activeMe) {
+            return (
+              <div className="flex min-h-[300px] flex-col items-center justify-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-pine border-t-transparent" />
+                <p className="text-sm text-ink/60">Cargando perfil docente...</p>
+              </div>
+            )
+          }
+          return <SelfEvaluation me={activeMe} />
+        },
+      },
       normativaView,
     ],
     estudiante: [
-      { id: 'eval', label: 'Evaluación docente', icon: ClipboardList, render: (me) => <StudentEvaluation me={me} /> },
+      {
+        id: 'eval',
+        label: 'Evaluación docente',
+        icon: ClipboardList,
+        render: (me) => {
+          const activeMe = me || getCurrentUser()
+          if (!activeMe) {
+            return (
+              <div className="flex min-h-[300px] flex-col items-center justify-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-pine border-t-transparent" />
+                <p className="text-sm text-ink/60">Cargando perfil de estudiante...</p>
+              </div>
+            )
+          }
+          return <StudentEvaluation me={activeMe} />
+        },
+      },
       normativaView,
     ],
   }
