@@ -12,7 +12,7 @@ import {
   type Form,
   type Question,
 } from '../../store'
-import { Header, Empty, Card, Msg, Scale, input, btn, btnGhost } from '../common'
+import { Header, Empty, Card, Msg, AnswerInput, Scale, input, btn, btnGhost } from '../common'
 
 export interface DocenteBloqueDef {
   id: 'A' | 'B' | 'C'
@@ -158,9 +158,8 @@ export function TeacherAutoevaluationForm({
     const total = form.questions.length
     const grouped: Record<'A' | 'B' | 'C', Question[]> = { A: [], B: [], C: [] }
     form.questions.forEach((rawQ, idx) => {
-      const q: Question = { ...rawQ, type: 'escala', options: [] }
-      const b = categorizarPreguntaDocente(q, idx, total)
-      grouped[b].push(q)
+      const b = categorizarPreguntaDocente(rawQ, idx, total)
+      grouped[b].push(rawQ)
     })
     return grouped
   }, [form.questions])
@@ -357,7 +356,8 @@ export function TeacherAutoevaluationForm({
                     {q.required && <span className="text-red-600 font-bold"> *</span>}
                   </p>
                 </div>
-                <Scale
+                <AnswerInput
+                  q={q}
                   value={answers[q.id]}
                   onChange={(val) => {
                     setAnswers((prev) => ({ ...prev, [q.id]: val }))
@@ -496,18 +496,11 @@ export function SelfEvaluation({ me }: { me: User }) {
       db.forms.find((f) => f.kind === 'evaluacion') ||
       CONTINGENCY_FORMS[0]
 
-    // 2. Banco canónico de 10 preguntas MEDIT organizadas por bloques
+    // 2. Banco de preguntas institucional / canónico MEDIT respetando sus tipos y opciones
     const canonicalQuestions: Question[] =
-      generalForm?.questions && generalForm.questions.length >= 10
+      generalForm?.questions && generalForm.questions.length > 0
         ? generalForm.questions
         : MEDIT_10_QUESTIONS
-
-    // Normalizar a escala 1 a 5 homogénea
-    const sanitizedQuestions: Question[] = canonicalQuestions.map((q) => ({
-      ...q,
-      type: 'escala',
-      options: [],
-    }))
 
     // 3. Buscar formularios explícitos de autoevaluación en la base de datos
     const rawAutoForms = db.forms.filter((f) => f.kind === 'autoevaluacion')
@@ -518,9 +511,9 @@ export function SelfEvaluation({ me }: { me: User }) {
             (r.formId === f.id || r.formId === `auto-${f.id}` || r.formId === 'form-auto-2026') &&
             (r.userId === me.id || r.docenteId === me.id)
         )
-        const qList = f.questions && f.questions.length >= 10
-          ? f.questions.map((q) => ({ ...q, type: 'escala' as const, options: [] }))
-          : sanitizedQuestions
+        const qList = f.questions && f.questions.length > 0
+          ? f.questions
+          : canonicalQuestions
 
         return {
           ...f,
@@ -547,7 +540,7 @@ export function SelfEvaluation({ me }: { me: User }) {
         period: generalForm.period || '2026-II',
         start: generalForm.start || '2026-08-01T00:00:00Z',
         end: isDone && !isOpen(generalForm.start, generalForm.end) ? generalForm.end : '2026-11-30T23:59:59Z',
-        questions: sanitizedQuestions,
+        questions: canonicalQuestions,
       }
       return [fallbackAuto]
     }

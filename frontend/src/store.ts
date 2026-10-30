@@ -1881,10 +1881,14 @@ export function getDocenteConsolidatedGrade(
       form.questions.filter((q) => q.type === 'escala').map((q) => q.id)
     )
     Object.entries(r.answers).forEach(([qId, val]) => {
-      if (scaleQuestionIds.has(qId)) {
-        const num = Number(val)
-        if (!isNaN(num) && num > 0) studentValues.push(num)
+      let num = Number(val)
+      if (isNaN(num)) {
+        const lower = String(val).trim().toLowerCase()
+        if (lower === 'si' || lower === 'sí') num = 5
+        else if (lower === 'tal_vez' || lower === 'tal vez' || lower === 'parcialmente') num = 3
+        else if (lower === 'no') num = 1
       }
+      if (!isNaN(num) && num > 0) studentValues.push(num)
     })
   })
 
@@ -1917,10 +1921,14 @@ export function getDocenteConsolidatedGrade(
       questions.filter((q) => q.type === 'escala' || !q.type).map((q) => q.id)
     )
     Object.entries(r.answers).forEach(([qId, val]) => {
-      if (scaleQuestionIds.has(qId) || questions.some((q) => q.id === qId)) {
-        const num = Number(val)
-        if (!isNaN(num) && num > 0) autoValues.push(num)
+      let num = Number(val)
+      if (isNaN(num)) {
+        const lower = String(val).trim().toLowerCase()
+        if (lower === 'si' || lower === 'sí') num = 5
+        else if (lower === 'tal_vez' || lower === 'tal vez' || lower === 'parcialmente') num = 3
+        else if (lower === 'no') num = 1
       }
+      if (!isNaN(num) && num > 0) autoValues.push(num)
     })
   })
 
