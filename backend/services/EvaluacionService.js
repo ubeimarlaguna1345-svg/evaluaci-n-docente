@@ -297,8 +297,8 @@ export class EvaluacionService {
     }))
   }
 
-  async registrarRespuesta({ formId, userId, evaluadorId, docenteId, teacherId, answers, respuestas, observation }) {
-    const targetDocenteId = docenteId || teacherId
+  async registrarRespuesta({ formId, userId, evaluadorId, docente, docenteId, teacherId, answers, respuestas, observation, tipo }) {
+    const targetDocenteId = docenteId || teacherId || docente;
     const targetUserId = userId || evaluadorId;
     const targetAnswers = answers || respuestas;
     if (!formId || !targetUserId || !targetDocenteId || !targetAnswers) {
@@ -308,10 +308,10 @@ export class EvaluacionService {
     }
 
     const evaluacion = new Evaluacion({
-      formularioId: formId,
-      estudianteId: userId,
+      formularioId: formId || (tipo === 'autoevaluacion' ? 'form-auto-2026' : 'form-eval-2026'),
+      estudianteId: targetUserId,
       docenteId: targetDocenteId,
-      respuestas: answers,
+      respuestas: targetAnswers,
       observacion: observation,
     })
 

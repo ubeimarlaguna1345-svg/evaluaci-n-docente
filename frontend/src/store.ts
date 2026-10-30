@@ -84,7 +84,42 @@ export const LEGACY_FORMS_STORAGE_KEY = 'siard_forms_storage'
 export const CHANGED_PASSWORDS_KEY = 'siard_changed_passwords'
 export const SIARD_USER_KEY = 'siard_user'
 export const SIARD_USUARIOS_KEY = 'siard_usuarios'
-const RESPONSES_STORAGE_KEY = 'siard_responses_storage'
+export const SIARD_RESPUESTAS_KEY = 'siard_respuestas'
+export const RESPONSES_STORAGE_KEY = 'siard_respuestas'
+export const LEGACY_RESPONSES_STORAGE_KEY = 'siard_responses_storage'
+
+export function getStoredResponses(): FormResponse[] {
+  try {
+    let raw: string | null = null
+    if (typeof localStorage !== 'undefined') {
+      raw = localStorage.getItem('siard_respuestas') || localStorage.getItem('siard_responses_storage')
+    }
+    if (!raw && typeof sessionStorage !== 'undefined') {
+      raw = sessionStorage.getItem('siard_respuestas')
+    }
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const deleted = getDeletedFormIds()
+        return parsed.filter((r: FormResponse) => !deleted.has(r.formId))
+      }
+    }
+  } catch {}
+  return []
+}
+
+export function saveStoredResponses(responses: FormResponse[]): void {
+  try {
+    const serialized = JSON.stringify(responses)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('siard_respuestas', serialized)
+      localStorage.setItem('siard_responses_storage', serialized)
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('siard_respuestas', serialized)
+    }
+  } catch {}
+}
 const memoryDeletedForms = new Set<string>()
 
 let cacheInvalidated = false
@@ -769,20 +804,7 @@ function getInitialForms(): Form[] {
 }
 
 export function getInitialResponses(): FormResponse[] {
-  try {
-    const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null)
-    if (storage) {
-      const raw = storage.getItem(RESPONSES_STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const deleted = getDeletedFormIds()
-          return parsed.filter((r: FormResponse) => !deleted.has(r.formId))
-        }
-      }
-    }
-  } catch {}
-  return []
+  return getStoredResponses()
 }
 
 let state: DB = {
@@ -819,21 +841,26 @@ export function activateDemoMode() {
     formMap.set(f.id, f)
   }
   const cleanForms = sanitizeForms(Array.from(formMap.values()).filter((f) => !deletedFormIds.has(f.id)))
-  const cleanResponses = CONTINGENCY_RESPONSES.filter((r) => !deletedFormIds.has(r.formId))
+  const localResponses = getStoredResponses()
+  const memResponses = state?.formResponses || []
+  const respMap = new Map<string, FormResponse>()
+  for (const r of memResponses) if (!deletedFormIds.has(r.formId)) respMap.set(r.id, r)
+  for (const r of localResponses) if (!deletedFormIds.has(r.formId)) respMap.set(r.id, r)
+  const cleanResponses = Array.from(respMap.values())
 
   try {
     if (typeof window !== 'undefined') {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleanUsers))
-      localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(cleanResponses))
     }
   } catch {}
+  saveStoredResponses(cleanResponses)
   saveStoredEvaluaciones(cleanForms)
 
   state = {
     users: cleanUsers,
     cadis: sanitizeCadis(CONTINGENCY_CADIS),
     forms: [...cleanForms],
-    formResponses: [],
+    formResponses: cleanResponses,
     feedbacks: [],
     feedbackResponses: [],
     connected: true,
@@ -888,13 +915,21 @@ export async function initDB() {
       saveStoredEvaluaciones(cleanForms)
     }
 
-    const cleanResponses = (data.formResponses || [])
-      .filter((r) => !deletedFormIds.has(r.formId) && !r.id.startsWith('rf-'))
+    const localResp = getStoredResponses()
+    const serverResp = (data.formResponses || [])
+      .filter((r) => !deletedFormIds.has(r.formId))
       .map((r) => ({
         ...r,
         docenteId: (r as any).docenteId || (r as any).teacherId || '',
         teacherId: (r as any).docenteId || (r as any).teacherId || '',
       }))
+
+    const respMap = new Map<string, FormResponse>()
+    for (const r of state?.formResponses || []) if (!deletedFormIds.has(r.formId)) respMap.set(r.id, r)
+    for (const r of localResp) if (!deletedFormIds.has(r.formId)) respMap.set(r.id, r)
+    for (const r of serverResp) if (!deletedFormIds.has(r.formId)) respMap.set(r.id, r)
+    const cleanResponses = Array.from(respMap.values())
+    saveStoredResponses(cleanResponses)
 
     const cleanFeedbacks = (data.feedbacks || []).map((fb) => ({
       ...fb,
@@ -905,7 +940,6 @@ export async function initDB() {
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleanUsers))
-        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(cleanResponses))
       }
     } catch {}
 
@@ -913,7 +947,7 @@ export async function initDB() {
       users: cleanUsers,
       cadis: sanitizeCadis(data.cadis || []),
       forms: [...cleanForms],
-      formResponses: [...cleanResponses],
+      formResponses: cleanResponses,
       feedbacks: cleanFeedbacks,
       feedbackResponses: data.feedbackResponses || [],
       connected: true,
@@ -1192,8 +1226,13 @@ export const actions = {
     const answersObj = r.answers || (r as any).respuestas || {}
     const nowIso = new Date().toISOString()
 
+    const responseTipo =
+      (r as any).tipo ||
+      (targetUserId === targetDocenteId || r.formId.includes('auto') ? 'autoevaluacion' : 'estudiante')
+
     const newResp: FormResponse & {
       evaluadorId?: string
+      tipo?: string
       docente?: string
       cadiCodigo?: string
       cadiId?: string
@@ -1209,6 +1248,7 @@ export const actions = {
       observation: r.observation || '',
       date: nowIso,
       evaluadorId: (r as any).evaluadorId || targetUserId,
+      tipo: responseTipo,
       docente: (r as any).docente || targetDocenteId,
       cadiCodigo: (r as any).cadiCodigo || '',
       cadiId: (r as any).cadiId || '',
@@ -1232,11 +1272,7 @@ export const actions = {
       state.formResponses = [newResp, ...state.formResponses]
     }
 
-    try {
-      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
-      }
-    } catch {}
+    saveStoredResponses(state.formResponses)
     notify()
 
     try {
@@ -1394,11 +1430,7 @@ export const actions = {
       mergedMap.set(key, r)
     }
     state.formResponses = [...otherResponses, ...Array.from(mergedMap.values())]
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
-      }
-    } catch {}
+    saveStoredResponses(state.formResponses)
 
     notify()
     return { forms: freshForms, studentResponses }
@@ -1478,11 +1510,7 @@ export const actions = {
       mergedDocMap.set(key, r)
     }
     state.formResponses = [...otherResponses, ...Array.from(mergedDocMap.values())]
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(RESPONSES_STORAGE_KEY, JSON.stringify(state.formResponses))
-      }
-    } catch {}
+    saveStoredResponses(state.formResponses)
 
     notify()
     return { forms: freshForms, docenteResponses }
@@ -1999,12 +2027,23 @@ export function getDocenteConsolidatedGrade(
     (f) => f.kind === 'evaluacion' && (!period || f.period === period)
   )
   const evalFormIds = new Set(evalForms.map((f) => f.id))
+  const teacherUser = db.users.find((u) => u.id === docenteId)
+  const isTeacherMatch = (r: FormResponse) => {
+    const tId = r.docenteId || r.teacherId || ''
+    const tDoc = (r as any).docente || ''
+    return (
+      tId === docenteId ||
+      (teacherUser && (tDoc === teacherUser.name || tId === teacherUser.email))
+    )
+  }
+
   const evalResponses = db.formResponses.filter(
     (r) =>
-      (r.docenteId === docenteId || r.teacherId === docenteId) &&
+      isTeacherMatch(r) &&
       (evalFormIds.has(r.formId) || (!period && (r.formId === 'form-eval-2026' || r.formId.startsWith('form-')))) &&
       r.userId !== docenteId &&
       (r as any).evaluadorId !== docenteId &&
+      (r as any).tipo !== 'autoevaluacion' &&
       !r.formId.startsWith('auto-') &&
       r.formId !== 'form-auto-2026'
   )
@@ -2034,8 +2073,9 @@ export function getDocenteConsolidatedGrade(
   const autoFormIds = new Set(autoForms.map((f) => f.id))
   const autoResponses = db.formResponses.filter(
     (r) =>
-      (r.docenteId === docenteId || r.teacherId === docenteId || r.userId === docenteId) &&
-      (autoFormIds.has(r.formId) ||
+      (isTeacherMatch(r) || r.userId === docenteId || (r as any).evaluadorId === docenteId) &&
+      ((r as any).tipo === 'autoevaluacion' ||
+        autoFormIds.has(r.formId) ||
         r.formId.startsWith('auto-') ||
         r.formId === 'form-auto-2026' ||
         ((r.userId === docenteId || (r as any).evaluadorId === docenteId) && (r.docenteId === docenteId || r.teacherId === docenteId)))

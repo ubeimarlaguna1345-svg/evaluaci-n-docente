@@ -48,7 +48,7 @@ export function StudentEvaluation({ me }: { me: User }) {
   return (
     <>
       <Header title="Evaluación docente" sub="Valore el desempeño de sus docentes. Sus respuestas son confidenciales." />
-      {ok && <div className="mb-4"><Msg kind="ok" text="Evaluación enviada correctamente." /></div>}
+      {ok && <div className="mb-4"><Msg kind="ok" text="Evaluación enviada con éxito." /></div>}
       {form && sel ? (() => {
         const targetDocenteId = sel.docenteId || sel.teacherId || ''
         const docenteObj = db.users.find((u) => u.id === targetDocenteId)
@@ -56,9 +56,9 @@ export function StudentEvaluation({ me }: { me: User }) {
 
         const yaFueEvaluado = Boolean(me?.id) && db.formResponses.some(
           (ev) =>
-            (ev.formId === form.id || ev.formId === 'form-eval-2026') &&
-            (ev.docenteId === targetDocenteId || ev.teacherId === targetDocenteId) &&
-            (ev.userId === me.id || (ev as any).evaluadorId === me.id)
+            (ev.formId === form.id || ev.formId === 'form-eval-2026' || (ev as any).tipo === 'estudiante') &&
+            (ev.docenteId === targetDocenteId || ev.teacherId === targetDocenteId || (ev as any).docente === docenteObj.name) &&
+            (ev.userId === me.id || (ev as any).evaluadorId === me.id || (ev as any).evaluadorId === me.email || ev.userId === me.email)
         )
 
         if (yaFueEvaluado) {
@@ -93,11 +93,12 @@ export function StudentEvaluation({ me }: { me: User }) {
               const nowIso = new Date().toISOString()
               const payload = {
                 formId: form.id,
-                userId: me.id,
-                evaluadorId: me.id,
+                userId: me.id || me.email,
+                evaluadorId: me.id || me.email,
+                tipo: 'estudiante' as const,
+                docente: docenteObj.name,
                 docenteId: targetDocenteId,
                 teacherId: targetDocenteId,
-                docente: docenteObj.name,
                 cadiCodigo,
                 cadiId,
                 respuestas: answers,
@@ -143,9 +144,9 @@ export function StudentEvaluation({ me }: { me: User }) {
               {distinctDocentes.map((t) => {
                 const yaRespondio = Boolean(me?.id) && db.formResponses.some(
                   (ev) =>
-                    (ev.formId === f.id || ev.formId === 'form-eval-2026') &&
-                    (ev.docenteId === t.id || ev.teacherId === t.id) &&
-                    (ev.userId === me.id || (ev as any).evaluadorId === me.id)
+                    (ev.formId === f.id || ev.formId === 'form-eval-2026' || (ev as any).tipo === 'estudiante') &&
+                    (ev.docenteId === t.id || ev.teacherId === t.id || (ev as any).docente === t.name) &&
+                    (ev.userId === me.id || (ev as any).evaluadorId === me.id || (ev as any).evaluadorId === me.email || ev.userId === me.email)
                 )
                 const status = getStudentDocenteEvaluationStatus(db, f, me?.id || '', t.id)
                 let docenteCadis = db.cadis.filter((c) => c.docenteId === t.id)

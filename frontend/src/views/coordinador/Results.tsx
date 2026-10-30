@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check, AlertTriangle, Eye, Clock } from 'lucide-react'
 import {
   useDB,
+  actions,
   stats,
   getDocenteConsolidatedGrade,
   isEvaluationConsolidated,
@@ -86,6 +87,11 @@ export function TextAnswers({
 
 export function Results() {
   const db = useDB()
+
+  useEffect(() => {
+    actions.syncAllResponses().catch(() => {})
+  }, [])
+
   const [formId, setFormId] = useState(db.forms[0]?.id ?? '')
   const [docenteId, setDocenteId] = useState('')
   const [selectedReportDocenteId, setSelectedReportDocenteId] = useState<string | null>(null)

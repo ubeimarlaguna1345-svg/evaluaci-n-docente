@@ -481,6 +481,7 @@ export function FormList({
 export function SelfEvaluation({ me }: { me: User }) {
   const db = useDB()
   const [active, setActive] = useState<string | null>(null)
+  const [okMsg, setOkMsg] = useState('')
 
   useEffect(() => {
     if (me?.id) {
@@ -566,6 +567,7 @@ export function SelfEvaluation({ me }: { me: User }) {
         title="Autoevaluación Docente"
         sub="Instrumento de reflexión pedagógica y valoración integral de su desempeño bajo dimensiones MEDIT (30% de la nota final)."
       />
+      {okMsg && <div className="mb-4"><Msg kind="ok" text={okMsg} /></div>}
       {activeForm ? (
         <TeacherAutoevaluationForm
           form={activeForm}
@@ -576,8 +578,9 @@ export function SelfEvaluation({ me }: { me: User }) {
             const nowIso = new Date().toISOString()
             const payload = {
               formId: formIdToSend,
-              userId: me.id,
-              evaluadorId: me.id,
+              userId: me.id || me.email,
+              evaluadorId: me.id || me.email,
+              tipo: 'autoevaluacion' as const,
               docenteId: me.id,
               teacherId: me.id,
               docente: me.name,
@@ -604,6 +607,7 @@ export function SelfEvaluation({ me }: { me: User }) {
               await actions.syncDocenteAutoevaluationData(me.id).catch(() => {})
             }
             setActive(null)
+            setOkMsg('Autoevaluación guardada correctamente.')
           }}
         />
       ) : (
