@@ -34,8 +34,32 @@ export function Accounts({ me }: { me: User }) {
   const currentUser = me
   const currentRole = (currentUser.rol || currentUser.role)?.toLowerCase()
 
-  // 1. Unificar información de usuarios de db.users sin inserción manual forzada
-  const usuarios = (db.users || []).map((u) => {
+  // 1. Asegurar que Jaime Parra exista en la lista base de usuarios
+  const rawList = [...(db.users || [])]
+  const tieneJaime = rawList.some(
+    (u) =>
+      (u.nombre || u.name || '').toLowerCase().includes('jaime parra') ||
+      (u.email || '').toLowerCase().includes('jaimeparra') ||
+      (u.email || '').toLowerCase().includes('jaime.parra')
+  )
+  if (!tieneJaime) {
+    rawList.push({
+      id: 'user-coord-1',
+      name: 'Jaime Parra',
+      nombre: 'Jaime Parra',
+      email: 'jaime.parra.siard@ucundinamarca.edu.co',
+      password: 'CoordParra2026*',
+      role: 'coordinador',
+      rol: 'coordinador',
+      active: true,
+      estado: 'Activa',
+      sede: 'Sede Facatativá',
+      carrera: 'Ingeniería de Sistemas y Computación',
+    })
+  }
+
+  // 2. Unificar y normalizar usuarios
+  const usuarios = rawList.map((u) => {
     const isJaime =
       (u.nombre || u.name || '').toLowerCase().includes('jaime parra') ||
       (u.email || '').toLowerCase().includes('jaimeparra') ||
@@ -47,17 +71,17 @@ export function Accounts({ me }: { me: User }) {
       nombre: isJaime ? 'Jaime Parra' : (u.nombre || u.name || ''),
       email: isJaime ? 'jaime.parra.siard@ucundinamarca.edu.co' : u.email,
       role: (isJaime ? 'coordinador' : (u.role || u.rol || 'estudiante')) as Role,
-      rol: isJaime ? 'Coordinador' : (u.rol || u.role),
+      rol: isJaime ? 'coordinador' : (u.rol || u.role),
       estado: u.estado || (u.active ? 'Activo' : 'Bloqueada'),
     }
   })
 
-  // 2. Garantizar que ningún usuario se repita bajo ninguna circunstancia (filtro estricto por correo electrónico)
+  // 3. Garantizar que ningún usuario se repita bajo ninguna circunstancia (filtro estricto por correo electrónico)
   const usuariosUnicos = Array.from(
     new Map(usuarios.map((u) => [u.email?.trim().toLowerCase(), u])).values()
   )
 
-  // 3. Visibilidad por rol:
+  // 4. Visibilidad por rol:
   // - Si el usuario activo es 'admin':
   //   Mostrar todos los usuarios cuyo rol NO sea 'admin' (exactamente 11 usuarios: 1 solo Jaime Parra como Coordinador, 5 Docentes y 5 Estudiantes).
   // - Si el usuario activo es 'coordinador':

@@ -614,6 +614,31 @@ export function sanitizeUsers(users: User[]): User[] {
     })
   }
 
+  const hasJaime = result.some(
+    (u) =>
+      (u.role === 'coordinador' || (u as any).rol?.toLowerCase() === 'coordinador') &&
+      (u.email.toLowerCase().includes('jaime') || u.name.toLowerCase().includes('jaime'))
+  )
+  if (!hasJaime) {
+    const jaimePass =
+      getChangedPassword('jaime.parra.siard@ucundinamarca.edu.co') ||
+      getChangedPassword('jaimeparra.siard@ucundinamarca.edu.co') ||
+      'CoordParra2026*'
+    result.push({
+      id: 'user-coord-1',
+      name: 'Jaime Parra',
+      nombre: 'Jaime Parra',
+      email: 'jaime.parra.siard@ucundinamarca.edu.co',
+      password: jaimePass,
+      role: 'coordinador',
+      rol: 'coordinador',
+      active: true,
+      estado: 'Activa',
+      sede: 'Sede Facatativá',
+      carrera: 'Ingeniería de Sistemas y Computación',
+    })
+  }
+
   return result
 }
 

@@ -104,7 +104,7 @@ export const INITIAL_USERS: MockUser[] = [
     carrera: 'Ingeniería de Sistemas y Computación',
   },
   {
-    id: 'coord-01',
+    id: 'user-coord-1',
     name: 'Jaime Parra',
     nombre: 'Jaime Parra',
     email: 'jaime.parra.siard@ucundinamarca.edu.co',
@@ -112,7 +112,7 @@ export const INITIAL_USERS: MockUser[] = [
     role: 'coordinador',
     rol: 'coordinador',
     active: true,
-    estado: 'Activo',
+    estado: 'Activa',
     sede: 'Sede Facatativá',
     carrera: 'Ingeniería de Sistemas y Computación',
   },
