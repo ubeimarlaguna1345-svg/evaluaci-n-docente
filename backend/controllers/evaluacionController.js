@@ -268,39 +268,57 @@ export class EvaluacionController {
   }
 
   static async updateForm(req, res) {
-    const { id } = req.params
+    const { id } = req.params;
+    const b = req.body || {};
+    const cleanId = String(id).replace('eval-', '').trim();
+
+    const tipo = b.kind || b.tipo || 'evaluacion';
+    const titulo = (b.title || b.titulo || '').trim();
+    const descripcion = b.description ?? b.descripcion ?? '';
+    const periodo = (b.period || b.periodo || '2026-II').trim();
+    const cadi = (b.cadi || b.cadiId || 'General').trim();
+    const fecha_inicio = b.start || b.fecha_inicio || b.fechaInicio || '';
+    const fecha_cierre = b.end || b.fecha_cierre || b.fechaCierre || '';
+    const preguntas = b.questions || b.preguntas || [];
+    const preguntasJson = typeof preguntas === 'string' ? preguntas : JSON.stringify(preguntas);
+
     try {
-      const cleanId = String(id).replace('eval-', '');
-      const b = req.body || {};
-      const preguntas = b.questions || b.preguntas || [];
-      const preguntasJson = typeof preguntas === 'string' ? preguntas : JSON.stringify(preguntas);
+      // 1. Actualizar tabla evaluaciones (soporta ID entero o string)
+      await pool.query(
+        `UPDATE evaluaciones 
+         SET tipo = $1,
+             titulo = COALESCE(NULLIF($2, ''), titulo),
+             descripcion = $3,
+             periodo = COALESCE(NULLIF($4, ''), periodo),
+             cadi = $5,
+             fecha_inicio = COALESCE(NULLIF($6, ''), fecha_inicio),
+             fecha_cierre = COALESCE(NULLIF($7, ''), fecha_cierre),
+             preguntas = $8::jsonb
+         WHERE id::text = $9 OR id::text = $10;`,
+        [tipo, titulo, descripcion, periodo, cadi, fecha_inicio, fecha_cierre, preguntasJson, cleanId, String(id)]
+      );
 
+      // 2. Sincronizar con evaluacionService para consistencia relacional
       try {
-        await pool.query(
-          `UPDATE evaluaciones 
-           SET titulo = COALESCE($1, titulo),
-               descripcion = COALESCE($2, descripcion),
-               periodo = COALESCE($3, periodo),
-               fecha_inicio = COALESCE($4, fecha_inicio),
-               fecha_cierre = COALESCE($5, fecha_cierre),
-               preguntas = $6::jsonb
-           WHERE id::text = $7 OR id::text = $8;`,
-          [b.title || b.titulo, b.description || b.descripcion, b.period || b.periodo, b.start || b.fecha_inicio, b.end || b.fecha_cierre, preguntasJson, cleanId, String(id)]
-        );
-      } catch (err) {
-        console.warn('Aviso al actualizar tabla evaluaciones:', err.message);
-      }
-
-      let result = { ok: true, message: 'Formulario actualizado correctamente.' };
-      try {
-        result = await evaluacionService.actualizarFormulario(id, req.body || {});
+        await evaluacionService.actualizarFormulario(id, {
+          ...b,
+          kind: tipo,
+          tipo,
+          title: titulo,
+          start: fecha_inicio || '2026-08-01T00:00:00Z',
+          end: fecha_cierre || '2026-11-30T23:59:59Z',
+          period: periodo,
+          questions: Array.isArray(preguntas) ? preguntas : []
+        });
       } catch (svcErr) {
-        console.warn('Aviso al actualizar via evaluacionService:', svcErr.message);
+        console.warn('Aviso al sincronizar en evaluacionService:', svcErr.message);
       }
-      return sendJson(res, 200, result);
+
+      return sendJson(res, 200, { ok: true, message: 'Formulario y preguntas actualizados con éxito.' });
     } catch (error) {
-      const status = error.statusCode || 500
-      return sendJson(res, status, { ok: false, message: error.message || 'Error al actualizar formulario.', detail: error.message })
+      console.error('Error al actualizar formulario:', error);
+      const status = error.statusCode || 500;
+      return sendJson(res, status, { ok: false, message: error.message || 'Error al actualizar formulario.' });
     }
   }
 

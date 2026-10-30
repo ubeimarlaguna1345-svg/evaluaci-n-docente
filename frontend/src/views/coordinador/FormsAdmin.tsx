@@ -232,7 +232,9 @@ export function FormsAdmin({ me }: { me?: User }) {
           questions: sanitizedQuestions,
           preguntas: sanitizedQuestions,
           kind: f.kind as FormKind,
+          tipo: f.kind as FormKind,
           cadiId: f.cadiId || undefined,
+          cadi: f.cadiId || 'General',
         }
         await actions.updateForm(editingId, payloadToUpdate)
         const updatedForm: Form = { ...payloadToUpdate, id: editingId }

@@ -19,6 +19,7 @@ import {
   type Form,
   type CADI,
   type User,
+  type Question,
 } from './store'
 import { VIEWS } from './views/common/Shell'
 import { formatDocenteId, getNivelDesempeno } from './views/coordinador/Report'

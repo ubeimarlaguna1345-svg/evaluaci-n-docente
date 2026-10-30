@@ -767,13 +767,14 @@ export function sanitizeForms(forms: Form[]): Form[] {
       return true
     })
     .map((f) => {
+      const rawQ = f.questions || (f as any).preguntas
+      const hasCustomQuestions = Array.isArray(rawQ) && rawQ.length > 0
       const titleLower = (f.title || '').toLowerCase().trim()
       const isDefaultEval =
         f.id === 'form-eval-2026' ||
         titleLower.includes('evaluación integral del desempeño docente') ||
         titleLower.includes('evaluacion integral del desempeño docente')
       if (isDefaultEval) {
-        const hasCustomQuestions = Array.isArray(f.questions) && f.questions.length > 0
         return {
           ...f,
           id: f.id || 'form-eval-2026',
@@ -781,8 +782,11 @@ export function sanitizeForms(forms: Form[]): Form[] {
           period: f.period || '2026-II',
           start: f.start || '2026-08-01T00:00:00Z',
           end: f.end && isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
-          questions: hasCustomQuestions ? f.questions : MEDIT_10_QUESTIONS,
+          questions: hasCustomQuestions ? rawQ : MEDIT_10_QUESTIONS,
         }
+      }
+      if (hasCustomQuestions && (!f.questions || f.questions.length === 0)) {
+        return { ...f, questions: rawQ }
       }
       return f
     })
