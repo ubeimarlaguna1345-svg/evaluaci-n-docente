@@ -87,7 +87,12 @@ export const SIARD_USUARIOS_KEY = 'siard_usuarios'
 const RESPONSES_STORAGE_KEY = 'siard_responses_storage'
 const memoryDeletedForms = new Set<string>()
 
+let cacheInvalidated = false
+
 export function checkAndInvalidateCache(): void {
+  if (cacheInvalidated) return
+  cacheInvalidated = true
+
   try {
     if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
       return
@@ -97,21 +102,9 @@ export function checkAndInvalidateCache(): void {
       if (currentVersion !== DATA_VERSION) {
         localStorage.setItem(EVALUACIONES_STORAGE_KEY, JSON.stringify([]))
         localStorage.setItem(LEGACY_FORMS_STORAGE_KEY, JSON.stringify([]))
-        localStorage.removeItem('siard_evaluaciones')
         localStorage.removeItem('siard_cadis')
         localStorage.removeItem('siard_forms_storage')
         localStorage.setItem('siard_version', DATA_VERSION)
-      }
-
-      const rawStored = localStorage.getItem(EVALUACIONES_STORAGE_KEY) || localStorage.getItem(LEGACY_FORMS_STORAGE_KEY)
-      if (rawStored) {
-        try {
-          const parsed = JSON.parse(rawStored)
-          if (Array.isArray(parsed) && parsed.some((f: any) => f.id === 'form-eval-2026' || f.id === 'form-auto-2026' || (f.title && f.title.includes('Evaluación Integral del Desempeño')))) {
-            localStorage.setItem(EVALUACIONES_STORAGE_KEY, JSON.stringify([]))
-            localStorage.setItem(LEGACY_FORMS_STORAGE_KEY, JSON.stringify([]))
-          }
-        } catch {}
       }
     }
   } catch {}
@@ -877,7 +870,11 @@ export async function initDB() {
     const deletedFormIds = getDeletedFormIds()
     const serverForms = sanitizeForms((data.forms || []).filter((f) => !deletedFormIds.has(f.id)))
     const localForms = getStoredEvaluaciones()
+    const currentMemoryForms = state.forms || []
     const formMap = new Map<string, Form>()
+    for (const f of currentMemoryForms) {
+      if (!deletedFormIds.has(f.id)) formMap.set(f.id, f)
+    }
     for (const f of localForms) {
       if (!deletedFormIds.has(f.id)) formMap.set(f.id, f)
     }
@@ -888,7 +885,9 @@ export async function initDB() {
     if (cleanForms.length === 0 && typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
       cleanForms = sanitizeForms(CONTINGENCY_FORMS)
     }
-    saveStoredEvaluaciones(cleanForms)
+    if (cleanForms.length > 0) {
+      saveStoredEvaluaciones(cleanForms)
+    }
 
     const cleanResponses = (data.formResponses || [])
       .filter((r) => !deletedFormIds.has(r.formId) && !r.id.startsWith('rf-'))
@@ -1100,6 +1099,7 @@ export const actions = {
     try {
       const res = await evaluacionService.createEvaluacion(newForm)
       if (res?.id && res.id !== tempId) {
+        newForm.id = res.id
         state.forms = state.forms.map((item) => (item.id === tempId ? { ...item, id: res.id } : item))
         saveStoredEvaluaciones(state.forms)
         notify()
@@ -1408,53 +1408,53 @@ export const actions = {
       const res = await evaluacionService.getEvaluaciones()
       const rawForms = res?.forms
       const localForms = getStoredEvaluaciones()
+      const currentForms = state.forms || []
       const deletedIds = getDeletedFormIds()
 
+      const formMap = new Map<string, Form>()
+      for (const f of currentForms) {
+        if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+      }
+      for (const f of localForms) {
+        if (!deletedIds.has(f.id)) formMap.set(f.id, f)
+      }
       if (Array.isArray(rawForms) && rawForms.length > 0) {
         const serverForms = sanitizeForms(rawForms)
-        const formMap = new Map<string, Form>()
-        for (const f of localForms) {
-          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
-        }
         for (const f of serverForms) {
           if (!deletedIds.has(f.id)) formMap.set(f.id, f)
         }
-        const clean = Array.from(formMap.values())
+      }
+
+      const clean = Array.from(formMap.values())
+      if (clean.length > 0) {
         state.forms = clean
         saveStoredEvaluaciones(clean)
         notify()
         return clean
+      } else if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+        state.forms = sanitizeForms(CONTINGENCY_FORMS)
+        notify()
+        return state.forms
       } else {
-        // Si el servidor responde un arreglo vacío o nulo pero en localStorage ya existen evaluaciones, PRESERVAR las de localStorage
-        if (localForms.length > 0) {
-          state.forms = localForms
-          notify()
-          return localForms
-        } else if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
-          state.forms = sanitizeForms(CONTINGENCY_FORMS)
-          notify()
-          return state.forms
-        } else {
-          state.forms = []
-          saveStoredEvaluaciones([])
-          notify()
-          return []
-        }
+        state.forms = []
+        saveStoredEvaluaciones([])
+        notify()
+        return []
       }
     } catch (err) {
       console.warn('Aviso al consultar evaluaciones en backend:', err)
       const localForms = getStoredEvaluaciones()
-      if (localForms.length > 0) {
-        state.forms = localForms
+      const combined = localForms.length > 0 ? localForms : state.forms
+      if (combined.length > 0) {
+        state.forms = combined
         notify()
-        return localForms
+        return combined
       } else if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
         state.forms = sanitizeForms(CONTINGENCY_FORMS)
         notify()
         return state.forms
       }
     }
-    await initDB()
     return state.forms
   },
 

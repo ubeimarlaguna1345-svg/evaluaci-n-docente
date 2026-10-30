@@ -172,12 +172,20 @@ export function FormsAdmin({ me }: { me?: User }) {
 
     setLoading(true)
     try {
+      let savedForm: Form | undefined
       if (editingId) {
         await actions.updateForm(editingId, { ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
         setMsg({ kind: 'ok', text: `Formulario "${f.title.trim()}" actualizado correctamente en PostgreSQL.` })
         cancelar()
       } else {
-        await actions.createForm({ ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
+        savedForm = await actions.createForm({ ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
+        if (savedForm && typeof localStorage !== 'undefined') {
+          try {
+            const guardadas = JSON.parse(localStorage.getItem('siard_evaluaciones') || '[]');
+            const actualizadas = [savedForm, ...guardadas.filter((e: any) => e.id !== savedForm!.id)];
+            localStorage.setItem('siard_evaluaciones', JSON.stringify(actualizadas));
+          } catch {}
+        }
         setMsg({ kind: 'ok', text: 'Formulario guardado y registrado en PostgreSQL.' })
         setF(blank)
       }
