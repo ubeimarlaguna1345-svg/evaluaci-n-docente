@@ -53,9 +53,14 @@ export function Statistics() {
     const relevantResponses = formId === 'todos' || !formId
       ? db.formResponses
       : db.formResponses.filter(
-          (r) =>
-            r.formId === formId ||
-            (r.formId.startsWith('auto-') && r.formId.replace('auto-', '') === formId)
+          (r) => {
+            const rFormId = String(r.formId || '')
+            const targetFormId = String(formId || '')
+            return (
+              rFormId === targetFormId ||
+              (rFormId.startsWith('auto-') && rFormId.replace('auto-', '') === targetFormId)
+            )
+          }
         )
 
     const questionDimMap = new Map<string, string>()

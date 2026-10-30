@@ -168,9 +168,9 @@ export class EvaluacionController {
       }
 
       const saved = {
-        id: `eval-${row.id}`,
-        evaluacionId: row.id,
         ...row,
+        id: String(row.id).startsWith('eval-') ? String(row.id) : `eval-${row.id}`,
+        evaluacionId: row.id,
         tipo: row.tipo,
         kind: row.tipo,
         titulo: row.titulo,
@@ -238,9 +238,9 @@ export class EvaluacionController {
           try { parsedQ = JSON.parse(row.preguntas) } catch {}
         }
         return {
-          id: `eval-${row.id}`,
-          evaluacionId: row.id,
           ...row,
+          id: String(row.id).startsWith('eval-') ? String(row.id) : `eval-${row.id}`,
+          evaluacionId: row.id,
           tipo: row.tipo,
           kind: row.tipo,
           titulo: row.titulo,

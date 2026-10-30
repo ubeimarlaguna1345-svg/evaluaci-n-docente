@@ -1252,10 +1252,11 @@ export const actions = {
     const targetUserId = r.userId || (r as any).evaluadorId || ''
     const answersObj = r.answers || (r as any).respuestas || {}
     const nowIso = new Date().toISOString()
+    const rFormIdStr = String(r.formId || '')
 
     const responseTipo =
       (r as any).tipo ||
-      (targetUserId === targetDocenteId || r.formId.includes('auto') ? 'autoevaluacion' : 'estudiante')
+      (targetUserId === targetDocenteId || rFormIdStr.includes('auto') ? 'autoevaluacion' : 'estudiante')
 
     const newResp: FormResponse & {
       evaluadorId?: string
@@ -1267,7 +1268,7 @@ export const actions = {
       fecha?: string
     } = {
       id: 'rf-' + uid(),
-      formId: r.formId,
+      formId: rFormIdStr,
       userId: targetUserId,
       docenteId: targetDocenteId,
       teacherId: targetDocenteId,
@@ -1284,10 +1285,14 @@ export const actions = {
     }
 
     const existingIndex = state.formResponses.findIndex(
-      (item) =>
-        (item.formId === r.formId || (r.formId.startsWith('auto-') && item.formId === r.formId.replace('auto-', ''))) &&
-        (item.userId === targetUserId || (item as any).evaluadorId === targetUserId) &&
-        (item.docenteId === targetDocenteId || item.teacherId === targetDocenteId)
+      (item) => {
+        const itemFormIdStr = String(item.formId || '')
+        return (
+          (itemFormIdStr === rFormIdStr || (rFormIdStr.startsWith('auto-') && itemFormIdStr === rFormIdStr.replace('auto-', ''))) &&
+          (item.userId === targetUserId || (item as any).evaluadorId === targetUserId) &&
+          (item.docenteId === targetDocenteId || item.teacherId === targetDocenteId)
+        )
+      }
     )
 
     if (existingIndex >= 0) {
@@ -2062,19 +2067,24 @@ export function getDocenteConsolidatedGrade(
   }
 
   const evalResponses = db.formResponses.filter(
-    (r) =>
-      isTeacherMatch(r) &&
-      (evalFormIds.has(r.formId) || (!period && (r.formId === 'form-eval-2026' || r.formId.startsWith('form-')))) &&
-      r.userId !== docenteId &&
-      (r as any).evaluadorId !== docenteId &&
-      (r as any).tipo !== 'autoevaluacion' &&
-      !r.formId.startsWith('auto-') &&
-      r.formId !== 'form-auto-2026'
+    (r) => {
+      const fId = String(r.formId || '')
+      return (
+        isTeacherMatch(r) &&
+        (evalFormIds.has(r.formId) || evalFormIds.has(fId) || (!period && (fId === 'form-eval-2026' || fId.startsWith('form-')))) &&
+        r.userId !== docenteId &&
+        (r as any).evaluadorId !== docenteId &&
+        (r as any).tipo !== 'autoevaluacion' &&
+        !fId.startsWith('auto-') &&
+        fId !== 'form-auto-2026'
+      )
+    }
   )
 
   const studentValues: number[] = []
   evalResponses.forEach((r) => {
-    const form = evalForms.find((f) => f.id === r.formId)
+    const fId = String(r.formId || '')
+    const form = evalForms.find((f) => f.id === r.formId || f.id === fId)
     Object.entries(r.answers || (r as any).respuestas || {}).forEach(([qId, val]) => {
       let num = Number(val)
       if (isNaN(num)) {
@@ -2096,21 +2106,27 @@ export function getDocenteConsolidatedGrade(
   )
   const autoFormIds = new Set(autoForms.map((f) => f.id))
   const autoResponses = db.formResponses.filter(
-    (r) =>
-      (isTeacherMatch(r) || r.userId === docenteId || (r as any).evaluadorId === docenteId) &&
-      ((r as any).tipo === 'autoevaluacion' ||
-        autoFormIds.has(r.formId) ||
-        r.formId.startsWith('auto-') ||
-        r.formId === 'form-auto-2026' ||
-        ((r.userId === docenteId || (r as any).evaluadorId === docenteId) && (r.docenteId === docenteId || r.teacherId === docenteId)))
+    (r) => {
+      const fId = String(r.formId || '')
+      return (
+        (isTeacherMatch(r) || r.userId === docenteId || (r as any).evaluadorId === docenteId) &&
+        ((r as any).tipo === 'autoevaluacion' ||
+          autoFormIds.has(r.formId) ||
+          autoFormIds.has(fId) ||
+          fId.startsWith('auto-') ||
+          fId === 'form-auto-2026' ||
+          ((r.userId === docenteId || (r as any).evaluadorId === docenteId) && (r.docenteId === docenteId || r.teacherId === docenteId)))
+      )
+    }
   )
 
   const autoValues: number[] = []
   autoResponses.forEach((r) => {
+    const fId = String(r.formId || '')
     const form =
-      autoForms.find((f) => f.id === r.formId) ||
+      autoForms.find((f) => f.id === r.formId || f.id === fId) ||
       db.forms.find(
-        (f) => f.id === r.formId || (r.formId.startsWith('auto-') && f.id === r.formId.replace('auto-', ''))
+        (f) => f.id === r.formId || f.id === fId || (fId.startsWith('auto-') && f.id === fId.replace('auto-', ''))
       )
     const questions = form?.questions?.length ? form.questions : MEDIT_10_QUESTIONS
     const scaleQuestionIds = new Set(

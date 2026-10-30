@@ -607,15 +607,18 @@ export function SelfEvaluation({ me: propMe }: { me?: User | null }) {
 
   const done = (id: string) => {
     if (!meId) return false
+    const idStr = String(id || '')
     const rawResponses = Array.isArray(db?.formResponses) ? db.formResponses : []
-    return rawResponses.some(
-      (r) =>
-        (r.formId === id ||
-          (id.startsWith('auto-') && r.formId === id.replace('auto-', '')) ||
-          `auto-${r.formId}` === id ||
-          r.formId === 'form-auto-2026') &&
+    return rawResponses.some((r) => {
+      const rIdStr = String(r.formId || '')
+      return (
+        (rIdStr === idStr ||
+          (idStr.startsWith('auto-') && rIdStr === idStr.replace('auto-', '')) ||
+          `auto-${rIdStr}` === idStr ||
+          rIdStr === 'form-auto-2026') &&
         (r.userId === meId || r.docenteId === meId)
-    )
+      )
+    })
   }
 
   if (!me) {
@@ -653,7 +656,7 @@ export function SelfEvaluation({ me: propMe }: { me?: User | null }) {
           me={me}
           onCancel={() => setActive(null)}
           onSubmit={async (answers, observation) => {
-            const formIdToSend = activeForm.id
+            const formIdToSend = String(activeForm.id || '')
             const nowIso = new Date().toISOString()
             const payload = {
               formId: formIdToSend,
