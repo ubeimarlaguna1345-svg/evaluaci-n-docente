@@ -22,7 +22,8 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
   let activeUser = user
   if (!activeUser) {
     try {
-      const stored = localStorage.getItem('siard_user') || sessionStorage.getItem('currentUser')
+      const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+      const stored = storage ? (storage.getItem('currentUser') || storage.getItem('siard_user')) : null
       if (stored) {
         activeUser = JSON.parse(stored)
       }
@@ -79,18 +80,13 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
         await actions.cambiarContrasena(activeUser.id, passwordActual, passwordNueva)
 
         try {
-          if (typeof localStorage !== 'undefined') {
-            const rawUser = localStorage.getItem('siard_user')
+          const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+          if (storage) {
+            const rawUser = storage.getItem('currentUser') || storage.getItem('siard_user')
             const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
             uObj.password = passwordNueva
-            localStorage.setItem('siard_user', JSON.stringify(uObj))
-          }
-          if (typeof sessionStorage !== 'undefined') {
-            const rawUser = sessionStorage.getItem('currentUser') || sessionStorage.getItem('siard_user')
-            const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
-            uObj.password = passwordNueva
-            sessionStorage.setItem('currentUser', JSON.stringify(uObj))
-            sessionStorage.setItem('siard_user', JSON.stringify(uObj))
+            storage.setItem('currentUser', JSON.stringify(uObj))
+            storage.setItem('siard_user', JSON.stringify(uObj))
           }
         } catch {}
 
@@ -136,18 +132,13 @@ export function ChangePasswordModal({ user, onClose }: ChangePasswordModalProps)
       await actions.cambiarContrasena(activeUser.id, passwordActual, passwordNueva)
 
       try {
-        if (typeof localStorage !== 'undefined') {
-          const rawUser = localStorage.getItem('siard_user')
+        const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+        if (storage) {
+          const rawUser = storage.getItem('currentUser') || storage.getItem('siard_user')
           const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
           uObj.password = passwordNueva
-          localStorage.setItem('siard_user', JSON.stringify(uObj))
-        }
-        if (typeof sessionStorage !== 'undefined') {
-          const rawUser = sessionStorage.getItem('currentUser') || sessionStorage.getItem('siard_user')
-          const uObj = rawUser ? JSON.parse(rawUser) : { ...activeUser }
-          uObj.password = passwordNueva
-          sessionStorage.setItem('currentUser', JSON.stringify(uObj))
-          sessionStorage.setItem('siard_user', JSON.stringify(uObj))
+          storage.setItem('currentUser', JSON.stringify(uObj))
+          storage.setItem('siard_user', JSON.stringify(uObj))
         }
       } catch {}
 

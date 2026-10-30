@@ -149,20 +149,20 @@ export function Login({ onLogin }: { onLogin?: (u: User) => void }) {
         }
       }
 
-      // Sincronización previa a la navegación:
-      // 1. Guardar de inmediato en localStorage y sessionStorage
+      // Sincronización previa a la navegación (aislamiento de sesión por pestaña con sessionStorage):
       try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('siard_user', JSON.stringify(usuarioAutenticado))
-          localStorage.setItem('currentUser', JSON.stringify(usuarioAutenticado))
-          localStorage.setItem('siard_token', token || 'demo_token')
-          localStorage.setItem('siard-me', usuarioAutenticado.id)
+        const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+        if (storage) {
+          storage.setItem('siard_user', JSON.stringify(usuarioAutenticado))
+          storage.setItem('currentUser', JSON.stringify(usuarioAutenticado))
+          storage.setItem('siard_token', token || 'demo_token')
+          storage.setItem('siard-me', usuarioAutenticado.id)
         }
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('siard_user', JSON.stringify(usuarioAutenticado))
-          sessionStorage.setItem('currentUser', JSON.stringify(usuarioAutenticado))
-          sessionStorage.setItem('siard_token', token || 'demo_token')
-          sessionStorage.setItem('siard-me', usuarioAutenticado.id)
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('currentUser')
+          localStorage.removeItem('siard-me')
+          localStorage.removeItem('siard_user')
+          localStorage.removeItem('siard_token')
         }
       } catch {}
 

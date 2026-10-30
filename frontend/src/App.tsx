@@ -8,7 +8,8 @@ import { ProtectedRoute } from './ProtectedRoute'
 
 const getInitialUser = (): User | null => {
   try {
-    const item = typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null
+    const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+    const item = storage ? (storage.getItem('currentUser') || storage.getItem('siard_user')) : null
     return item ? JSON.parse(item) : null
   } catch {
     return null

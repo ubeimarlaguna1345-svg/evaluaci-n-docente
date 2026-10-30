@@ -1055,12 +1055,10 @@ export const actions = {
       if (currentUser && (currentUser.id === usuarioId || (existingUser?.email && currentUser.email?.toLowerCase() === existingUser.email.toLowerCase()))) {
         currentUser = { ...currentUser, password: nuevaContrasena }
         try {
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
-            sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
-          }
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('siard_user', JSON.stringify(currentUser))
+          const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+          if (storage) {
+            storage.setItem('currentUser', JSON.stringify(currentUser))
+            storage.setItem('siard_user', JSON.stringify(currentUser))
           }
         } catch {}
       }
@@ -1528,7 +1526,8 @@ export function useDB() {
 
 export const getInitialUser = (): (User & { rol: string }) | null => {
   try {
-    const item = typeof localStorage !== 'undefined' ? localStorage.getItem('siard_user') : null
+    const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+    const item = storage ? (storage.getItem('currentUser') || storage.getItem('siard_user')) : null
     if (item) {
       const u = JSON.parse(item)
       if (u && u.id && (u.role || u.rol) && u.active !== false) {
@@ -1549,20 +1548,29 @@ export function setCurrentUser(u: User | null) {
   if (u) {
     currentUser = { ...u, rol: (u as any).rol || u.role }
     try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('currentUser', JSON.stringify(currentUser))
-        sessionStorage.setItem('siard-me', u.id)
-        sessionStorage.setItem('siard_user', JSON.stringify(currentUser))
+      const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+      if (storage) {
+        storage.setItem('currentUser', JSON.stringify(currentUser))
+        storage.setItem('siard-me', u.id)
+        storage.setItem('siard_user', JSON.stringify(currentUser))
       }
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('siard_user', JSON.stringify(currentUser))
+        localStorage.removeItem('currentUser')
+        localStorage.removeItem('siard-me')
+        localStorage.removeItem('siard_user')
+        localStorage.removeItem('siard_token')
       }
     } catch {}
   } else {
     currentUser = null
     try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.clear()
+      const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+      if (storage) {
+        storage.removeItem('currentUser')
+        storage.removeItem('siard-me')
+        storage.removeItem('siard_user')
+        storage.removeItem('siard_token')
+        storage.clear()
       }
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem('currentUser')
@@ -1584,14 +1592,19 @@ export function getCurrentUser(): (User & { rol: string }) | null {
 
 export function logout() {
   try {
+    const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null)
+    if (storage) {
+      storage.removeItem('currentUser')
+      storage.removeItem('siard_user')
+      storage.removeItem('siard_token')
+      storage.removeItem('siard-me')
+      storage.clear()
+    }
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('siard_user')
       localStorage.removeItem('siard_token')
       localStorage.removeItem('currentUser')
       localStorage.removeItem('siard-me')
-    }
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.clear()
     }
   } catch {}
   setCurrentUser(null)
