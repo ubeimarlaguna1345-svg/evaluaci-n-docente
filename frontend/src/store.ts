@@ -736,13 +736,17 @@ function getInitialCadis(): CADI[] {
   return sanitizeCadis(CONTINGENCY_CADIS)
 }
 
-export function isOpen(start: string, end: string): boolean {
+export function isOpen(start?: string, end?: string): boolean {
   if (!start || !end) return false
-  const now = new Date()
-  const n = now.toISOString().slice(0, 16)
-  const s = start.length === 10 ? `${start}T00:00` : start.slice(0, 16)
-  const e = end.length === 10 ? `${end}T23:59` : end.slice(0, 16)
-  return n >= s && n <= e
+  try {
+    const now = new Date()
+    const n = now.toISOString().slice(0, 16)
+    const s = String(start).length === 10 ? `${start}T00:00` : String(start).slice(0, 16)
+    const e = String(end).length === 10 ? `${end}T23:59` : String(end).slice(0, 16)
+    return n >= s && n <= e
+  } catch {
+    return false
+  }
 }
 
 export function sanitizeForms(forms: Form[]): Form[] {
@@ -1819,8 +1823,13 @@ export function useAppStore<T = AppStoreState>(selector?: (state: AppStoreState)
   return storeState as unknown as T
 }
 
-export const fmt = (s: string) =>
-  new Date(s).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
+export const fmt = (s?: string) => {
+  if (!s) return 'Fecha por definir'
+  const d = new Date(s)
+  return isNaN(d.getTime())
+    ? 'Fecha por definir'
+    : d.toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
+}
 
 export function stats(db: DB, formId: string, docenteId?: string) {
   const form = db.forms.find((f) => f.id === formId)
