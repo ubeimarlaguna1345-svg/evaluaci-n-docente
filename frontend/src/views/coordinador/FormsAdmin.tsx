@@ -155,7 +155,40 @@ export function FormsAdmin({ me }: { me?: User }) {
   }, [db.forms])
 
   useEffect(() => {
+    let isMounted = true
+    // Respaldo inmediato desde localStorage para que NUNCA se borre la pantalla al recargar (F5)
+    try {
+      const local = typeof localStorage !== 'undefined' ? localStorage.getItem('siard_evaluaciones') : null
+      if (local) {
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setEvaluaciones(parsed)
+        }
+      }
+    } catch {}
+
+    // Sincronización automática desde PostgreSQL
+    fetch('/api/evaluaciones')
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Error al consultar /api/evaluaciones')
+        const data = await res.json()
+        const formsList = Array.isArray(data) ? data : (data?.forms || [])
+        if (isMounted && Array.isArray(formsList) && formsList.length > 0) {
+          setEvaluaciones(formsList)
+          try {
+            localStorage.setItem('siard_evaluaciones', JSON.stringify(formsList))
+          } catch {}
+        }
+      })
+      .catch((err) => {
+        console.warn('Aviso al sincronizar evaluaciones con PostgreSQL (usando respaldo local):', err)
+      })
+
     actions.fetchEvaluaciones().catch(() => initDB())
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const startEdit = (fm: Form) => {
@@ -188,29 +221,65 @@ export function FormsAdmin({ me }: { me?: User }) {
 
     setLoading(true)
     try {
-      let savedForm: Form | undefined
       if (editingId) {
         await actions.updateForm(editingId, { ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
         const updatedForm: Form = { ...f, id: editingId, kind: f.kind as FormKind, cadiId: f.cadiId || undefined }
-        setEvaluaciones((prev) => prev.map((item) => (item.id === editingId ? updatedForm : item)))
+        setEvaluaciones((prev) => {
+          const next = prev.map((item) => (item.id === editingId ? updatedForm : item))
+          try { localStorage.setItem('siard_evaluaciones', JSON.stringify(next)) } catch {}
+          return next
+        })
         setMsg({ kind: 'ok', text: `Formulario "${f.title.trim()}" actualizado correctamente en PostgreSQL.` })
         cancelar()
       } else {
-        savedForm = await actions.createForm({ ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
-        if (savedForm) {
-          setEvaluaciones((prev) => [savedForm!, ...prev.filter((e) => e.id !== savedForm!.id)])
-          if (typeof localStorage !== 'undefined') {
-            try {
-              const guardadas = JSON.parse(localStorage.getItem('siard_evaluaciones') || '[]')
-              const actualizadas = [savedForm, ...guardadas.filter((e: any) => e.id !== savedForm!.id)]
-              localStorage.setItem('siard_evaluaciones', JSON.stringify(actualizadas))
-            } catch {}
-          }
+        const payload = {
+          ...f,
+          kind: f.kind as FormKind,
+          tipo: f.kind as FormKind,
+          cadiId: f.cadiId || undefined,
+          cadi: f.cadiId || 'General',
         }
-        setMsg({ kind: 'ok', text: 'Formulario guardado y registrado en PostgreSQL.' })
+
+        let savedForm: Form | null = null
+        try {
+          const resp = await fetch('/api/evaluaciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          if (resp.ok) {
+            const data = await resp.json()
+            if (data && (data.id || data.evaluacionId)) {
+              savedForm = {
+                ...f,
+                id: data.id || `eval-${data.evaluacionId}`,
+                kind: f.kind as FormKind,
+                cadiId: f.cadiId || undefined,
+                questions: data.questions || data.preguntas || f.questions,
+              }
+            }
+          }
+        } catch (postErr) {
+          console.warn('Aviso en fetch /api/evaluaciones:', postErr)
+        }
+
+        if (!savedForm) {
+          savedForm = await actions.createForm(payload)
+        }
+
+        if (savedForm) {
+          const nuevo = savedForm
+          setEvaluaciones((prev) => {
+            const next = [nuevo, ...prev.filter((e) => e.id !== nuevo.id)]
+            try { localStorage.setItem('siard_evaluaciones', JSON.stringify(next)) } catch {}
+            return next
+          })
+        }
+
+        setMsg({ kind: 'ok', text: '✓ Formulario guardado y registrado en PostgreSQL.' })
         setF(blank)
       }
-      await actions.fetchEvaluaciones()
+      await actions.fetchEvaluaciones().catch(() => {})
     } catch (e) {
       setMsg({ kind: 'err', text: (e as Error).message || 'Error al procesar formulario.' })
     } finally {
@@ -222,8 +291,13 @@ export function FormsAdmin({ me }: { me?: User }) {
     if (editingId === fm.id) {
       cancelar()
     }
-    setEvaluaciones((prev) => prev.filter((e) => e.id !== fm.id))
+    setEvaluaciones((prev) => {
+      const next = prev.filter((e) => e.id !== fm.id)
+      try { localStorage.setItem('siard_evaluaciones', JSON.stringify(next)) } catch {}
+      return next
+    })
     try {
+      fetch(`/api/evaluaciones/${fm.id}`, { method: 'DELETE' }).catch(() => {})
       await actions.deleteForm(fm.id)
       setMsg({ kind: 'ok', text: `Evaluación "${fm.title}" eliminada correctamente.` })
       await actions.fetchEvaluaciones()

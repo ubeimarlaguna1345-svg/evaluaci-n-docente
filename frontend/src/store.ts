@@ -1406,7 +1406,7 @@ export const actions = {
   fetchEvaluaciones: async () => {
     try {
       const res = await evaluacionService.getEvaluaciones()
-      const rawForms = res?.forms
+      const rawForms = Array.isArray(res) ? res : (res?.forms || [])
       const localForms = getStoredEvaluaciones()
       const currentForms = state.forms || []
       const deletedIds = getDeletedFormIds()

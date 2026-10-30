@@ -1,4 +1,5 @@
 import { evaluacionService } from '../services/index.js'
+import { pool } from '../config/db.js'
 
 function sendJson(res, statusCode, payload) {
   if (typeof res.status === 'function' && typeof res.json === 'function') {
@@ -111,11 +112,159 @@ export class EvaluacionController {
   }
 
   static async createEvaluacion(req, res) {
-    return EvaluacionController.createForm(req, res)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS evaluaciones (
+          id SERIAL PRIMARY KEY,
+          tipo VARCHAR(50) NOT NULL,
+          titulo VARCHAR(255) NOT NULL,
+          cadi VARCHAR(255) NOT NULL,
+          descripcion TEXT,
+          periodo VARCHAR(50) NOT NULL,
+          fecha_inicio VARCHAR(100),
+          fecha_cierre VARCHAR(100),
+          preguntas JSONB NOT NULL DEFAULT '[]'::jsonb,
+          estado VARCHAR(50) DEFAULT 'Abierta',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `)
+
+      const b = req.body || {}
+      const tipo = b.tipo || b.kind || 'evaluacion'
+      const titulo = (b.titulo || b.title || '').trim()
+      const cadi = (b.cadi || b.cadiNombre || b.cadiId || 'General').trim()
+      const descripcion = b.descripcion || b.description || ''
+      const periodo = (b.periodo || b.period || '2026-II').trim()
+      const fecha_inicio = b.fecha_inicio || b.fechaInicio || b.start || ''
+      const fecha_cierre = b.fecha_cierre || b.fechaCierre || b.end || ''
+      const preguntas = b.preguntas || b.questions || []
+      const estado = b.estado || 'Abierta'
+
+      const preguntasJson = typeof preguntas === 'string' ? preguntas : JSON.stringify(preguntas)
+
+      const insertSql = `
+        INSERT INTO evaluaciones (tipo, titulo, cadi, descripcion, periodo, fecha_inicio, fecha_cierre, preguntas, estado)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+        RETURNING *;
+      `
+      const result = await pool.query(insertSql, [
+        tipo,
+        titulo,
+        cadi,
+        descripcion,
+        periodo,
+        String(fecha_inicio),
+        String(fecha_cierre),
+        preguntasJson,
+        estado,
+      ])
+
+      const row = result.rows[0]
+      let parsedQ = []
+      if (Array.isArray(row.preguntas)) {
+        parsedQ = row.preguntas
+      } else if (typeof row.preguntas === 'string') {
+        try { parsedQ = JSON.parse(row.preguntas) } catch {}
+      }
+
+      const saved = {
+        id: `eval-${row.id}`,
+        evaluacionId: row.id,
+        ...row,
+        tipo: row.tipo,
+        kind: row.tipo,
+        titulo: row.titulo,
+        title: row.titulo,
+        cadi: row.cadi,
+        cadiId: row.cadi !== 'General' ? row.cadi : '',
+        descripcion: row.descripcion,
+        description: row.descripcion,
+        periodo: row.periodo,
+        period: row.periodo,
+        fecha_inicio: row.fecha_inicio,
+        start: row.fecha_inicio,
+        fecha_cierre: row.fecha_cierre,
+        end: row.fecha_cierre,
+        preguntas: parsedQ,
+        questions: parsedQ,
+        estado: row.estado,
+        ok: true,
+      }
+
+      // Sincronizar también con evaluacionService para compatibilidad relacional
+      try {
+        await evaluacionService.crearFormulario({
+          ...b,
+          id: saved.id,
+          tipo,
+          titulo,
+          periodo,
+          start: fecha_inicio,
+          end: fecha_cierre,
+          questions: parsedQ,
+        })
+      } catch {}
+
+      return sendJson(res, 201, saved)
+    } catch (error) {
+      console.warn('Aviso en createEvaluacion PostgreSQL:', error.message)
+      return EvaluacionController.createForm(req, res)
+    }
   }
 
   static async getEvaluaciones(req, res) {
-    return EvaluacionController.getForms(req, res)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS evaluaciones (
+          id SERIAL PRIMARY KEY,
+          tipo VARCHAR(50) NOT NULL,
+          titulo VARCHAR(255) NOT NULL,
+          cadi VARCHAR(255) NOT NULL,
+          descripcion TEXT,
+          periodo VARCHAR(50) NOT NULL,
+          fecha_inicio VARCHAR(100),
+          fecha_cierre VARCHAR(100),
+          preguntas JSONB NOT NULL DEFAULT '[]'::jsonb,
+          estado VARCHAR(50) DEFAULT 'Abierta',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `)
+      const result = await pool.query('SELECT * FROM evaluaciones ORDER BY id DESC;')
+      const rows = result.rows.map((row) => {
+        let parsedQ = []
+        if (Array.isArray(row.preguntas)) {
+          parsedQ = row.preguntas
+        } else if (typeof row.preguntas === 'string') {
+          try { parsedQ = JSON.parse(row.preguntas) } catch {}
+        }
+        return {
+          id: `eval-${row.id}`,
+          evaluacionId: row.id,
+          ...row,
+          tipo: row.tipo,
+          kind: row.tipo,
+          titulo: row.titulo,
+          title: row.titulo,
+          cadi: row.cadi,
+          cadiId: row.cadi !== 'General' ? row.cadi : '',
+          descripcion: row.descripcion || '',
+          description: row.descripcion || '',
+          periodo: row.periodo,
+          period: row.periodo,
+          fecha_inicio: row.fecha_inicio,
+          start: row.fecha_inicio,
+          fecha_cierre: row.fecha_cierre,
+          end: row.fecha_cierre,
+          preguntas: parsedQ,
+          questions: parsedQ,
+          estado: row.estado || 'Abierta',
+        }
+      })
+      return sendJson(res, 200, rows)
+    } catch (error) {
+      console.warn('Aviso en getEvaluaciones PostgreSQL:', error.message)
+      return EvaluacionController.getForms(req, res)
+    }
   }
 
   static async updateForm(req, res) {
@@ -204,10 +353,10 @@ export const createCadi = EvaluacionController.createCadi
 export const updateCadi = EvaluacionController.updateCadi
 export const deleteCadi = EvaluacionController.deleteCadi
 export const getForms = EvaluacionController.getForms
-export const getEvaluaciones = EvaluacionController.getForms
+export const getEvaluaciones = EvaluacionController.getEvaluaciones
 export const getFormById = EvaluacionController.getFormById
 export const createForm = EvaluacionController.createForm
-export const createEvaluacion = EvaluacionController.createForm
+export const createEvaluacion = EvaluacionController.createEvaluacion
 export const updateForm = EvaluacionController.updateForm
 export const updateEvaluacion = EvaluacionController.updateForm
 export const deleteForm = EvaluacionController.deleteForm
