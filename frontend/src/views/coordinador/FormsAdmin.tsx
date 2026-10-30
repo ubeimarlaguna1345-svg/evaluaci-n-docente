@@ -57,12 +57,12 @@ export function FormRow({
               {fm.kind === 'evaluacion' ? 'Evaluación docente' : 'Autoevaluación'} · {fm.period}
             </span>
             {cadi ? (
-              <span className="rounded bg-paper px-1.5 py-0.5 text-[11px] font-mono text-pine font-medium border border-line">
+              <span className="rounded-full bg-pine/10 px-2.5 py-0.5 text-xs font-medium text-pine">
                 {cadi.codigo} — {cadi.nombre}
               </span>
             ) : (
-              <span className="rounded bg-paper px-1.5 py-0.5 text-[11px] font-mono text-pine font-medium border border-line">
-                Evaluación general (Todos los CADIs / CAIs)
+              <span className="text-xs text-ink/60 font-medium">
+                · Evaluación general (Todos los CADIs / CAIs)
               </span>
             )}
           </div>
@@ -329,14 +329,9 @@ export function FormsAdmin({ me }: { me?: User }) {
               )}
             </h3>
             {editingId && (
-              <div className="flex items-center gap-2">
-                <span className="rounded bg-paper px-2 py-0.5 text-xs font-mono text-ink/70 border border-line" title="ID de la evaluación en PostgreSQL">
-                  ID: {editingId}
-                </span>
-                <span className="rounded-full bg-pine/10 px-2.5 py-0.5 text-xs font-semibold text-pine">
-                  Modo Edición
-                </span>
-              </div>
+              <span className="rounded-full bg-pine/10 px-2.5 py-0.5 text-xs font-semibold text-pine">
+                Modo Edición
+              </span>
             )}
           </div>
           <Field label="Tipo de evaluación">
