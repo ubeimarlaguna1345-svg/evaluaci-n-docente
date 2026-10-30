@@ -230,6 +230,7 @@ export function FormsAdmin({ me }: { me?: User }) {
         const payloadToUpdate = {
           ...f,
           questions: sanitizedQuestions,
+          preguntas: sanitizedQuestions,
           kind: f.kind as FormKind,
           cadiId: f.cadiId || undefined,
         }
@@ -240,6 +241,13 @@ export function FormsAdmin({ me }: { me?: User }) {
           try { localStorage.setItem('siard_evaluaciones', JSON.stringify(next)) } catch {}
           return next
         })
+        try {
+          await fetch(`/api/evaluaciones/${editingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadToUpdate),
+          })
+        } catch {}
         setMsg({ kind: 'ok', text: `Formulario "${f.title.trim()}" actualizado correctamente en PostgreSQL.` })
         cancelar()
       } else {

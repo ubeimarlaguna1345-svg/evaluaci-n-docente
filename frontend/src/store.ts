@@ -773,14 +773,15 @@ export function sanitizeForms(forms: Form[]): Form[] {
         titleLower.includes('evaluación integral del desempeño docente') ||
         titleLower.includes('evaluacion integral del desempeño docente')
       if (isDefaultEval) {
+        const hasCustomQuestions = Array.isArray(f.questions) && f.questions.length > 0
         return {
           ...f,
-          id: 'form-eval-2026',
-          title: 'Instrumento de Evaluación Integral del Desempeño Docente MEDIT',
-          period: '2026-II',
+          id: f.id || 'form-eval-2026',
+          title: f.title || 'Instrumento de Evaluación Integral del Desempeño Docente MEDIT',
+          period: f.period || '2026-II',
           start: f.start || '2026-08-01T00:00:00Z',
           end: f.end && isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
-          questions: f.questions && f.questions.length > 0 ? f.questions : MEDIT_10_QUESTIONS,
+          questions: hasCustomQuestions ? f.questions : MEDIT_10_QUESTIONS,
         }
       }
       return f
@@ -1186,7 +1187,7 @@ export const actions = {
 
     // 3. Si la petición PUT falla o no soporta cascada, no revertir el formulario local
     try {
-      await evaluacionService.updateForm(id, updatedForm)
+      await evaluacionService.updateForm(id, { ...updatedForm, preguntas: sanitizedQuestions } as any)
     } catch (err) {
       console.warn('Aviso al actualizar formulario en backend (guardado en persistencia local):', err)
     }

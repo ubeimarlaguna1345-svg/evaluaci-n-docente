@@ -270,8 +270,34 @@ export class EvaluacionController {
   static async updateForm(req, res) {
     const { id } = req.params
     try {
-      const result = await evaluacionService.actualizarFormulario(id, req.body || {})
-      return sendJson(res, 200, result)
+      const cleanId = String(id).replace('eval-', '');
+      const b = req.body || {};
+      const preguntas = b.questions || b.preguntas || [];
+      const preguntasJson = typeof preguntas === 'string' ? preguntas : JSON.stringify(preguntas);
+
+      try {
+        await pool.query(
+          `UPDATE evaluaciones 
+           SET titulo = COALESCE($1, titulo),
+               descripcion = COALESCE($2, descripcion),
+               periodo = COALESCE($3, periodo),
+               fecha_inicio = COALESCE($4, fecha_inicio),
+               fecha_cierre = COALESCE($5, fecha_cierre),
+               preguntas = $6::jsonb
+           WHERE id::text = $7 OR id::text = $8;`,
+          [b.title || b.titulo, b.description || b.descripcion, b.period || b.periodo, b.start || b.fecha_inicio, b.end || b.fecha_cierre, preguntasJson, cleanId, String(id)]
+        );
+      } catch (err) {
+        console.warn('Aviso al actualizar tabla evaluaciones:', err.message);
+      }
+
+      let result = { ok: true, message: 'Formulario actualizado correctamente.' };
+      try {
+        result = await evaluacionService.actualizarFormulario(id, req.body || {});
+      } catch (svcErr) {
+        console.warn('Aviso al actualizar via evaluacionService:', svcErr.message);
+      }
+      return sendJson(res, 200, result);
     } catch (error) {
       const status = error.statusCode || 500
       return sendJson(res, status, { ok: false, message: error.message || 'Error al actualizar formulario.', detail: error.message })

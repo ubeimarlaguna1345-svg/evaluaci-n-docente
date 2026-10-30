@@ -1265,6 +1265,58 @@ describe('Co-creación y gestión colaborativa de evaluaciones (Admin y Coordina
     expect(updated?.id).toBe(target.id)
     expect(updated?.questions.length).toBe(consolidatedQuestions.length)
   })
+
+  it('permite sustituir preguntas de escala por preguntas de texto libre y selección sin revertir a MEDIT_10_QUESTIONS', async () => {
+    const { getDB, actions, sanitizeForms } = await import('./store')
+    const db = getDB()
+    const target = db.forms[0]
+    expect(target).toBeDefined()
+
+    const customQuestions: Question[] = [
+      {
+        id: 'q-text-1',
+        text: '¿Cuáles fueron los principales aportes pedagógicos del docente?',
+        type: 'texto',
+        dimension: 'Retroalimentación de Aula',
+        bloque: 'docente',
+        required: true,
+        options: [],
+      },
+      {
+        id: 'q-sel-1',
+        text: '¿El docente utilizó metodologías activas y casos reales?',
+        type: 'seleccion',
+        dimension: 'Metodología y aplicación práctica',
+        bloque: 'medit',
+        required: true,
+        options: ['Siempre', 'Frecuentemente', 'Rara vez', 'Nunca'],
+      },
+    ]
+
+    await actions.updateForm(target.id, {
+      kind: target.kind,
+      title: target.title,
+      description: target.description,
+      period: target.period,
+      cadiId: target.cadiId,
+      start: target.start,
+      end: target.end,
+      questions: customQuestions,
+    })
+
+    const afterDb = getDB()
+    const updated = afterDb.forms.find((f) => f.id === target.id)
+    expect(updated).toBeDefined()
+    expect(updated?.questions.length).toBe(2)
+    expect(updated?.questions[0].type).toBe('texto')
+    expect(updated?.questions[1].type).toBe('seleccion')
+
+    // Verificar que sanitizeForms respeta las preguntas personalizadas
+    const sanitized = sanitizeForms([updated!])
+    expect(sanitized[0].questions.length).toBe(2)
+    expect(sanitized[0].questions[0].type).toBe('texto')
+    expect(sanitized[0].questions[1].type).toBe('seleccion')
+  })
 })
 
 describe('Bloqueo de reporte y estado "En Curso / Pendiente de Consolidación" (Política de Riesgo Cero)', () => {
