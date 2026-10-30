@@ -89,15 +89,29 @@ const memoryDeletedForms = new Set<string>()
 
 export function checkAndInvalidateCache(): void {
   try {
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+      return
+    }
     if (typeof localStorage !== 'undefined') {
       const currentVersion = localStorage.getItem('siard_version')
       if (currentVersion !== DATA_VERSION) {
-        localStorage.removeItem(EVALUACIONES_STORAGE_KEY)
-        localStorage.removeItem(LEGACY_FORMS_STORAGE_KEY)
+        localStorage.setItem(EVALUACIONES_STORAGE_KEY, JSON.stringify([]))
+        localStorage.setItem(LEGACY_FORMS_STORAGE_KEY, JSON.stringify([]))
         localStorage.removeItem('siard_evaluaciones')
         localStorage.removeItem('siard_cadis')
         localStorage.removeItem('siard_forms_storage')
         localStorage.setItem('siard_version', DATA_VERSION)
+      }
+
+      const rawStored = localStorage.getItem(EVALUACIONES_STORAGE_KEY) || localStorage.getItem(LEGACY_FORMS_STORAGE_KEY)
+      if (rawStored) {
+        try {
+          const parsed = JSON.parse(rawStored)
+          if (Array.isArray(parsed) && parsed.some((f: any) => f.id === 'form-eval-2026' || f.id === 'form-auto-2026' || (f.title && f.title.includes('Evaluación Integral del Desempeño')))) {
+            localStorage.setItem(EVALUACIONES_STORAGE_KEY, JSON.stringify([]))
+            localStorage.setItem(LEGACY_FORMS_STORAGE_KEY, JSON.stringify([]))
+          }
+        } catch {}
       }
     }
   } catch {}
@@ -716,23 +730,24 @@ export function sanitizeForms(forms: Form[]): Form[] {
     })
 }
 
-export const initialEvaluaciones: Form[] = []
+export const INITIAL_EVALUACIONES: Form[] = []
+export const initialEvaluaciones: Form[] = INITIAL_EVALUACIONES
 
 function getInitialForms(): Form[] {
   try {
     checkAndInvalidateCache()
-    const stored = getStoredEvaluaciones()
-    if (stored.length > 0) {
-      return stored
-    }
     if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
       const initial = sanitizeForms(CONTINGENCY_FORMS)
       saveStoredEvaluaciones(initial)
       return initial
     }
-    return initialEvaluaciones
+    const stored = getStoredEvaluaciones()
+    if (stored.length > 0) {
+      return stored
+    }
+    return INITIAL_EVALUACIONES
   } catch {}
-  return initialEvaluaciones
+  return INITIAL_EVALUACIONES
 }
 
 function getInitialResponses(): FormResponse[] {

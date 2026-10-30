@@ -34,44 +34,40 @@ export function Accounts({ me }: { me: User }) {
   const currentUser = me
   const currentRole = (currentUser.rol || currentUser.role)?.toLowerCase()
 
-  // 2. Asegurar el registro del Coordinador en la lista si no estuviera
-  const tieneJaimeParra = db.users.some(
-    (u) =>
-      u.email?.toLowerCase().includes('jaime.parra') ||
-      u.email?.toLowerCase().includes('jaimeparra') ||
-      (u.nombre || u.name)?.toLowerCase().includes('jaime parra')
+  // 1. Unificar información de usuarios de db.users sin inserción manual forzada
+  const usuarios = (db.users || []).map((u) => {
+    const isJaime =
+      (u.nombre || u.name || '').toLowerCase().includes('jaime parra') ||
+      (u.email || '').toLowerCase().includes('jaimeparra') ||
+      (u.email || '').toLowerCase().includes('jaime.parra')
+
+    return {
+      ...u,
+      name: isJaime ? 'Jaime Parra' : (u.name || u.nombre || ''),
+      nombre: isJaime ? 'Jaime Parra' : (u.nombre || u.name || ''),
+      email: isJaime ? 'jaime.parra.siard@ucundinamarca.edu.co' : u.email,
+      role: (isJaime ? 'coordinador' : (u.role || u.rol || 'estudiante')) as Role,
+      rol: isJaime ? 'Coordinador' : (u.rol || u.role),
+      estado: u.estado || (u.active ? 'Activo' : 'Bloqueada'),
+    }
+  })
+
+  // 2. Garantizar que ningún usuario se repita bajo ninguna circunstancia (filtro estricto por correo electrónico)
+  const usuariosUnicos = Array.from(
+    new Map(usuarios.map((u) => [u.email?.trim().toLowerCase(), u])).values()
   )
 
-  const listaBase = tieneJaimeParra
-    ? db.users
-    : [
-        ...db.users,
-        {
-          id: 'coord-01',
-          name: 'Jaime Parra',
-          nombre: 'Jaime Parra',
-          email: 'jaime.parra.siard@ucundinamarca.edu.co',
-          password: 'CoordParra2026*',
-          role: 'coordinador' as Role,
-          rol: 'Coordinador',
-          active: true,
-          estado: 'Activo',
-          sede: 'Sede Facatativá',
-          carrera: 'Ingeniería de Sistemas y Computación',
-        },
-      ]
-
-  const usuarios = listaBase.map((u) => ({
-    ...u,
-    nombre: u.nombre || u.name,
-    rol: u.rol || u.role,
-    estado: u.estado || (u.active ? 'Activo' : 'Bloqueada'),
-  }))
-
-  // 1. Renderizado diferenciado por rol en la tabla de cuentas:
+  // 3. Visibilidad por rol:
+  // - Si el usuario activo es 'admin':
+  //   Mostrar todos los usuarios cuyo rol NO sea 'admin' (exactamente 11 usuarios: 1 solo Jaime Parra como Coordinador, 5 Docentes y 5 Estudiantes).
+  // - Si el usuario activo es 'coordinador':
+  //   Mostrar únicamente 'docente' y 'estudiante' (exactamente 10 usuarios).
   const usuariosAMostrar = currentRole === 'admin'
-    ? usuarios.filter((u) => u.rol?.toLowerCase() !== 'admin')
-    : usuarios.filter((u) => u.rol?.toLowerCase() === 'docente' || u.rol?.toLowerCase() === 'estudiante')
+    ? usuariosUnicos.filter((u) => (u.rol || u.role)?.toLowerCase() !== 'admin')
+    : usuariosUnicos.filter((u) => {
+        const r = (u.rol || u.role)?.toLowerCase()
+        return r === 'docente' || r === 'estudiante'
+      })
 
   const usuariosVisibles = usuariosAMostrar
 

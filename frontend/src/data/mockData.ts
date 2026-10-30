@@ -26,7 +26,8 @@ export interface MockUser {
 /**
  * 1. Evaluaciones por defecto: 0 evaluaciones (array vacío [])
  */
-export const initialEvaluaciones: any[] = []
+export const INITIAL_EVALUACIONES: any[] = []
+export const initialEvaluaciones: any[] = INITIAL_EVALUACIONES
 
 /**
  * 2. CADIs Oficiales Asignados (Exactamente 5 materias vinculadas a sus docentes oficiales)
