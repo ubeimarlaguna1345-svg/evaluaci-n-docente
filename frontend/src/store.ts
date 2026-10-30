@@ -718,10 +718,10 @@ export function sanitizeForms(forms: Form[]): Form[] {
       if (deletedIds.has(f.id)) return false
       const titleLower = (f.title || '').toLowerCase().trim()
       if (
-        (f.period === '2026-I' && f.id !== 'form-eval-2026') ||
-        (f.id === 'form-auto-2026') ||
-        titleLower === 'evaluación docente 2026-i' ||
-        titleLower === 'evaluacion docente 2026-i'
+        f.id === 'form-auto-2026' ||
+        f.id === 'form-legacy-1' ||
+        titleLower === 'evaluación docente 2026-i legacy' ||
+        titleLower === 'evaluacion docente 2026-i legacy'
       ) {
         return false
       }

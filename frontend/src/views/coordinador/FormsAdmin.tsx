@@ -131,12 +131,28 @@ export function FormRow({
 export function FormsAdmin({ me }: { me?: User }) {
   const db = useDB()
   const activeUser = me || getCurrentUser()
-  const blank = { kind: '' as FormKind | '', title: '', description: '', period: '2026-I', cadiId: '', start: '', end: '', questions: [] as Question[] }
+  const blank = { kind: '' as FormKind | '', title: '', description: '', period: '2026-II', cadiId: '', start: '', end: '', questions: [] as Question[] }
   const [f, setF] = useState(blank)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [editingDates, setEditingDates] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [evaluaciones, setEvaluaciones] = useState<Form[]>(() => {
+    try {
+      const local = typeof localStorage !== 'undefined' ? localStorage.getItem('siard_evaluaciones') : null
+      if (local) {
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch {}
+    return db.forms || []
+  })
+
+  useEffect(() => {
+    if (db.forms && db.forms.length > 0) {
+      setEvaluaciones(db.forms)
+    }
+  }, [db.forms])
 
   useEffect(() => {
     actions.fetchEvaluaciones().catch(() => initDB())
@@ -175,16 +191,21 @@ export function FormsAdmin({ me }: { me?: User }) {
       let savedForm: Form | undefined
       if (editingId) {
         await actions.updateForm(editingId, { ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
+        const updatedForm: Form = { ...f, id: editingId, kind: f.kind as FormKind, cadiId: f.cadiId || undefined }
+        setEvaluaciones((prev) => prev.map((item) => (item.id === editingId ? updatedForm : item)))
         setMsg({ kind: 'ok', text: `Formulario "${f.title.trim()}" actualizado correctamente en PostgreSQL.` })
         cancelar()
       } else {
         savedForm = await actions.createForm({ ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
-        if (savedForm && typeof localStorage !== 'undefined') {
-          try {
-            const guardadas = JSON.parse(localStorage.getItem('siard_evaluaciones') || '[]');
-            const actualizadas = [savedForm, ...guardadas.filter((e: any) => e.id !== savedForm!.id)];
-            localStorage.setItem('siard_evaluaciones', JSON.stringify(actualizadas));
-          } catch {}
+        if (savedForm) {
+          setEvaluaciones((prev) => [savedForm!, ...prev.filter((e) => e.id !== savedForm!.id)])
+          if (typeof localStorage !== 'undefined') {
+            try {
+              const guardadas = JSON.parse(localStorage.getItem('siard_evaluaciones') || '[]')
+              const actualizadas = [savedForm, ...guardadas.filter((e: any) => e.id !== savedForm!.id)]
+              localStorage.setItem('siard_evaluaciones', JSON.stringify(actualizadas))
+            } catch {}
+          }
         }
         setMsg({ kind: 'ok', text: 'Formulario guardado y registrado en PostgreSQL.' })
         setF(blank)
@@ -201,6 +222,7 @@ export function FormsAdmin({ me }: { me?: User }) {
     if (editingId === fm.id) {
       cancelar()
     }
+    setEvaluaciones((prev) => prev.filter((e) => e.id !== fm.id))
     try {
       await actions.deleteForm(fm.id)
       setMsg({ kind: 'ok', text: `Evaluación "${fm.title}" eliminada correctamente.` })
@@ -211,7 +233,7 @@ export function FormsAdmin({ me }: { me?: User }) {
   }
 
   // Colaboración institucional plena: admin y coordinador gestionan todas las evaluaciones sin exclusión
-  const visibleForms = db.forms
+  const visibleForms = evaluaciones.length > 0 ? evaluaciones : db.forms
 
   return ( 
     <>
@@ -254,7 +276,7 @@ export function FormsAdmin({ me }: { me?: User }) {
               ))}
             </div>
           </Field>
-          <Field label="Título"><input className={input} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Ej. Evaluación docente 2026-I" /></Field>
+          <Field label="Título"><input className={input} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Ej. Instrumento de Evaluación Docente MEDIT" /></Field>
           <Field label="CADI / CAI / Asignatura vinculada">
             <select className={input} value={f.cadiId} onChange={(e) => setF({ ...f, cadiId: e.target.value })}>
               <option value="">Evaluación general (Todos los CADIs / CAIs)</option>
@@ -265,7 +287,7 @@ export function FormsAdmin({ me }: { me?: User }) {
           </Field>
           <div className="grid grid-cols-[1fr_120px] gap-3">
             <Field label="Descripción"><input className={input} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Breve descripción o instrucciones" /></Field>
-            <Field label="Período"><input className={input} value={f.period} onChange={(e) => setF({ ...f, period: e.target.value })} placeholder="2026-I" /></Field>
+            <Field label="Período"><input className={input} value={f.period} onChange={(e) => setF({ ...f, period: e.target.value })} placeholder="2026-II" /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Inicio"><input type="datetime-local" className={input} value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></Field>
