@@ -220,10 +220,21 @@ export function FormsAdmin({ me }: { me?: User }) {
     if (!f.questions.length) return setMsg({ kind: 'err', text: 'Agregue al menos una pregunta.' })
 
     setLoading(true)
+    const sanitizedQuestions = f.questions.map((q, idx) => ({
+      ...q,
+      id: q.id && q.id.trim() ? q.id : `preg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-${idx}`,
+    }))
+
     try {
       if (editingId) {
-        await actions.updateForm(editingId, { ...f, kind: f.kind as FormKind, cadiId: f.cadiId || undefined })
-        const updatedForm: Form = { ...f, id: editingId, kind: f.kind as FormKind, cadiId: f.cadiId || undefined }
+        const payloadToUpdate = {
+          ...f,
+          questions: sanitizedQuestions,
+          kind: f.kind as FormKind,
+          cadiId: f.cadiId || undefined,
+        }
+        await actions.updateForm(editingId, payloadToUpdate)
+        const updatedForm: Form = { ...payloadToUpdate, id: editingId }
         setEvaluaciones((prev) => {
           const next = prev.map((item) => (item.id === editingId ? updatedForm : item))
           try { localStorage.setItem('siard_evaluaciones', JSON.stringify(next)) } catch {}
@@ -234,6 +245,7 @@ export function FormsAdmin({ me }: { me?: User }) {
       } else {
         const payload = {
           ...f,
+          questions: sanitizedQuestions,
           kind: f.kind as FormKind,
           tipo: f.kind as FormKind,
           cadiId: f.cadiId || undefined,
@@ -379,7 +391,10 @@ export function FormsAdmin({ me }: { me?: User }) {
                 <button type="button" onClick={() => setF({ ...f, questions: f.questions.filter((x) => x.id !== q.id) })} className="text-ink/40 hover:text-red-600 transition-colors" title="Quitar pregunta"><X size={14} /></button>
               </div>
             ))}
-            <QuestionEditor onAdd={(q) => setF({ ...f, questions: [...f.questions, q] })} />
+            <QuestionEditor onAdd={(q) => {
+              const newQ = { ...q, id: q.id && q.id.trim() ? q.id : `preg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}` }
+              setF({ ...f, questions: [...f.questions, newQ] })
+            }} />
           </div>
           {msg && <Msg {...msg} />}
           <div className="flex items-center gap-2 pt-2">

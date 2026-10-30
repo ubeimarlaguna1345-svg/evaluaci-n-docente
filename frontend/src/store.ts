@@ -776,11 +776,27 @@ export function sanitizeForms(forms: Form[]): Form[] {
           period: '2026-II',
           start: f.start || '2026-08-01T00:00:00Z',
           end: f.end && isOpen(f.start, f.end) ? f.end : '2026-11-30T23:59:59Z',
-          questions: MEDIT_10_QUESTIONS,
+          questions: f.questions && f.questions.length > 0 ? f.questions : MEDIT_10_QUESTIONS,
         }
       }
       return f
     })
+}
+
+export function mergeServerFormsWithLocal(
+  serverForms: Form[],
+  formMap: Map<string, Form>,
+  deletedFormIds: Set<string>
+): void {
+  for (const f of serverForms) {
+    if (deletedFormIds.has(f.id)) continue
+    const existing = formMap.get(f.id)
+    if (existing && (!f.questions || f.questions.length === 0) && existing.questions && existing.questions.length > 0) {
+      formMap.set(f.id, { ...f, questions: existing.questions })
+    } else {
+      formMap.set(f.id, f)
+    }
+  }
 }
 
 export const INITIAL_EVALUACIONES: Form[] = []
@@ -904,9 +920,7 @@ export async function initDB() {
     for (const f of localForms) {
       if (!deletedFormIds.has(f.id)) formMap.set(f.id, f)
     }
-    for (const f of serverForms) {
-      if (!deletedFormIds.has(f.id)) formMap.set(f.id, f)
-    }
+    mergeServerFormsWithLocal(serverForms, formMap, deletedFormIds)
     let cleanForms = Array.from(formMap.values())
     if (cleanForms.length === 0 && typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
       cleanForms = sanitizeForms(CONTINGENCY_FORMS)
@@ -971,9 +985,7 @@ export async function initDB() {
         for (const f of localForms) {
           if (!deletedIds.has(f.id)) formMap.set(f.id, f)
         }
-        for (const f of serverForms) {
-          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
-        }
+        mergeServerFormsWithLocal(serverForms, formMap, deletedIds)
         const clean = Array.from(formMap.values())
         state.forms = clean
         saveStoredEvaluaciones(clean)
@@ -1118,7 +1130,11 @@ export const actions = {
 
   createForm: async (f: Omit<Form, 'id'>) => {
     const tempId = 'form-' + uid()
-    const newForm: Form = { ...f, id: tempId }
+    const sanitizedQuestions = (f.questions || []).map((q, idx) => ({
+      ...q,
+      id: q.id && q.id.trim() ? q.id : `preg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-${idx}`,
+    }))
+    const newForm: Form = { ...f, questions: sanitizedQuestions, id: tempId }
     // 1. Guardar de inmediato en el estado de React
     const updatedForms = [newForm, ...state.forms.filter((x) => x.id !== tempId)]
     state.forms = updatedForms
@@ -1153,13 +1169,20 @@ export const actions = {
   },
 
   updateForm: async (id: string, f: Omit<Form, 'id'>) => {
-    const updatedForm: Form = { ...f, id }
+    const sanitizedQuestions = (f.questions || []).map((q, idx) => ({
+      ...q,
+      id: q.id && q.id.trim() ? q.id : `preg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-${idx}`,
+    }))
+    const updatedForm: Form = { ...f, questions: sanitizedQuestions, id }
+    // 1. Guardar de inmediato en el estado local de React
     state.forms = state.forms.map((item) => (item.id === id ? updatedForm : item))
+    // 2. Guardar íntegro en localStorage ('siard_evaluaciones') ANTES de invocar el backend
     saveStoredEvaluaciones(state.forms)
     notify()
 
+    // 3. Si la petición PUT falla o no soporta cascada, no revertir el formulario local
     try {
-      await evaluacionService.updateForm(id, f)
+      await evaluacionService.updateForm(id, updatedForm)
     } catch (err) {
       console.warn('Aviso al actualizar formulario en backend (guardado en persistencia local):', err)
     }
@@ -1378,9 +1401,7 @@ export const actions = {
         for (const f of localForms) {
           if (!deletedIds.has(f.id)) formMap.set(f.id, f)
         }
-        for (const f of serverForms) {
-          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
-        }
+        mergeServerFormsWithLocal(serverForms, formMap, deletedIds)
         freshForms = Array.from(formMap.values())
         state.forms = freshForms
         saveStoredEvaluaciones(freshForms)
@@ -1450,9 +1471,7 @@ export const actions = {
         for (const f of localForms) {
           if (!deletedIds.has(f.id)) formMap.set(f.id, f)
         }
-        for (const f of serverForms) {
-          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
-        }
+        mergeServerFormsWithLocal(serverForms, formMap, deletedIds)
         freshForms = Array.from(formMap.values())
         state.forms = freshForms
         saveStoredEvaluaciones(freshForms)
@@ -1533,9 +1552,7 @@ export const actions = {
       }
       if (Array.isArray(rawForms) && rawForms.length > 0) {
         const serverForms = sanitizeForms(rawForms)
-        for (const f of serverForms) {
-          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
-        }
+        mergeServerFormsWithLocal(serverForms, formMap, deletedIds)
       }
 
       const clean = Array.from(formMap.values())
@@ -1628,9 +1645,7 @@ export const actions = {
         for (const f of localForms) {
           if (!deletedIds.has(f.id)) formMap.set(f.id, f)
         }
-        for (const f of serverForms) {
-          if (!deletedIds.has(f.id)) formMap.set(f.id, f)
-        }
+        mergeServerFormsWithLocal(serverForms, formMap, deletedIds)
         const clean = Array.from(formMap.values())
         state.forms = clean
         saveStoredEvaluaciones(clean)

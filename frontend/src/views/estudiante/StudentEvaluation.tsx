@@ -5,9 +5,11 @@ import {
   actions,
   isOpen,
   fmt,
+  MEDIT_10_QUESTIONS,
   getStudentDocenteEvaluationStatus,
   getDeletedFormIds,
   getDocenteCadi,
+  type Form,
   type User,
 } from '../../store'
 import { Header, Card, Msg, Empty, btnGhost } from '../common'
@@ -41,9 +43,18 @@ export function StudentEvaluation({ me }: { me: User }) {
     const isStaleMock = (titleLower === 'evaluación docente 2026-i' || titleLower === 'evaluacion docente 2026-i') && !isOpen(f.start, f.end)
     return !isStaleMock
   })
-  const activeEvals = cleanEvals.filter((f) => isOpen(f.start, f.end))
+  const isFormAccessible = (f: Form) => {
+    return isOpen(f.start, f.end) || f.period === '2026-II' || Boolean((f as any).active)
+  }
+  const activeEvals = cleanEvals.filter(isFormAccessible)
   const evals = activeEvals.length > 0 ? activeEvals : cleanEvals
-  const form = evals.find((f) => f.id === sel?.formId) || db.forms.find((f) => f.id === sel?.formId)
+  const rawForm = evals.find((f) => f.id === sel?.formId) || db.forms.find((f) => f.id === sel?.formId)
+  const form = rawForm
+    ? {
+        ...rawForm,
+        questions: rawForm.questions && rawForm.questions.length > 0 ? rawForm.questions : MEDIT_10_QUESTIONS,
+      }
+    : null
 
   return (
     <>
@@ -118,10 +129,13 @@ export function StudentEvaluation({ me }: { me: User }) {
         )
       })() : evals.length ? evals.map((f) => {
         let relevantDocentes = docentes
-        if (f.cadiId) {
+        if (f.cadiId && f.cadiId.trim() !== '') {
           const cadi = db.cadis.find((c) => c.id === f.cadiId)
           if (cadi && cadi.docenteId) {
-            relevantDocentes = docentes.filter((t) => t.id === cadi.docenteId)
+            const matched = docentes.filter((t) => t.id === cadi.docenteId)
+            if (matched.length > 0) {
+              relevantDocentes = matched
+            }
           }
         }
 
@@ -137,7 +151,9 @@ export function StudentEvaluation({ me }: { me: User }) {
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="font-serif text-2xl">{f.title}</h3>
               <span className="text-xs text-ink/50">
-                {isOpen(f.start, f.end) ? `Cierra ${fmt(f.end)}` : 'Fuera del período de respuesta'}
+                {isFormAccessible(f)
+                  ? (isOpen(f.start, f.end) ? `Cierra ${fmt(f.end)}` : 'Período activo (2026-II)')
+                  : 'Fuera del período de respuesta'}
               </span>
             </div>
             <div className="divide-y divide-line">
@@ -196,7 +212,7 @@ export function StudentEvaluation({ me }: { me: User }) {
                     ) : (
                       <button
                         className={btnGhost}
-                        disabled={!isOpen(f.start, f.end)}
+                        disabled={!isFormAccessible(f)}
                         onClick={() => { setOk(false); setSel({ formId: f.id, docenteId: t.id, teacherId: t.id }) }}
                       >
                         Evaluar
