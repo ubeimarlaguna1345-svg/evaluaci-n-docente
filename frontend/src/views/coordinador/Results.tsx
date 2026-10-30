@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, AlertTriangle, Eye, Clock } from 'lucide-react'
+import { Check, AlertTriangle, Eye, Clock, Info } from 'lucide-react'
 import {
   useDB,
   actions,
@@ -211,13 +211,17 @@ export function Results() {
                 <span className="text-amber-800 font-medium">
                   Pendiente de autoevaluación y cierre institucional
                 </span>
-              ) : consolidated.requierePlanMejora ? (
-                <span className="font-semibold text-red-700 flex items-center gap-1">
-                  <AlertTriangle size={12} /> Requiere plan de mejora (≤ 3.9)
+              ) : consolidated.finalScore < 3.5 ? (
+                <span className="font-semibold text-amber-900 flex items-center gap-1">
+                  <AlertTriangle size={12} /> En seguimiento (&lt; 3.5)
+                </span>
+              ) : consolidated.finalScore <= 3.9 ? (
+                <span className="font-semibold text-sky-800 flex items-center gap-1">
+                  <Info size={12} /> Aceptable (3.5 – 3.9)
                 </span>
               ) : consolidated.hasEvaluations ? (
-                <span className="font-medium text-pine flex items-center gap-1">
-                  <Check size={12} /> Desempeño satisfactorio (≥ 4.0)
+                <span className="font-medium text-emerald-800 flex items-center gap-1">
+                  <Check size={12} /> Desempeño excelente (≥ 4.0)
                 </span>
               ) : (
                 <span className="text-ink/50">Pendiente de instrumentos</span>
@@ -305,16 +309,16 @@ export function Results() {
                       <td className="p-3">
                         {estaConsolidado ? (
                           grade.finalScore < 3.5 ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-300">
-                              <AlertTriangle size={10} /> En Seguimiento (&lt; 3.5)
+                            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 border border-amber-300">
+                              <AlertTriangle size={10} /> En seguimiento (&lt; 3.5)
                             </span>
                           ) : grade.finalScore <= 3.9 ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-300">
-                              <AlertTriangle size={10} /> Aceptable (3.5–3.9)
+                            <span className="inline-flex items-center gap-1 rounded bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 border border-sky-300">
+                              <Info size={10} /> Aceptable (3.5–3.9)
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-300">
-                              <Check size={10} /> Satisfactorio (≥ 4.0)
+                              <Check size={10} /> Excelente (≥ 4.0)
                             </span>
                           )
                         ) : (

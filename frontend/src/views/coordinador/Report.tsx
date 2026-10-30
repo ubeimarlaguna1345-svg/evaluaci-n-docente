@@ -46,9 +46,11 @@ import {
 import { Header, Card, Field, input, btn, btnGhost } from '../common'
 
 export type NivelDesempeno =
-  | 'Satisfactorio'
+  | 'Excelente'
   | 'Aceptable'
+  | 'En seguimiento'
   | 'En Seguimiento'
+  | 'Satisfactorio'
   | 'Sobresaliente'
   | 'Destacado'
   | 'Aceptable / Atención Preventiva'
@@ -67,35 +69,52 @@ export interface DesempenoBadge {
 export function getNivelDesempeno(score: number): DesempenoBadge {
   if (score >= 4.0) {
     return {
-      nivel: 'Satisfactorio',
-      label: 'Satisfactorio (≥ 4.0)',
+      nivel: 'Excelente',
+      label: 'Excelente (≥ 4.0)',
       badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       borderClass: 'border-emerald-300',
       bgSoft: 'bg-emerald-50/70',
       textColor: 'text-emerald-800',
-      tag: 'Satisfactorio',
+      tag: 'Excelente',
     }
   }
   if (score >= 3.5) {
     return {
       nivel: 'Aceptable',
       label: 'Aceptable (3.5 – 3.9)',
-      badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
-      borderClass: 'border-amber-300',
-      bgSoft: 'bg-amber-50/70',
-      textColor: 'text-amber-800',
+      badgeClass: 'bg-sky-100 text-sky-800 border-sky-300',
+      borderClass: 'border-sky-300',
+      bgSoft: 'bg-sky-50/70',
+      textColor: 'text-sky-800',
       tag: 'Aceptable',
     }
   }
   return {
-    nivel: 'En Seguimiento',
-    label: 'En Seguimiento (< 3.5)',
-    badgeClass: 'bg-red-100 text-red-700 border-red-300',
-    borderClass: 'border-red-300',
-    bgSoft: 'bg-red-50/70',
-    textColor: 'text-red-700',
-    tag: 'En Seguimiento',
+    nivel: 'En seguimiento',
+    label: 'En seguimiento (< 3.5)',
+    badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+    borderClass: 'border-amber-300',
+    bgSoft: 'bg-amber-50/70',
+    textColor: 'text-amber-900',
+    tag: 'En seguimiento',
   }
+}
+
+export function getCorreccionPorDimension(dimTituloOrId: string): string {
+  const t = (dimTituloOrId || '').toLowerCase()
+  if (t.includes('retroaliment') || t.includes('nota') || t.includes('dim-4')) {
+    return 'Corregir retrasos en la entrega de notas y garantizar retroalimentación oportuna en talleres y evaluaciones.'
+  }
+  if (t.includes('pedagóg') || t.includes('didáct') || t.includes('claridad') || t.includes('dominio') || t.includes('dim-1')) {
+    return 'Reestructurar la planeación de clase, dinamizar la didáctica y clarificar criterios evaluativos.'
+  }
+  if (t.includes('digital') || t.includes('medit') || t.includes('tecnol') || t.includes('metodolog') || t.includes('dim-3')) {
+    return 'Emplear efectivamente el aula virtual y recursos tecnológicos en el aprendizaje.'
+  }
+  if (t.includes('clima') || t.includes('comunicac') || t.includes('asertiv') || t.includes('convivenc') || t.includes('organizac') || t.includes('dim-2')) {
+    return 'Mejorar la empatía, atención respetuosa a dudas y acuerdos de convivencia académica.'
+  }
+  return 'Reestructurar la planeación de clase, dinamizar la didáctica y clarificar criterios evaluativos.'
 }
 
 export function formatDocenteId(id: string): string {
@@ -119,33 +138,33 @@ export const DIMENSIONES_MEDIT: DimensionMeditInfo[] = [
   {
     id: 'dim-1',
     numero: 1,
-    titulo: 'Dominio Disciplinar y Claridad Expositiva',
+    titulo: 'Mediación Pedagógica y Didáctica',
     dimensionDb: 'Claridad conceptual y explicación',
-    descripcion: 'Manejo riguroso de contenidos, capacidad de síntesis y resolución de dudas conceptuales.',
+    descripcion: 'Planeación de clase, dinamización didáctica, dominio disciplinar y clarificación de criterios evaluativos.',
     offset: 0.08,
   },
   {
     id: 'dim-2',
     numero: 2,
-    titulo: 'Organización Curricular y Planificación',
+    titulo: 'Clima y Comunicación Asertiva',
     dimensionDb: 'Organización y cumplimiento del programa',
-    descripcion: 'Cumplimiento del cronograma, puntualidad y claridad en las reglas de juego pedagógicas.',
+    descripcion: 'Empatía pedagógica, atención respetuosa a dudas, acuerdos de convivencia académica y puntualidad.',
     offset: 0.05,
   },
   {
     id: 'dim-3',
     numero: 3,
-    titulo: 'Mediaciones Tecnológicas y Aprendizaje Significativo',
+    titulo: 'Mediación Digital / MEDIT',
     dimensionDb: 'Metodología y aplicación práctica',
-    descripcion: 'Uso de herramientas digitales, casos reales de la industria y talleres prácticos aplicados.',
+    descripcion: 'Uso efectivo del aula virtual, recursos tecnológicos de aprendizaje y articulación de casos prácticos MEDIT.',
     offset: -0.06,
   },
   {
     id: 'dim-4',
     numero: 4,
-    titulo: 'Retroalimentación Formativa y Trato Asertivo',
+    titulo: 'Retroalimentación Formativa',
     dimensionDb: 'Retroalimentación y entrega oportuna de notas',
-    descripcion: 'Oportunidad en la entrega de notas, comentarios constructivos y disposición para asesorías.',
+    descripcion: 'Oportunidad en la entrega de notas, retroalimentación oportuna en talleres y evaluaciones, y disposición para asesorías.',
     offset: -0.12,
   },
 ]
@@ -244,7 +263,8 @@ export function Report({
       satisfactorio: teachersWithGrades.filter(
         (x) =>
           x.estaConsolidado &&
-          (x.desempeno.nivel === 'Satisfactorio' ||
+          (x.desempeno.nivel === 'Excelente' ||
+            x.desempeno.nivel === 'Satisfactorio' ||
             x.desempeno.nivel === 'Destacado' ||
             x.desempeno.nivel === 'Sobresaliente')
       ).length,
@@ -255,7 +275,10 @@ export function Report({
             x.desempeno.nivel === 'Aceptable / Atención Preventiva')
       ).length,
       seguimiento: teachersWithGrades.filter(
-        (x) => x.estaConsolidado && x.desempeno.nivel === 'En Seguimiento'
+        (x) =>
+          x.estaConsolidado &&
+          (x.desempeno.nivel === 'En seguimiento' ||
+            x.desempeno.nivel === 'En Seguimiento')
       ).length,
       enCurso: teachersWithGrades.filter((x) => x.estaEnCurso).length,
     }
@@ -271,7 +294,13 @@ export function Report({
 
       const matchesTier =
         tierFilter === 'todos' ||
-        (tierFilter === 'En Curso' ? !estaConsolidado : (estaConsolidado && desempeno.nivel === tierFilter))
+        (tierFilter === 'En Curso'
+          ? !estaConsolidado
+          : (estaConsolidado && (
+              desempeno.nivel === tierFilter ||
+              (tierFilter === 'Excelente' && (desempeno.nivel === 'Satisfactorio' || desempeno.nivel === 'Excelente')) ||
+              (tierFilter === 'En seguimiento' && (desempeno.nivel === 'En Seguimiento' || desempeno.nivel === 'En seguimiento'))
+            )))
 
       return matchesSearch && matchesTier
     })
@@ -341,61 +370,113 @@ export function Report({
 
   const diagnosticoPedagogico = useMemo(() => {
     if (!activeDetail || !dimensionesCalculadas.length) return null
-    const hasResponses = (activeDetail.grade.studentResponsesCount || 0) > 0
-    if (!hasResponses) return null
 
-    const fortalezas = dimensionesCalculadas.filter((d) => (d.score ?? 0) > 4.2)
     const conScore = dimensionesCalculadas.filter((d) => d.score !== null)
     if (conScore.length === 0) return null
-    const mejorDimension = [...conScore].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0]
-    const dimensionMasBaja = [...conScore].sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0]
-    const esSobresaliente = (activeDetail.grade.finalScore || 0) >= 4.0
 
-    const consejosDidacticos: string[] = []
+    const dimensionMayor = [...conScore].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0]
+    const dimensionMenor = [...conScore].sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0]
+    const finalScore = activeDetail.grade.finalScore
 
-    if (esSobresaliente) {
-      consejosDidacticos.push(
-        'Liderar talleres de mentoría docente entre pares en la Sede Facatativá, compartiendo prácticas de éxito en transposición didáctica MEDIT.',
-        'Documentar y publicar sus guías de laboratorio y proyectos de aula como Objetos Virtuales de Aprendizaje (OVA) institucionales.',
-        'Vincular los proyectos integradores de aula con semilleros de investigación y convocatorias de innovación tecnológica de la Facultad de Ingeniería.'
-      )
+    // Escala institucional exacta:
+    // 1. NIVEL CRÍTICO: Menor a 3.5 (< 3.5) -> "En seguimiento"
+    // 2. NIVEL MEDIO: De 3.5 a 3.9 (>= 3.5 y <= 3.9) -> "Aceptable"
+    // 3. NIVEL ALTO: De 4.0 en adelante (>= 4.0) -> "Excelente"
+    const esCritico = finalScore < 3.5
+    const esMedio = finalScore >= 3.5 && finalScore <= 3.9
+    const esAlto = finalScore >= 4.0
+
+    const rango: 'critico' | 'medio' | 'alto' = esCritico ? 'critico' : esMedio ? 'medio' : 'alto'
+    const nivelBadge = getNivelDesempeno(finalScore)
+
+    // 1. Diagnóstico por nivel
+    let diagnostico = ''
+    if (esCritico) {
+      diagnostico = 'Alerta pedagógica y acompañamiento institucional prioritario.'
+    } else if (esMedio) {
+      diagnostico = 'Cumplimiento básico de los criterios evaluativos con margen claro de mejora continua.'
     } else {
-      if (dimensionMasBaja.id === 'dim-4') {
-        consejosDidacticos.push(
-          'Implementar rúbricas analíticas compartidas antes de cada entrega para que el estudiante conozca los criterios de corrección con antelación.',
-          'Programar devoluciones formativas en un plazo máximo de 8 días hábiles, retroalimentando aciertos y aspectos concretos de mejora.',
-          'Habilitar breves sesiones grupales de retroalimentación en clase tras cada corte evaluativo para resolver dudas frecuentes de los entregables.'
-        )
-      } else if (dimensionMasBaja.id === 'dim-3') {
-        consejosDidacticos.push(
-          'Incorporar retos de programación en plataformas interactivas o repositorios colaborativos (GitHub Classroom) para articular la teoría con el entorno práctico MEDIT.',
-          'Diseñar estudios de casos reales de la industria tecnológica regional que exijan al estudiante aplicar conceptos en problemas abiertos.',
-          'Utilizar simuladores virtuales y herramientas digitales de soporte para enriquecer las horas de trabajo autónomo del estudiante.'
-        )
-      } else if (dimensionMasBaja.id === 'dim-2') {
-        consejosDidacticos.push(
-          'Publicar en la primera semana de clases el cronograma de cortes con fechas inamovibles de evaluaciones y entregas.',
-          'Socializar el parcelador académico al inicio de cada unidad temática para mantener sincronía entre las metas de aprendizaje y el avance real.',
-          'Destinar los primeros 5 minutos de cada sesión a recapitular el objetivo pedagógico del día y los últimos 5 a fijar conclusiones.'
-        )
-      } else {
-        consejosDidacticos.push(
-          'Diversificar las estrategias expositivas integrando mapas conceptuales, analogías aplicadas y preguntas socráticas durante la explicación.',
-          'Dividir temas complejos en módulos de aprendizaje progresivos con micro-talleres de verificación inmediata en clase.',
-          'Fomentar la participación activa de los estudiantes invitándolos a resolver ejemplos en el tablero o en parejas de programación.'
-        )
-      }
+      diagnostico = 'Desempeño docente sobresaliente y alineado con los estándares del MEDIT.'
     }
 
-    const requierePlanAccion = activeDetail.estaConsolidado && activeDetail.grade.finalScore < 4.0
+    // 2. Puntos fuertes
+    let puntosFuertesTexto = ''
+    if (esAlto) {
+      puntosFuertesTexto = `Felicitación institucional por su destacado liderazgo en la dimensión "${dimensionMayor.titulo}" (${dimensionMayor.score !== null ? dimensionMayor.score.toFixed(2) : '—'} / 5.00), evidenciando alto dominio temático, metodología pedagógica y uso efectivo de tecnologías en el aprendizaje.`
+    } else if (esMedio) {
+      puntosFuertesTexto = `Se reconoce la dimensión "${dimensionMayor.titulo}" (${dimensionMayor.score !== null ? dimensionMayor.score.toFixed(2) : '—'} / 5.00) como base sólida de su trabajo docente, constituyendo el pilar formativo para impulsar las áreas de oportunidad.`
+    } else {
+      puntosFuertesTexto = `La dimensión con mejor desempeño relativo corresponde a "${dimensionMayor.titulo}" (${dimensionMayor.score !== null ? dimensionMayor.score.toFixed(2) : '—'} / 5.00), constituyendo el punto de partida sobre el cual cimentar el plan de mejoramiento institucional.`
+    }
+    const fortalezasDestacadas = conScore.filter((d) => (d.score ?? 0) >= 4.0)
+
+    // 3. Aspectos a corregir y oportunidades de desarrollo
+    let analisisMenorTexto = ''
+    const queDebeCorregir: string[] = []
+
+    if (esCritico) {
+      analisisMenorTexto = `Se identifica la dimensión "${dimensionMenor.titulo}" (${dimensionMenor.score !== null ? dimensionMenor.score.toFixed(2) : '—'} / 5.00) como la causa crítica del bajo desempeño docente.`
+      queDebeCorregir.push(getCorreccionPorDimension(dimensionMenor.titulo))
+    } else if (esMedio) {
+      analisisMenorTexto = `Se reconoce la dimensión "${dimensionMayor.titulo}" como base de su trabajo, pero se advierte que la dimensión "${dimensionMenor.titulo}" (${dimensionMenor.score !== null ? dimensionMenor.score.toFixed(2) : '—'} / 5.00) está frenando su consolidación institucional.`
+      queDebeCorregir.push(
+        `Ajustar la planeación y reforzar la dimensión más baja (${dimensionMenor.titulo}) para superar el umbral básico.`,
+        'Socializar y dar estricto cumplimiento al acuerdo pedagógico concertado con los estudiantes.'
+      )
+    } else {
+      analisisMenorTexto = `Margen de optimización: De manera constructiva, se señala que la dimensión "${dimensionMenor.titulo}" (${dimensionMenor.score !== null ? dimensionMenor.score.toFixed(2) : '—'} / 5.00) es la clave para perfeccionar su práctica pedagógica.`
+      queDebeCorregir.push(
+        `Continuar fortaleciendo la dimensión ${dimensionMenor.titulo} para consolidar la máxima excelencia pedagógica en el siguiente período académico.`
+      )
+    }
+
+    // 4. Plan de acción y consejos formativos
+    let planAccionTitulo = ''
+    let planAccionDetalle = ''
+    const consejosFormativos: string[] = []
+
+    if (esCritico) {
+      planAccionTitulo = 'Plan de Acción y Compromiso Obligatorio'
+      planAccionDetalle = 'Compromiso pedagógico obligatorio, seguimiento por coordinación académica y participación en talleres de cualificación docente.'
+      consejosFormativos.push(
+        'Compromiso pedagógico obligatorio: Firma de acuerdos y ajuste de planeación curricular.',
+        'Seguimiento por coordinación académica: Sesiones quincenales de verificación de avances pedagógicos.',
+        'Participación en talleres de cualificación docente MEDIT y acompañamiento entre pares.'
+      )
+    } else if (esMedio) {
+      planAccionTitulo = 'Plan de Optimización Metodológica'
+      planAccionDetalle = 'Recomendaciones prácticas de optimización metodológica para alcanzar el nivel de excelencia en el siguiente período.'
+      consejosFormativos.push(
+        'Revisar y ajustar el cronograma de evaluaciones para garantizar retroalimentación oportuna en cada corte.',
+        'Incorporar dinámicas de participación activa y talleres aplicados a problemas reales del entorno regional.',
+        'Socializar periódicamente el avance de los acuerdos pedagógicos concertados con los estudiantes.'
+      )
+    } else {
+      planAccionTitulo = 'Consejos Formativos de Proyección y Liderazgo Académico'
+      planAccionDetalle = 'Estrategias de proyección docente y liderazgo en la comunidad académica institucional:'
+      consejosFormativos.push(
+        'Liderar semilleros de investigación, comunidades de aprendizaje o mentoría a otros docentes.',
+        'Producir recursos educativos abiertos (REA/OVA) en el ecosistema digital institucional.',
+        'Compartir metodologías activas y experiencias exitosas en los comités de currículo y jornadas docentes de la Facultad.'
+      )
+    }
 
     return {
-      fortalezas,
-      mejorDimension,
-      dimensionMasBaja,
-      esSobresaliente,
-      consejosDidacticos,
-      requierePlanAccion,
+      rango,
+      esCritico,
+      esMedio,
+      esAlto,
+      nivelBadge,
+      diagnostico,
+      dimensionMayor,
+      dimensionMenor,
+      puntosFuertesTexto,
+      fortalezasDestacadas,
+      analisisMenorTexto,
+      queDebeCorregir,
+      planAccionTitulo,
+      planAccionDetalle,
+      consejosFormativos,
     }
   }, [activeDetail, dimensionesCalculadas])
 
@@ -514,12 +595,12 @@ export function Report({
 
             <Card className="flex items-center justify-between p-4 border-l-4 border-emerald-500">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Satisfactorio</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Excelente</p>
                 <div className="mt-1 flex items-baseline gap-1.5">
                   <span className="font-serif text-3xl font-bold text-emerald-700">{countsByTier.satisfactorio}</span>
                   <span className="text-xs text-ink/40">de {countsByTier.total}</span>
                 </div>
-                <span className="mt-1 inline-flex text-[11px] text-emerald-700 font-medium">≥ 4.0 · Sin plan de mejora</span>
+                <span className="mt-1 inline-flex text-[11px] text-emerald-700 font-medium">≥ 4.0 · Desempeño sobresaliente</span>
               </div>
               <div className="rounded-full bg-emerald-100 p-3 text-emerald-700">
                 <CheckCircle2 size={24} />
@@ -533,23 +614,23 @@ export function Report({
                   <span className="font-serif text-3xl font-bold text-amber-700">{countsByTier.aceptable}</span>
                   <span className="text-xs text-ink/40">de {countsByTier.total}</span>
                 </div>
-                <span className="mt-1 inline-flex text-[11px] text-amber-800 font-medium">3.5 – 3.9 · Alerta preventiva</span>
+                <span className="mt-1 inline-flex text-[11px] text-sky-800 font-medium">3.5 – 3.9 · Cumplimiento básico</span>
               </div>
               <div className="rounded-full bg-amber-100 p-3 text-amber-700">
                 <AlertTriangle size={24} />
               </div>
             </Card>
 
-            <Card className="flex items-center justify-between p-4 border-l-4 border-red-500">
+            <Card className="flex items-center justify-between p-4 border-l-4 border-amber-500">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">En Seguimiento</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">En seguimiento</p>
                 <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="font-serif text-3xl font-bold text-red-700">
+                  <span className="font-serif text-3xl font-bold text-amber-800">
                     {countsByTier.seguimiento}
                   </span>
                   <span className="text-xs text-ink/40">&lt; 3.50</span>
                 </div>
-                <span className="mt-1 inline-flex text-[11px] text-red-700 font-medium">Alerta crítica · Seguimiento</span>
+                <span className="mt-1 inline-flex text-[11px] text-amber-800 font-medium">Alerta pedagógica y acompañamiento</span>
               </div>
               <div className="rounded-full bg-red-100 p-3 text-red-700">
                 <AlertTriangle size={24} />
@@ -579,7 +660,7 @@ export function Report({
 
                 <div className="flex items-center gap-1 rounded-lg border border-line bg-white p-1 text-xs">
                   <Filter size={12} className="text-ink/40 ml-1.5 mr-0.5" />
-                  {(['todos', 'Satisfactorio', 'Aceptable', 'En Seguimiento', 'En Curso'] as const).map(
+                  {(['todos', 'Excelente', 'Aceptable', 'En seguimiento', 'En Curso'] as const).map(
                     (tier) => (
                       <button
                         key={tier}
@@ -992,115 +1073,323 @@ export function Report({
                     </div>
                   </div>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div
-                      className={`rounded-xl border p-4.5 ${activeDetail.desempeno.bgSoft} ${activeDetail.desempeno.borderClass}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Calificación Consolidada</p>
-                        <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-mono text-ink/60 border border-line">
-                          MEDIT 100%
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="font-serif text-5xl font-bold text-pine">
-                          {activeDetail.grade.finalScore.toFixed(2)}
-                        </span>
-                        <span className="text-sm text-ink/50">/ 5.00</span>
-                      </div>
-                      <div className="mt-2.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border shadow-2xs ${activeDetail.desempeno.badgeClass}`}
-                        >
-                          <span className="h-2 w-2 rounded-full bg-current" />
-                          {activeDetail.desempeno.nivel}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-[11px] text-ink/70">
-                        <b>70%</b> Estudiantes ({activeDetail.grade.studentWeighted?.toFixed(2) || '0.00'} pts) +{' '}
-                        <b>30%</b> Autoevaluación ({activeDetail.grade.autoWeighted?.toFixed(2) || '0.00'} pts)
-                      </p>
-                    </div>
+                  /* ESTRUCTURA VISUAL DEL REPORTE EN 4 TARJETAS ORGANIZADAS */
+                  diagnosticoPedagogico && (
+                    <div className="space-y-4">
+                      {/* TARJETA 1: Desglose de Ponderación (70% Estudiantes / 30% Autoevaluación) */}
+                      <div className="rounded-xl border border-line bg-white p-5 shadow-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pine/10 text-pine font-bold text-sm">
+                              1
+                            </div>
+                            <div>
+                              <h3 className="font-serif text-base font-bold text-pine">
+                                Desglose de Ponderación (70% Estudiantes / 30% Autoevaluación)
+                              </h3>
+                              <p className="text-[11px] text-ink/60">
+                                Evaluación consolidada según la fórmula institucional MEDIT: [(Heteroevaluación × 0.70) + (Autoevaluación × 0.30)]
+                              </p>
+                            </div>
+                          </div>
 
-                    <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Participación Estudiantil</p>
-                        <div className="mt-2 flex items-baseline gap-2">
-                          <span className="font-serif text-4xl font-bold text-pine">
-                            {metricasParticipacion.porcentaje}%
-                          </span>
-                          <span className="text-xs text-ink/50">de participación</span>
-                        </div>
-                        {metricasParticipacion.respondieron > 0 ? (
-                          <p className="mt-2 text-xs font-semibold text-emerald-700 flex items-center gap-1">
-                            <Check size={14} /> Muestra representativa
-                          </p>
-                        ) : (
-                          <p className="mt-2 text-xs font-medium text-ink/60 flex items-center gap-1">
-                            <Clock size={14} /> 0 evaluaciones recibidas
-                          </p>
-                        )}
-                      </div>
-                      <div className="mt-3 border-t border-line/60 pt-2 text-[11px] text-ink/60">
-                        {metricasParticipacion.respondieron > 0 ? (
-                          <><b>{metricasParticipacion.respondieron}</b> de <b>{metricasParticipacion.total}</b> estudiantes convocados evaluaron de forma confidencial.</>
-                        ) : (
-                          <>0 evaluaciones recibidas de los <b>{metricasParticipacion.total}</b> estudiantes convocados.</>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-line bg-paper/50 p-4.5 flex flex-col justify-between">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink/60">Brecha Institucional</p>
-                        <div className="mt-2 flex items-baseline gap-2">
+                          {/* Badge o etiqueta clara de estado según el nivel */}
                           <span
-                            className={`font-serif text-4xl font-bold ${
-                              brechaMedia.sinDatos
-                                ? 'text-ink/40'
-                                : brechaMedia.positivo
-                                ? 'text-emerald-700'
-                                : 'text-amber-700'
-                            }`}
+                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border shadow-2xs ${diagnosticoPedagogico.nivelBadge.badgeClass}`}
                           >
-                            {brechaMedia.sinDatos ? '—' : `${brechaMedia.signo}${brechaMedia.dif.toFixed(2)}`}
+                            <span className="h-2 w-2 rounded-full bg-current" />
+                            {diagnosticoPedagogico.nivelBadge.tag}
                           </span>
-                          <span className="text-xs text-ink/50">{brechaMedia.sinDatos ? 'sin datos' : 'pts vs media'}</span>
                         </div>
-                        <p className="mt-1 text-xs text-ink/70">
-                          {brechaMedia.sinDatos ? (
-                            <span className="text-ink/60 font-medium">Pendiente de consolidación</span>
-                          ) : brechaMedia.positivo ? (
-                            <span className="text-emerald-700 font-medium">Por encima del promedio de la facultad</span>
+
+                        {/* Diagnóstico Institucional */}
+                        <div className={`mt-3.5 rounded-lg border p-3 text-xs flex items-center gap-2.5 ${
+                          diagnosticoPedagogico.esCritico
+                            ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                            : diagnosticoPedagogico.esMedio
+                            ? 'bg-sky-50/80 border-sky-300 text-sky-950'
+                            : 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                        }`}>
+                          {diagnosticoPedagogico.esCritico ? (
+                            <AlertTriangle size={18} className="text-amber-800 shrink-0" />
+                          ) : diagnosticoPedagogico.esMedio ? (
+                            <Info size={18} className="text-sky-700 shrink-0" />
                           ) : (
-                            <span className="text-amber-800 font-medium">Por debajo del promedio de la facultad</span>
+                            <CheckCircle2 size={18} className="text-emerald-700 shrink-0" />
                           )}
-                        </p>
+                          <div>
+                            <span className="font-bold mr-1">Diagnóstico Institucional:</span>
+                            <span>{diagnosticoPedagogico.diagnostico}</span>
+                          </div>
+                        </div>
+
+                        {/* Desglose Cuantitativo de Ponderación */}
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          {/* Heteroevaluación 70% */}
+                          <div className="rounded-lg border border-line bg-paper/40 p-3.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-ink/60">
+                              <span>Heteroevaluación</span>
+                              <span className="rounded bg-pine/10 px-1.5 py-0.5 text-pine font-bold">70%</span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-1.5">
+                              <span className="font-serif text-2xl font-bold text-pine">
+                                {activeDetail.grade.studentAvg !== null ? activeDetail.grade.studentAvg.toFixed(2) : '—'}
+                              </span>
+                              <span className="text-xs text-ink/40">/ 5.00</span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-ink/70">
+                              Aporte ponderado: <b>{activeDetail.grade.studentWeighted?.toFixed(2) || '0.00'}</b> / 3.50 pts
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-line/60 text-[10px] text-ink/50 flex items-center gap-1">
+                              <Users size={12} className="text-pine" />
+                              <span>{metricasParticipacion.respondieron} evaluaciones recibidas ({metricasParticipacion.porcentaje}% part.)</span>
+                            </div>
+                          </div>
+
+                          {/* Autoevaluación 30% */}
+                          <div className="rounded-lg border border-line bg-paper/40 p-3.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-ink/60">
+                              <span>Autoevaluación Docente</span>
+                              <span className="rounded bg-ochre/15 px-1.5 py-0.5 text-ochre font-bold">30%</span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-1.5">
+                              <span className="font-serif text-2xl font-bold text-ochre">
+                                {activeDetail.grade.autoAvg !== null ? activeDetail.grade.autoAvg.toFixed(2) : '—'}
+                              </span>
+                              <span className="text-xs text-ink/40">/ 5.00</span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-ink/70">
+                              Aporte ponderado: <b>{activeDetail.grade.autoWeighted?.toFixed(2) || '0.00'}</b> / 1.50 pts
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-line/60 text-[10px] text-ink/50 flex items-center gap-1">
+                              {activeDetail.tieneAutoevaluacion ? (
+                                <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                                  <Check size={12} /> Completada
+                                </span>
+                              ) : (
+                                <span className="text-amber-700 font-semibold flex items-center gap-1">
+                                  <Clock size={12} /> Pendiente
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Definitiva Consolidada MEDIT */}
+                          <div className={`rounded-lg border p-3.5 ${diagnosticoPedagogico.nivelBadge.bgSoft} ${diagnosticoPedagogico.nivelBadge.borderClass}`}>
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-ink/60">
+                              <span>Nota Consolidada MEDIT</span>
+                              <span className="rounded bg-white/80 px-1.5 py-0.5 font-bold font-mono text-ink/70 border border-line">
+                                100%
+                              </span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-1.5">
+                              <span className="font-serif text-3xl font-bold text-pine">
+                                {activeDetail.grade.finalScore.toFixed(2)}
+                              </span>
+                              <span className="text-xs text-ink/40">/ 5.00</span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-ink/70">
+                              Nivel Institucional: <b>{diagnosticoPedagogico.nivelBadge.label}</b>
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-line/60 text-[10px] text-ink/60">
+                              Fórmula: 70% heteroeval. + 30% autoeval.
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="mt-3 border-t border-line/60 pt-2 text-[11px]">
-                        <div className="flex justify-between text-ink/70 mb-1">
-                          <span>Docente: <b>{activeDetail.estaConsolidado ? activeDetail.grade.finalScore.toFixed(2) : '—'}</b></span>
-                          <span>Facultad: <b>{avgInstitucional.toFixed(2)}</b></span>
+                      {/* TARJETA 2: Puntos Fuertes Identificados */}
+                      <div className="rounded-xl border border-line bg-white p-5 shadow-xs">
+                        <div className="flex items-center gap-2.5 border-b border-line pb-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-sm">
+                            2
+                          </div>
+                          <div>
+                            <h3 className="font-serif text-base font-bold text-pine">
+                              Puntos Fuertes Identificados
+                            </h3>
+                            <p className="text-[11px] text-ink/60">
+                              Reconocimiento de competencias destacadas y liderazgo pedagógico en el modelo MEDIT
+                            </p>
+                          </div>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-line overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              brechaMedia.sinDatos
-                                ? 'bg-line/40'
-                                : brechaMedia.positivo
-                                ? 'bg-emerald-500'
-                                : 'bg-amber-500'
-                            }`}
-                            style={{ width: `${brechaMedia.sinDatos ? 0 : Math.min(100, (activeDetail.grade.finalScore / 5) * 100)}%` }}
-                          />
+
+                        <div className="mt-3.5 space-y-3">
+                          <div className="rounded-lg border border-emerald-300 bg-emerald-50/80 p-3.5 text-xs text-emerald-950">
+                            <div className="flex items-start gap-2">
+                              <Award size={18} className="text-emerald-700 mt-0.5 shrink-0" />
+                              <p className="leading-relaxed">
+                                {diagnosticoPedagogico.puntosFuertesTexto}
+                              </p>
+                            </div>
+                          </div>
+
+                          {diagnosticoPedagogico.fortalezasDestacadas.length > 0 && (
+                            <div className="grid gap-2 sm:grid-cols-2 text-xs">
+                              {diagnosticoPedagogico.fortalezasDestacadas.map((f) => (
+                                <div
+                                  key={f.id}
+                                  className="flex items-start gap-2 rounded-lg bg-paper/40 p-2.5 border border-line"
+                                >
+                                  <Check size={14} className="text-emerald-700 mt-0.5 shrink-0" />
+                                  <div>
+                                    <strong className="text-pine">{f.titulo}</strong>
+                                    <span className="ml-1 text-[11px] font-bold text-emerald-800">
+                                      ({f.score !== null ? f.score.toFixed(2) : '—'} / 5.0)
+                                    </span>
+                                    <p className="text-[11px] text-ink/70 mt-0.5 leading-snug">{f.descripcion}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* TARJETA 3: Aspectos a Corregir y Oportunidades de Desarrollo */}
+                      <div className="rounded-xl border border-line bg-white p-5 shadow-xs">
+                        <div className="flex items-center gap-2.5 border-b border-line pb-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-900 font-bold text-sm">
+                            3
+                          </div>
+                          <div>
+                            <h3 className="font-serif text-base font-bold text-pine">
+                              Aspectos a Corregir y Oportunidades de Desarrollo
+                            </h3>
+                            <p className="text-[11px] text-ink/60">
+                              Análisis de la dimensión menor y acciones correctivas para superar brechas formativas
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3.5 space-y-3">
+                          {/* Análisis de dimensión menor / advertencia */}
+                          <div className={`rounded-lg border p-3.5 text-xs ${
+                            diagnosticoPedagogico.esCritico
+                              ? 'bg-amber-100/70 border-amber-300 text-amber-950'
+                              : diagnosticoPedagogico.esMedio
+                              ? 'bg-sky-50/80 border-sky-300 text-sky-950'
+                              : 'bg-paper/60 border-line text-ink/90'
+                          }`}>
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle size={18} className={`mt-0.5 shrink-0 ${
+                                diagnosticoPedagogico.esCritico ? 'text-amber-800' : 'text-sky-700'
+                              }`} />
+                              <div>
+                                <p className="font-semibold mb-0.5">Análisis de Desempeño por Dimensión:</p>
+                                <p className="leading-relaxed">{diagnosticoPedagogico.analisisMenorTexto}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Qué debe corregir */}
+                          <div className="rounded-lg border border-line bg-white p-3.5 shadow-2xs space-y-2">
+                            <p className="text-xs font-bold text-pine uppercase tracking-wider flex items-center gap-1.5">
+                              <Target size={14} className="text-pine" />
+                              <span>Qué debe corregir:</span>
+                            </p>
+                            <ul className="space-y-1.5 text-xs text-ink/80 list-none pl-0">
+                              {diagnosticoPedagogico.queDebeCorregir.map((corr, idx) => (
+                                <li key={idx} className="flex items-start gap-2">
+                                  <ChevronRight size={14} className="text-ochre mt-0.5 shrink-0" />
+                                  <span className="leading-relaxed">{corr}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* TARJETA 4: Plan de Acción y Consejos Formativos */}
+                      <div className="rounded-xl border border-line bg-white p-5 shadow-xs">
+                        <div className="flex items-center gap-2.5 border-b border-line pb-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-900 font-bold text-sm">
+                            4
+                          </div>
+                          <div>
+                            <h3 className="font-serif text-base font-bold text-pine">
+                              Plan de Acción y Consejos Formativos
+                            </h3>
+                            <p className="text-[11px] text-ink/60">
+                              {diagnosticoPedagogico.planAccionTitulo}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3.5 space-y-3 text-xs">
+                          <p className="text-ink/80 leading-relaxed">
+                            {diagnosticoPedagogico.planAccionDetalle}
+                          </p>
+
+                          {/* Si es crítico: Compromiso obligatorio con tabla institucional */}
+                          {diagnosticoPedagogico.esCritico ? (
+                            <div className="overflow-x-auto rounded-lg border border-amber-300 bg-amber-50/40">
+                              <table className="w-full text-left text-xs">
+                                <thead className="bg-amber-100/70 font-bold text-amber-950 uppercase text-[10px] tracking-wider border-b border-amber-200">
+                                  <tr>
+                                    <th className="p-2.5 pl-3">#</th>
+                                    <th className="p-2.5">Compromiso Pedagógico Obligatorio</th>
+                                    <th className="p-2.5">Plazo / Frecuencia</th>
+                                    <th className="p-2.5 pr-3">Evidencia Requerida</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-amber-200/60 text-amber-950">
+                                  <tr>
+                                    <td className="p-2.5 pl-3 font-bold text-amber-800">1</td>
+                                    <td className="p-2.5 font-medium">
+                                      Ajuste y socialización del acuerdo pedagógico y rúbricas en el aula
+                                    </td>
+                                    <td className="p-2.5">Semana 2 del semestre</td>
+                                    <td className="p-2.5 pr-3 text-[11px] text-ink/70">
+                                      Acta firmada de concertación pedagógica con estudiantes
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td className="p-2.5 pl-3 font-bold text-amber-800">2</td>
+                                    <td className="p-2.5 font-medium">
+                                      Establecimiento de horas de asesoría y seguimiento quincenal con Coordinación
+                                    </td>
+                                    <td className="p-2.5">Quincenal</td>
+                                    <td className="p-2.5 pr-3 text-[11px] text-ink/70">
+                                      Informe de avance del parcelador y corte de notas
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td className="p-2.5 pl-3 font-bold text-amber-800">3</td>
+                                    <td className="p-2.5 font-medium">
+                                      Participación obligatoria en talleres de cualificación docente MEDIT
+                                    </td>
+                                    <td className="p-2.5">Semestral</td>
+                                    <td className="p-2.5 pr-3 text-[11px] text-ink/70">
+                                      Certificación de participación en programas de formación docente
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {diagnosticoPedagogico.consejosFormativos.map((consejo, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-start gap-2.5 rounded-lg bg-paper/40 p-3 border border-line shadow-2xs"
+                                >
+                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-pine text-white font-bold text-[10px]">
+                                    {idx + 1}
+                                  </span>
+                                  <p className="text-ink/90 leading-relaxed">{consejo}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )
                 )}
               </section>
 
+              {/* DESGLOSE POR DIMENSIONES MEDIT */}
               <section className="rounded-xl border border-line bg-white p-5 shadow-xs">
                 <div className="flex items-center gap-2 border-b border-line pb-3 mb-4">
                   <Layers className="text-pine" size={18} />
@@ -1159,8 +1448,8 @@ export function Report({
                                 : dim.score >= 4.0
                                 ? 'bg-emerald-500'
                                 : dim.score >= 3.5
-                                ? 'bg-amber-500'
-                                : 'bg-red-500'
+                                ? 'bg-sky-500'
+                                : 'bg-amber-500'
                             }`}
                             style={{ width: `${dim.score !== null ? dim.porcentaje : 0}%` }}
                           />
@@ -1170,148 +1459,6 @@ export function Report({
                   ))}
                 </div>
               </section>
-
-              {diagnosticoPedagogico && (
-                <section className="rounded-xl border border-line bg-white p-5 shadow-xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-line pb-3">
-                    <Sparkles className="text-pine" size={18} />
-                    <div>
-                      <h3 className="font-serif text-lg font-bold text-pine">
-                        Diagnóstico Pedagógico y Recomendaciones
-                      </h3>
-                      <p className="text-xs text-ink/60">
-                        Estrategias didácticas y orientaciones formativas según el desempeño en cada dimensión
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-emerald-300 bg-emerald-50/80 p-4.5 text-emerald-950">
-                    <div className="flex items-center gap-2 font-bold text-sm text-emerald-900 mb-2">
-                      <CheckCircle2 size={18} className="text-emerald-700 shrink-0" />
-                      <span>Fortalezas Pedagógicas Consolidadas (Dimensiones con Desempeño Superior a 4.2)</span>
-                    </div>
-
-                    {diagnosticoPedagogico.fortalezas.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-xs text-emerald-900 leading-relaxed">
-                          El profesor evidencia un impacto formativo altamente favorable en el estudiantado de Ingeniería de Sistemas.
-                          Se destacan de manera notable las siguientes competencias:
-                        </p>
-                        <ul className="grid gap-2 sm:grid-cols-2 text-xs list-none pl-0">
-                          {diagnosticoPedagogico.fortalezas.map((f) => (
-                            <li
-                              key={f.id}
-                              className="flex items-start gap-2 rounded-lg bg-white/70 p-2.5 border border-emerald-200"
-                            >
-                              <Check size={14} className="text-emerald-700 mt-0.5 shrink-0" />
-                              <div>
-                                <strong className="text-emerald-950">{f.titulo}</strong>
-                                <span className="ml-1 text-[11px] font-bold text-emerald-800">
-                                  ({f.score !== null ? f.score.toFixed(2) : '—'} / 5.0)
-                                </span>
-                                <p className="text-[11px] text-emerald-800 mt-0.5">{f.descripcion}</p>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-emerald-900 leading-relaxed">
-                        La dimensión con mayor solidez actual corresponde a{' '}
-                        <b>{diagnosticoPedagogico.mejorDimension.titulo}</b> ({diagnosticoPedagogico.mejorDimension.score !== null ? diagnosticoPedagogico.mejorDimension.score.toFixed(2) : '—'} / 5.00),
-                        constituyendo la base pedagógica clave sobre la cual apalancar el plan de mejoramiento integral.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 p-4.5 text-indigo-950">
-                    <div className="flex items-center gap-2 font-bold text-sm text-indigo-900 mb-2">
-                      <Lightbulb size={18} className="text-indigo-700 shrink-0" />
-                      <span>Recomendaciones y Prácticas Didácticas Sugeridas</span>
-                    </div>
-
-                    <p className="text-xs text-indigo-900 mb-3 leading-relaxed">
-                      Recomendaciones metodológicas precisas para potenciar la mediación pedagógica en el aula y elevar la satisfacción formativa de los estudiantes:
-                    </p>
-
-                    <div className="space-y-2.5">
-                      {diagnosticoPedagogico.consejosDidacticos.map((consejo, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-2.5 rounded-lg bg-white/80 p-3 border border-indigo-150 text-xs shadow-2xs"
-                        >
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white font-bold text-[10px]">
-                            {idx + 1}
-                          </span>
-                          <p className="text-indigo-950 leading-relaxed">{consejo}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {activeDetail.estaConsolidado && diagnosticoPedagogico.requierePlanAccion && (
-                    <div className="rounded-xl border border-red-300 bg-red-50/80 p-4.5 text-red-950 space-y-3">
-                      <div className="flex items-center gap-2 font-bold text-sm text-red-900">
-                        <AlertTriangle size={18} className="text-red-700 shrink-0" />
-                        <span>Plan de Acción Inmediato (Compromisos Institucionales)</span>
-                      </div>
-
-                      <div className="rounded-lg bg-white/80 p-3 border border-red-200 text-xs text-red-950 leading-relaxed">
-                        <p className="font-semibold text-red-900 mb-1 flex items-center gap-1.5">
-                          <AlertTriangle size={14} className="text-red-700" />
-                          <span>Alerta de Umbral Institucional MEDIT Activada</span>
-                        </p>
-                        La calificación consolidada ({activeDetail.grade.finalScore.toFixed(2)} / 5.00) se sitúa por debajo del límite de satisfacción institucional (4.00). Se establecen con carácter obligatorio los siguientes tres compromisos con la Coordinación del Programa de Ingeniería de Sistemas:
-                      </div>
-
-                      <div className="overflow-x-auto rounded-lg border border-red-200 bg-white">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-red-100/60 font-bold text-red-900 uppercase text-[10px] tracking-wider border-b border-red-200">
-                            <tr>
-                              <th className="p-2.5 pl-3">#</th>
-                              <th className="p-2.5">Compromiso Pedagógico Obligatorio</th>
-                              <th className="p-2.5">Plazo / Frecuencia</th>
-                              <th className="p-2.5 pr-3">Evidencia Requerida</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-red-100 text-red-950">
-                            <tr>
-                              <td className="p-2.5 pl-3 font-bold text-red-700">1</td>
-                              <td className="p-2.5 font-medium">
-                                Ajuste y socialización del acuerdo pedagógico en el primer corte
-                              </td>
-                              <td className="p-2.5">Semana 2 del semestre</td>
-                              <td className="p-2.5 pr-3 text-[11px] text-ink/70">
-                                Acta firmada de concertación de rúbricas con estudiantes
-                              </td>
-                            </tr>
-                            <tr>
-                              <td className="p-2.5 pl-3 font-bold text-red-700">2</td>
-                              <td className="p-2.5 font-medium">
-                                Establecimiento de 2 horas semanales de asesoría extracurricular presencial
-                              </td>
-                              <td className="p-2.5">Semanal fija</td>
-                              <td className="p-2.5 pr-3 text-[11px] text-ink/70">
-                                Planilla de asistencia de asesorías en cubículo docente
-                              </td>
-                            </tr>
-                            <tr>
-                              <td className="p-2.5 pl-3 font-bold text-red-700">3</td>
-                              <td className="p-2.5 font-medium">
-                                Sesión de seguimiento quincenal con la Coordinación de Ingeniería de Sistemas
-                              </td>
-                              <td className="p-2.5">Quincenal</td>
-                              <td className="p-2.5 pr-3 text-[11px] text-ink/70">
-                                Informe de avance del parcelador y corte de notas
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              )}
 
               <section className="rounded-xl border border-line bg-white p-5 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 border-b border-line pb-3">
